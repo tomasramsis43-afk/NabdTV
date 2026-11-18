@@ -55,6 +55,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
 
     val savedUrl: String get() = repo.playlistUrl
+    var diag by mutableStateOf<String?>(null)
+        private set
+    var diagBusy by mutableStateOf(false)
+        private set
+
+    fun runDiag() {
+        viewModelScope.launch {
+            diagBusy = true; diag = null
+            diag = try { repo.diagnose() } catch (e: Exception) { "فشل الفحص: ${e.message}" }
+            diagBusy = false
+        }
+    }
     val hasXtream: Boolean get() = repo.hasXtream
     var epg by mutableStateOf<Map<String, List<Prog>>>(emptyMap())
         private set
@@ -85,6 +97,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         is java.net.SocketTimeoutException -> "انتهت مهلة الاتصال بالسيرفر"
         is java.net.ConnectException -> "السيرفر رفض الاتصال، تأكد من العنوان والبورت"
         is IllegalArgumentException -> "العنوان غير صحيح: " + (e.message ?: "")
+        is org.json.JSONException -> "رد غير متوقع من السيرفر (الخدمة غير مفعّلة في اشتراكك أو الرد تالف)"
         else -> e.message ?: "خطأ غير معروف"
     }
 
@@ -111,6 +124,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 if (s == Section.Movies) movies = repo.loadMovies(force) else series = repo.loadSeries(force)
             } catch (e: Exception) {
                 error = friendly(e)
+            } catch (e: OutOfMemoryError) {
+                error = "الذاكرة لا تكفي لتحميل قائمة بهذا الحجم"
             }
             vodLoading = false
         }

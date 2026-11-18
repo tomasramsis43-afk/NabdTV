@@ -42,6 +42,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -77,6 +78,11 @@ fun SetupScreen(vm: AppViewModel) {
         Text("Nabd TV", fontSize = 40.sp, color = Accent)
         if (vm.loading) Text("جارٍ الاتصال وتحميل القنوات...", color = Accent)
         vm.error?.let { Text("خطأ: $it", color = Color(0xFFFF6B6B)) }
+        if (vm.hasXtream) {
+            Spacer(Modifier.height(8.dp))
+            MBtn(if (vm.diagBusy) "جارٍ الفحص..." else "فحص الاتصال والقنوات", filled = false) { vm.runDiag() }
+            vm.diag?.let { Text(it, fontSize = 13.sp, color = Color.White) }
+        }
         Spacer(Modifier.height(20.dp))
 
         Text("Xtream Codes", fontSize = 20.sp)
@@ -307,19 +313,34 @@ fun PlayerScreen(vm: AppViewModel) {
     var status by remember { mutableStateOf("") }
     var ping by remember { mutableIntStateOf(0) }
     var overlay by remember { mutableStateOf(true) }
+    var alt by remember { mutableStateOf(false) }
+    val chUrl by rememberUpdatedState(ch.url)
 
     LaunchedEffect(ch.url) {
-        retries = 0; status = ""
+        retries = 0; status = ""; alt = false
         player.setMediaItem(MediaItem.fromUri(ch.url))
         player.prepare(); player.playWhenReady = true
     }
     DisposableEffect(player) {
         val l = object : Player.Listener {
             override fun onPlayerError(e: PlaybackException) {
+                val code = (e.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode
+                val u = chUrl
+                val altUrl = when {
+                    u.endsWith(".ts") -> u.removeSuffix(".ts") + ".m3u8"
+                    u.endsWith(".m3u8") -> u.removeSuffix(".m3u8") + ".ts"
+                    else -> null
+                }
                 if (e.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
                     player.seekToDefaultPosition(); player.prepare()
-                } else if (retries < 3) { retries++; player.prepare() }
-                else status = "تعذّر التشغيل"
+                } else if (retries < 2 && (code == null || code >= 500)) {
+                    retries++; player.prepare()
+                } else if (!alt && altUrl != null) {
+                    alt = true; retries = 0
+                    player.setMediaItem(MediaItem.fromUri(altUrl)); player.prepare()
+                } else {
+                    status = "تعذّر التشغيل" + (code?.let { " (HTTP $it)" } ?: " (${e.errorCodeName})")
+                }
             }
             override fun onPlaybackStateChanged(state: Int) {
                 when (state) {

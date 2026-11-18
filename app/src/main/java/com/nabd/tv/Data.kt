@@ -116,6 +116,8 @@ class Repo(private val ctx: Context) {
         .followRedirects(true).followSslRedirects(true)
         .build()
 
+    init { prefs.getString("ua", null)?.let { httpUa = it } }
+
     var playlistUrl: String
         get() = prefs.getString("url", "") ?: ""
         set(v) = prefs.edit().putString("url", v).apply()
@@ -174,7 +176,7 @@ class Repo(private val ctx: Context) {
         for (agent in agents) {
             val req = Request.Builder().url(url).header("User-Agent", agent).header("Accept", "*/*").build()
             http.newCall(req).execute().use { r ->
-                if (r.isSuccessful) { httpUa = agent; return r.body!!.string() }
+                if (r.isSuccessful) { httpUa = agent; prefs.edit().putString("ua", agent).apply(); return r.body!!.string() }
                 last = r.code
             }
             if (last != 401 && last != 403 && last != 429 && last != 456) break
@@ -202,9 +204,78 @@ class Repo(private val ctx: Context) {
                 .append("\" tvg-logo=\"").append(a(str(s, "stream_icon")))
                 .append("\" group-title=\"").append(a(names[str(s, "category_id")] ?: "Other"))
                 .append("\",").append(a(str(s, "name"))).append('\n')
-            sb.append("$base/live/$user/$pass/$id.ts\n")
+            sb.append("$base/live/$user/$pass/$id.$liveExt\n")
         }
         return sb.toString()
+    }
+
+    var liveExt: String
+        get() = prefs.getString("liveExt", "ts") ?: "ts"
+        set(v) = prefs.edit().putString("liveExt", v).apply()
+
+    private fun looksLike(buf: ByteArray, n: Int): String {
+        if (n <= 0) return "فارغ"
+        val s = String(buf, 0, n, Charsets.ISO_8859_1)
+        return when {
+            s.startsWith("#EXTM3U") -> "HLS"
+            buf[0] == 0x47.toByte() -> "MPEG-TS"
+            s.startsWith("<") -> "صفحة HTML/خطأ"
+            s.startsWith("{") -> "JSON/خطأ"
+            else -> "بيانات"
+        }
+    }
+
+    /** Tries one stream URL with each User-Agent; reports HTTP code + what came back. */
+    private fun probe(url: String, label: String, sb: StringBuilder): Boolean {
+        val c = http.newBuilder().readTimeout(12, TimeUnit.SECONDS).callTimeout(20, TimeUnit.SECONDS).build()
+        for (agent in agents) {
+            try {
+                val req = Request.Builder().url(url).header("User-Agent", agent).header("Range", "bytes=0-2047").build()
+                c.newCall(req).execute().use { r ->
+                    val buf = ByteArray(64)
+                    val n = if (r.isSuccessful) r.body!!.byteStream().read(buf) else 0
+                    val kind = looksLike(buf, n)
+                    sb.append("$label [${agent.take(12)}]: HTTP ${r.code} · $kind\n")
+                    if (r.isSuccessful && (kind == "HLS" || kind == "MPEG-TS" || kind == "بيانات")) {
+                        httpUa = agent; prefs.edit().putString("ua", agent).apply()
+                        return true
+                    }
+                }
+            } catch (e: Exception) {
+                sb.append("$label [${agent.take(12)}]: ${e.javaClass.simpleName}\n")
+            }
+        }
+        return false
+    }
+
+    /** Self-test: account status, connection limit, and whether streams really open. */
+    suspend fun diagnose(): String = withContext(Dispatchers.IO) {
+        val (b, u, p) = xt() ?: return@withContext "الدخول ليس بـ Xtream"
+        val sb = StringBuilder()
+        try {
+            val ui = JSONObject(fetch("$b/player_api.php?username=${Uri.encode(u)}&password=${Uri.encode(p)}")).optJSONObject("user_info")
+            if (ui == null) sb.append("لا توجد بيانات حساب في رد السيرفر\n") else {
+                val exp = str(ui, "exp_date").toLongOrNull()
+                    ?.let { SimpleDateFormat("yyyy-MM-dd", Locale.US).format(java.util.Date(it * 1000)) } ?: "غير محدود"
+                sb.append("الحساب: ${str(ui, "status")} (auth=${str(ui, "auth")}) · ينتهي: $exp\n")
+                sb.append("الاتصالات الآن: ${str(ui, "active_cons")} من ${str(ui, "max_connections")}\n")
+            }
+        } catch (e: Exception) { sb.append("فحص الحساب فشل: ${e.message}\n") }
+
+        val live = cacheFile.takeIf { it.exists() }?.let { M3uParser.parse(it.readText()).firstOrNull()?.url }
+        if (live == null) sb.append("لا توجد قنوات محمّلة للفحص\n") else {
+            val stem = live.removeSuffix(".m3u8").removeSuffix(".ts")
+            val okTs = probe("$stem.ts", "مباشر ts", sb)
+            val okHls = probe("$stem.m3u8", "مباشر m3u8", sb)
+            if (okHls && !okTs) {
+                liveExt = "m3u8"; cacheFile.delete()
+                sb.append("→ تم اعتماد m3u8. اضغط تحديث في قسم المباشر.\n")
+            } else if (okTs && !okHls) liveExt = "ts"
+            if (!okTs && !okHls) sb.append("→ القنوات المباشرة لا تفتح: راجع الاتصالات المتزامنة والاشتراك، أو أن المزوّد يحظر الجهاز/الـ IP.\n")
+        }
+        val movie = File(ctx.filesDir, "movies.m3u").takeIf { it.exists() }?.let { M3uParser.parse(it.readText()).firstOrNull()?.url }
+        if (movie != null) probe(movie, "فيلم", sb) else sb.append("الأفلام لم تُحمّل بعد (افتح قسم الأفلام أولاً)\n")
+        sb.toString()
     }
 
     val hasXtream: Boolean get() = xt() != null
@@ -220,9 +291,11 @@ class Repo(private val ctx: Context) {
     }
 
     private fun categories(action: String): Map<String, String> {
-        val c = JSONArray(api(action))
         val m = HashMap<String, String>()
-        for (i in 0 until c.length()) c.getJSONObject(i).let { m[str(it, "category_id")] = str(it, "category_name") }
+        try {
+            val c = JSONArray(api(action))
+            for (i in 0 until c.length()) c.getJSONObject(i).let { m[str(it, "category_id")] = str(it, "category_name") }
+        } catch (_: Exception) { }
         return m
     }
 
