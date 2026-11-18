@@ -159,7 +159,7 @@ class Repo(private val ctx: Context) {
             if (!r.isSuccessful) error("HTTP ${r.code}")
             val body = r.body!!.string()
             val list = M3uParser.parse(body)
-            if (list.isEmpty()) error("Empty or invalid playlist")
+            if (list.isEmpty()) error("رد السيرفر ليس قائمة قنوات. تأكد من البيانات أو الاشتراك. الرد: " + body.trim().take(150))
             cacheFile.writeText(body)
             if (!epgManual) M3uParser.epgFromHeader(body)?.let { epgUrl = it }
             list

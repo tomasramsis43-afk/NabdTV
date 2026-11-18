@@ -63,7 +63,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 screen = Screen.Home
                 launch { epg = repo.loadEpg(all, force) }
             } catch (e: Exception) {
-                error = e.message ?: "Error"
+                error = when (e) {
+                    is java.net.UnknownHostException -> "تعذّر الوصول للسيرفر (الاسم غير صحيح أو لا يوجد إنترنت)"
+                    is java.net.SocketTimeoutException -> "انتهت مهلة الاتصال بالسيرفر"
+                    is java.net.ConnectException -> "السيرفر رفض الاتصال، تأكد من العنوان والبورت"
+                    is IllegalArgumentException -> "العنوان غير صحيح: " + (e.message ?: "")
+                    else -> e.message ?: "خطأ غير معروف"
+                }
                 if (all.isEmpty()) screen = Screen.Setup
             }
             loading = false

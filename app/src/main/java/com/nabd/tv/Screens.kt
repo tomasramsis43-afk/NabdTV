@@ -46,6 +46,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.*
+import android.widget.Toast
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 
@@ -58,6 +59,10 @@ fun SetupScreen(vm: AppViewModel) {
     var user by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     val firstFocus = remember { FocusRequester() }
+    val ctx = LocalContext.current
+    fun toast(m: String) = Toast.makeText(ctx, m, Toast.LENGTH_LONG).show()
+    LaunchedEffect(vm.error) { vm.error?.let { toast(it) } }
+    LaunchedEffect(vm.loading) { if (vm.loading) toast("جارٍ الاتصال بالسيرفر...") }
     LaunchedEffect(Unit) { runCatching { firstFocus.requestFocus() } }
     BackHandler(enabled = vm.all.isNotEmpty()) { vm.closeSetup() }
 
@@ -66,6 +71,8 @@ fun SetupScreen(vm: AppViewModel) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("Nabd TV", fontSize = 40.sp, color = Accent)
+        if (vm.loading) Text("جارٍ الاتصال وتحميل القنوات...", color = Accent)
+        vm.error?.let { Text("خطأ: $it", color = Color(0xFFFF6B6B)) }
         Spacer(Modifier.height(20.dp))
 
         Text("Xtream Codes", fontSize = 20.sp)
@@ -90,7 +97,7 @@ fun SetupScreen(vm: AppViewModel) {
         )
         Spacer(Modifier.height(10.dp))
         androidx.compose.material3.Button(
-            onClick = { if (host.isNotBlank() && user.isNotBlank() && pass.isNotBlank()) vm.setXtream(host, user, pass) },
+            onClick = { if (host.isNotBlank() && user.isNotBlank() && pass.isNotBlank()) vm.setXtream(host, user, pass) else toast("اكتب السيرفر واليوزر والباسورد") },
             modifier = Modifier.focusRequester(firstFocus)
         ) { androidx.compose.material3.Text("دخول Xtream") }
 
@@ -103,11 +110,8 @@ fun SetupScreen(vm: AppViewModel) {
             placeholder = { androidx.compose.material3.Text("http://.../playlist.m3u") }
         )
         Spacer(Modifier.height(10.dp))
-        MBtn("تحميل M3U") { if (url.isNotBlank()) vm.setUrl(url) }
+        MBtn("تحميل M3U") { if (url.isNotBlank()) vm.setUrl(url) else toast("اكتب رابط M3U") }
 
-        Spacer(Modifier.height(16.dp))
-        if (vm.loading) Text("جارٍ الاتصال وتحميل القنوات...", color = Accent)
-        vm.error?.let { Text("خطأ: $it", color = Color(0xFFFF6B6B)) }
     }
 }
 
