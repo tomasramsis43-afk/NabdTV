@@ -24,6 +24,8 @@ data class Channel(
 
 data class Prog(val start: Long, val stop: Long, val title: String)
 
+data class Episode(val season: Int, val num: Int, val title: String, val url: String)
+
 /** Streaming XMLTV parser: keeps only wanted channels and a small time window (low memory). */
 object EpgParser {
     private val fmt = ThreadLocal.withInitial { SimpleDateFormat("yyyyMMddHHmmss Z", Locale.US) }
@@ -203,6 +205,90 @@ class Repo(private val ctx: Context) {
             sb.append("$base/live/$user/$pass/$id.ts\n")
         }
         return sb.toString()
+    }
+
+    val hasXtream: Boolean get() = xt() != null
+
+    private fun xt(): Triple<String, String, String>? {
+        val p = xtream.split("\n")
+        return if (p.size == 3) Triple(p[0], p[1], p[2]) else null
+    }
+
+    private fun api(action: String, extra: String = ""): String {
+        val (b, u, p) = xt()!!
+        return fetch("$b/player_api.php?username=${Uri.encode(u)}&password=${Uri.encode(p)}&action=$action$extra")
+    }
+
+    private fun categories(action: String): Map<String, String> {
+        val c = JSONArray(api(action))
+        val m = HashMap<String, String>()
+        for (i in 0 until c.length()) c.getJSONObject(i).let { m[str(it, "category_id")] = str(it, "category_name") }
+        return m
+    }
+
+    private fun buildM3u(arr: JSONArray, names: Map<String, String>, icon: String, url: (JSONObject) -> String?): String {
+        fun a(x: String) = x.replace('"', '\'').replace('\n', ' ')
+        val sb = StringBuilder("#EXTM3U\n")
+        for (i in 0 until arr.length()) {
+            val s = arr.getJSONObject(i)
+            val u = url(s) ?: continue
+            sb.append("#EXTINF:-1 tvg-logo=\"").append(a(str(s, icon)))
+                .append("\" group-title=\"").append(a(names[str(s, "category_id")] ?: "Other"))
+                .append("\",").append(a(str(s, "name"))).append('\n').append(u).append('\n')
+        }
+        return sb.toString()
+    }
+
+    fun clearVod() {
+        File(ctx.filesDir, "movies.m3u").delete()
+        File(ctx.filesDir, "series.m3u").delete()
+    }
+
+    suspend fun loadMovies(force: Boolean): List<Channel> = withContext(Dispatchers.IO) {
+        val (b, u, p) = xt() ?: return@withContext emptyList()
+        val f = File(ctx.filesDir, "movies.m3u")
+        if (!force && f.exists()) return@withContext M3uParser.parse(f.readText())
+        val names = categories("get_vod_categories")
+        val t = buildM3u(JSONArray(api("get_vod_streams")), names, "stream_icon") { s ->
+            val id = str(s, "stream_id")
+            if (id.isBlank()) null else "$b/movie/$u/$p/$id.${str(s, "container_extension").ifBlank { "mp4" }}"
+        }
+        f.writeText(t)
+        M3uParser.parse(t)
+    }
+
+    suspend fun loadSeries(force: Boolean): List<Channel> = withContext(Dispatchers.IO) {
+        if (xt() == null) return@withContext emptyList()
+        val f = File(ctx.filesDir, "series.m3u")
+        if (!force && f.exists()) return@withContext M3uParser.parse(f.readText())
+        val names = categories("get_series_categories")
+        val t = buildM3u(JSONArray(api("get_series")), names, "cover") { s ->
+            val id = str(s, "series_id")
+            if (id.isBlank()) null else "series:$id"
+        }
+        f.writeText(t)
+        M3uParser.parse(t)
+    }
+
+    suspend fun loadEpisodes(seriesId: Int): List<Episode> = withContext(Dispatchers.IO) {
+        val (b, u, p) = xt() ?: return@withContext emptyList()
+        val eps = JSONObject(api("get_series_info", "&series_id=$seriesId")).optJSONObject("episodes")
+            ?: return@withContext emptyList()
+        val out = ArrayList<Episode>()
+        for (k in eps.keys()) {
+            val arr = eps.optJSONArray(k) ?: continue
+            for (i in 0 until arr.length()) {
+                val e = arr.getJSONObject(i)
+                val id = str(e, "id")
+                if (id.isBlank()) continue
+                val ext = str(e, "container_extension").ifBlank { "mp4" }
+                out += Episode(
+                    k.toIntOrNull() ?: 0, str(e, "episode_num").toIntOrNull() ?: (i + 1),
+                    str(e, "title"), "$b/series/$u/$p/$id.$ext"
+                )
+            }
+        }
+        out.sortedWith(compareBy({ it.season }, { it.num }))
     }
 
     /** Uses the local cache for instant startup; force = re-download. */

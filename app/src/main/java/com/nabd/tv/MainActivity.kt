@@ -21,5 +21,6 @@ fun App(vm: AppViewModel) {
         Screen.Setup -> SetupScreen(vm)
         Screen.Home -> HomeScreen(vm)
         Screen.Player -> PlayerScreen(vm)
+        Screen.SeriesDetail -> SeriesScreen(vm)
     }
 }

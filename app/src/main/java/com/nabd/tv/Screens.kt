@@ -14,6 +14,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -47,6 +48,8 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.*
 import android.widget.Toast
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 
@@ -119,55 +122,156 @@ fun SetupScreen(vm: AppViewModel) {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun HomeScreen(vm: AppViewModel) {
-    Row(Modifier.fillMaxSize().background(Bg).padding(horizontal = 32.dp, vertical = 24.dp)) {
-        Column(Modifier.width(230.dp)) {
-            Text("Nabd TV", fontSize = 28.sp, color = Accent)
-            Spacer(Modifier.height(16.dp))
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+    val poster = vm.section != Section.Live
+    Column(Modifier.fillMaxSize().background(Bg).padding(horizontal = 20.dp, vertical = 12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Nabd TV", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Accent)
+            Spacer(Modifier.width(4.dp))
+            SectionTab("📺  مباشر", vm.section == Section.Live) { vm.select(Section.Live) }
+            if (vm.hasXtream) {
+                SectionTab("🎬  أفلام", vm.section == Section.Movies) { vm.select(Section.Movies) }
+                SectionTab("📚  مسلسلات", vm.section == Section.Series) { vm.select(Section.Series) }
+            }
+            OutlinedTextField(
+                value = vm.query, onValueChange = { vm.query = it }, singleLine = true,
+                modifier = Modifier.weight(1f).widthIn(min = 120.dp),
+                placeholder = { androidx.compose.material3.Text("بحث...") }
+            )
+            MBtn(if (vm.loading || vm.vodLoading) "..." else "تحديث", filled = false) { vm.refresh() }
+            MBtn("الإعدادات", filled = false) { vm.openSetup() }
+        }
+        Spacer(Modifier.height(8.dp))
+        if (vm.loading || vm.vodLoading) Text("جارٍ التحميل...", color = Accent, fontSize = 13.sp)
+        vm.error?.let { Text("خطأ: $it", color = Color(0xFFFF8A80), fontSize = 13.sp) }
+        Row(Modifier.weight(1f)) {
+            LazyColumn(Modifier.width(190.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(vm.groups, key = { it }) { g ->
-                    Focusable(selected = vm.group == g, onClick = { vm.group = g }, modifier = Modifier.fillMaxWidth()) {
-                        Text(g, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(12.dp))
+                    val sel = vm.group == g
+                    Focusable(selected = sel, onClick = { vm.group = g }, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            g, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 14.sp,
+                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                            color = if (sel) Accent else Color.White,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+                        )
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
-            MBtn(if (vm.loading) "..." else "تحديث", filled = false) { vm.load(true) }
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text("${vm.visible.size}", color = TextSecondary, fontSize = 12.sp)
+                Spacer(Modifier.height(6.dp))
+                if (vm.visible.isEmpty() && !vm.loading && !vm.vodLoading)
+                    Text("لا توجد نتائج", color = TextSecondary, fontSize = 15.sp)
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(if (poster) 120.dp else 150.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(4.dp)
+                ) {
+                    items(vm.visible, key = { it.id }) { ch ->
+                        if (poster) PosterCard(vm, ch) else LiveCard(vm, ch)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SectionTab(label: String, selected: Boolean, onClick: () -> Unit) {
+    Focusable(selected = selected, onClick = onClick) {
+        Text(
+            label, fontSize = 15.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            color = if (selected) Accent else Color.White,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+        )
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+fun LiveCard(vm: AppViewModel, ch: Channel) {
+    Focusable(onClick = { vm.play(ch) }, onLongClick = { vm.toggleFav(ch) }, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.fillMaxWidth().height(56.dp), contentAlignment = Alignment.Center) {
+                AsyncImage(model = ch.logo, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+            }
             Spacer(Modifier.height(6.dp))
-            MBtn("القائمة", filled = false) { vm.openSetup() }
+            Box(Modifier.height(38.dp), contentAlignment = Alignment.Center) {
+                Text(
+                    (if (ch.url in vm.favs) "★ " else "") + ch.name,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
+                    fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White
+                )
+            }
+            val now = vm.nowNext(ch).first
+            Text(now?.title ?: " ", maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp, color = Accent)
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+fun PosterCard(vm: AppViewModel, ch: Channel) {
+    val isSeries = vm.section == Section.Series
+    Focusable(
+        onClick = { if (isSeries) vm.openSeries(ch) else vm.play(ch) },
+        onLongClick = { vm.toggleFav(ch) },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        AsyncImage(
+            model = ch.logo, contentDescription = null, contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f).background(Color(0xFF1E2733))
+        )
+        Text(
+            (if (ch.url in vm.favs) "★ " else "") + ch.name,
+            maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 12.sp, color = Color.White,
+            modifier = Modifier.padding(8.dp).height(34.dp)
+        )
+    }
+}
+
+/* ───────────── Series details ───────────── */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+fun SeriesScreen(vm: AppViewModel) {
+    val s = vm.openedSeries ?: return
+    BackHandler { vm.closeSeries() }
+    Row(Modifier.fillMaxSize().background(Bg).padding(24.dp)) {
+        Column(Modifier.width(190.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            AsyncImage(
+                model = s.logo, contentDescription = null, contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(RoundedCornerShape(12.dp)).background(Surf)
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(s.name, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(10.dp))
+            MBtn("رجوع", filled = false) { vm.closeSeries() }
         }
         Spacer(Modifier.width(24.dp))
         Column(Modifier.weight(1f)) {
-            OutlinedTextField(
-                value = vm.query, onValueChange = { vm.query = it },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
-                placeholder = { androidx.compose.material3.Text("بحث...") }
-            )
-            Spacer(Modifier.height(12.dp))
-            Text("${vm.visible.size} قناة", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-            Spacer(Modifier.height(8.dp))
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(170.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-                contentPadding = PaddingValues(6.dp)
-            ) {
-                items(vm.visible, key = { it.id }) { ch ->
-                    Focusable(onClick = { vm.play(ch) }, onLongClick = { vm.toggleFav(ch) }, modifier = Modifier.fillMaxWidth()) {
-                        Column(
-                            Modifier.fillMaxWidth().padding(12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            AsyncImage(model = ch.logo, contentDescription = null, modifier = Modifier.size(72.dp))
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                (if (ch.url in vm.favs) "★ " else "") + ch.name,
-                                maxLines = 2, overflow = TextOverflow.Ellipsis,
-                                textAlign = TextAlign.Center, fontSize = 14.sp
-                            )
-                            vm.nowNext(ch).first?.let {
-                                Text(it.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp, color = Accent)
-                            }
-                        }
+            val seasons = vm.episodes.map { it.season }.distinct()
+            if (seasons.size > 1) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    seasons.forEach { n -> SectionTab("الموسم $n", vm.season == n) { vm.selectSeason(n) } }
+                }
+                Spacer(Modifier.height(10.dp))
+            }
+            if (vm.epLoading) Text("جارٍ تحميل الحلقات...", color = Accent)
+            vm.error?.let { Text("خطأ: $it", color = Color(0xFFFF8A80), fontSize = 13.sp) }
+            if (!vm.epLoading && vm.episodes.isEmpty() && vm.error == null) Text("لا توجد حلقات", color = TextSecondary)
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(vm.episodes.filter { it.season == vm.season }, key = { it.url }) { e ->
+                    Focusable(
+                        onClick = { vm.play(Channel(-1, "${s.name} · م${e.season} ح${e.num}", e.url, s.logo, s.group)) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "حلقة ${e.num}" + if (e.title.isNotBlank()) " — ${e.title}" else "",
+                            fontSize = 15.sp, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(14.dp)
+                        )
                     }
                 }
             }
@@ -194,6 +298,7 @@ fun buildPlayer(ctx: android.content.Context): ExoPlayer {
 fun PlayerScreen(vm: AppViewModel) {
     val ctx = LocalContext.current
     val ch = vm.current ?: return
+    val live = vm.zapEnabled
     val player = remember { buildPlayer(ctx) }
     DisposableEffect(Unit) { onDispose { player.release() } }
 
@@ -213,7 +318,7 @@ fun PlayerScreen(vm: AppViewModel) {
                 if (e.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
                     player.seekToDefaultPosition(); player.prepare()
                 } else if (retries < 3) { retries++; player.prepare() }
-                else status = "تعذّر تشغيل القناة"
+                else status = "تعذّر التشغيل"
             }
             override fun onPlaybackStateChanged(state: Int) {
                 when (state) {
@@ -244,10 +349,17 @@ fun PlayerScreen(vm: AppViewModel) {
             .onPreviewKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (ev.key) {
-                    Key.DirectionUp, Key.ChannelUp -> { vm.zap(1); true }
-                    Key.DirectionDown, Key.ChannelDown -> { vm.zap(-1); true }
-                    Key.DirectionCenter, Key.Enter -> { ping++; true }
-                    Key.DirectionRight -> { vm.toggleFav(ch); ping++; true }
+                    Key.DirectionUp, Key.ChannelUp -> if (live) { vm.zap(1); true } else false
+                    Key.DirectionDown, Key.ChannelDown -> if (live) { vm.zap(-1); true } else false
+                    Key.DirectionCenter, Key.Enter -> {
+                        if (!live) player.playWhenReady = !player.playWhenReady
+                        ping++; true
+                    }
+                    Key.DirectionRight -> {
+                        if (live) vm.toggleFav(ch) else player.seekTo(player.currentPosition + 10_000)
+                        ping++; true
+                    }
+                    Key.DirectionLeft -> if (!live) { player.seekTo(maxOf(0L, player.currentPosition - 10_000)); true } else false
                     else -> false
                 }
             }
@@ -256,13 +368,13 @@ fun PlayerScreen(vm: AppViewModel) {
             modifier = Modifier.fillMaxSize(),
             factory = { c ->
                 PlayerView(c).apply {
-                    useController = false
+                    useController = !live
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                     this.player = player
                 }
             }
         )
-        if (overlay || status.isNotEmpty()) {
+        if ((overlay && live) || status.isNotEmpty()) {
             Row(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                     .background(Color(0xCC000000)).padding(24.dp),
@@ -316,8 +428,12 @@ fun Focusable(
         modifier
             .onFocusChanged { focused = it.isFocused }
             .clip(shape)
-            .background(if (focused) Color(0xFF263241) else if (selected) Color(0xFF1B2430) else Surf)
-            .border(2.dp, if (focused) Accent else Color.Transparent, shape)
+            .background(if (focused) Color(0xFF263241) else if (selected) Color(0xFF0F3A2E) else Surf)
+            .border(
+                if (focused) 2.dp else 1.dp,
+                if (focused) Accent else if (selected) Accent.copy(alpha = 0.5f) else Color(0xFF263241),
+                shape
+            )
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         content = content
     )
