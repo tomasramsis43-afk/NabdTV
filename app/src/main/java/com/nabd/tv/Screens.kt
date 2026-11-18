@@ -1,7 +1,16 @@
 package com.nabd.tv
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -80,10 +89,10 @@ fun SetupScreen(vm: AppViewModel) {
             placeholder = { androidx.compose.material3.Text("Password") }
         )
         Spacer(Modifier.height(10.dp))
-        Button(
+        androidx.compose.material3.Button(
             onClick = { if (host.isNotBlank() && user.isNotBlank() && pass.isNotBlank()) vm.setXtream(host, user, pass) },
             modifier = Modifier.focusRequester(firstFocus)
-        ) { Text("دخول Xtream") }
+        ) { androidx.compose.material3.Text("دخول Xtream") }
 
         Spacer(Modifier.height(20.dp))
         Text("أو رابط M3U", fontSize = 20.sp)
@@ -94,7 +103,7 @@ fun SetupScreen(vm: AppViewModel) {
             placeholder = { androidx.compose.material3.Text("http://.../playlist.m3u") }
         )
         Spacer(Modifier.height(10.dp))
-        Button(onClick = { if (url.isNotBlank()) vm.setUrl(url) }) { Text("تحميل M3U") }
+        MBtn("تحميل M3U") { if (url.isNotBlank()) vm.setUrl(url) }
 
         Spacer(Modifier.height(16.dp))
         if (vm.loading) Text("جارٍ الاتصال وتحميل القنوات...", color = Accent)
@@ -112,17 +121,15 @@ fun HomeScreen(vm: AppViewModel) {
             Spacer(Modifier.height(16.dp))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
                 items(vm.groups, key = { it }) { g ->
-                    ListItem(
-                        selected = vm.group == g,
-                        onClick = { vm.group = g },
-                        headlineContent = { Text(g, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                    )
+                    Focusable(selected = vm.group == g, onClick = { vm.group = g }, modifier = Modifier.fillMaxWidth()) {
+                        Text(g, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(12.dp))
+                    }
                 }
             }
             Spacer(Modifier.height(8.dp))
-            Button(onClick = { vm.load(true) }) { Text(if (vm.loading) "..." else "تحديث") }
+            MBtn(if (vm.loading) "..." else "تحديث", filled = false) { vm.load(true) }
             Spacer(Modifier.height(6.dp))
-            Button(onClick = { vm.openSetup() }) { Text("القائمة") }
+            MBtn("القائمة", filled = false) { vm.openSetup() }
         }
         Spacer(Modifier.width(24.dp))
         Column(Modifier.weight(1f)) {
@@ -141,7 +148,7 @@ fun HomeScreen(vm: AppViewModel) {
                 contentPadding = PaddingValues(6.dp)
             ) {
                 items(vm.visible, key = { it.id }) { ch ->
-                    Card(onClick = { vm.play(ch) }, onLongClick = { vm.toggleFav(ch) }) {
+                    Focusable(onClick = { vm.play(ch) }, onLongClick = { vm.toggleFav(ch) }, modifier = Modifier.fillMaxWidth()) {
                         Column(
                             Modifier.fillMaxWidth().padding(12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
@@ -222,6 +229,14 @@ fun PlayerScreen(vm: AppViewModel) {
     Box(
         Modifier.fillMaxSize().background(Color.Black)
             .focusRequester(focus).focusable()
+            .pointerInput(Unit) { detectTapGestures(onTap = { ping++ }) }
+            .pointerInput(Unit) {
+                var dy = 0f
+                detectVerticalDragGestures(
+                    onDragStart = { dy = 0f },
+                    onDragEnd = { if (dy < -120f) vm.zap(1) else if (dy > 120f) vm.zap(-1) }
+                ) { _, d -> dy += d }
+            }
             .onPreviewKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (ev.key) {
@@ -273,3 +288,33 @@ fun PlayerScreen(vm: AppViewModel) {
 
 fun hm(t: Long): String =
     java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(t))
+
+/** Button that works with both touch and D-pad. */
+@Composable
+fun MBtn(text: String, filled: Boolean = true, onClick: () -> Unit) {
+    if (filled) androidx.compose.material3.Button(onClick = onClick) { androidx.compose.material3.Text(text) }
+    else androidx.compose.material3.OutlinedButton(onClick = onClick) { androidx.compose.material3.Text(text) }
+}
+
+/** Focusable tile: touch tap/long-press + D-pad OK/long-OK, with a visible focus ring. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun Focusable(
+    selected: Boolean = false,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    var focused by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(12.dp)
+    Column(
+        modifier
+            .onFocusChanged { focused = it.isFocused }
+            .clip(shape)
+            .background(if (focused) Color(0xFF263241) else if (selected) Color(0xFF1B2430) else Surf)
+            .border(2.dp, if (focused) Accent else Color.Transparent, shape)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        content = content
+    )
+}

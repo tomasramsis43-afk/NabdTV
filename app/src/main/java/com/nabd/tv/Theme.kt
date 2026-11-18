@@ -21,7 +21,7 @@ fun AppTheme(content: @Composable () -> Unit) {
     ) {
         androidx.compose.material3.MaterialTheme(
             colorScheme = androidx.compose.material3.darkColorScheme(
-                primary = Accent, background = Bg, surface = Surf,
+                primary = Accent, onPrimary = Color.Black, background = Bg, surface = Surf,
             ),
             content = content
         )
