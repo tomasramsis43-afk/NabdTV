@@ -4,6 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -42,59 +44,61 @@ import kotlinx.coroutines.delay
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun SetupScreen(vm: AppViewModel) {
-    var xtream by remember { mutableStateOf(false) }
     var url by remember { mutableStateOf(vm.savedUrl) }
     var host by remember { mutableStateOf("") }
     var user by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
+    val firstFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { firstFocus.requestFocus() } }
     BackHandler(enabled = vm.all.isNotEmpty()) { vm.closeSetup() }
+
     Column(
-        Modifier.fillMaxSize().background(Bg).padding(48.dp),
-        verticalArrangement = Arrangement.Center,
+        Modifier.fillMaxSize().background(Bg).verticalScroll(rememberScrollState()).padding(horizontal = 48.dp, vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Nabd TV", fontSize = 44.sp, color = Accent)
+        Text("Nabd TV", fontSize = 40.sp, color = Accent)
+        Spacer(Modifier.height(20.dp))
+
+        Text("Xtream Codes", fontSize = 20.sp)
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = host, onValueChange = { host = it }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(0.7f),
+            placeholder = { androidx.compose.material3.Text("http://server:port") }
+        )
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = user, onValueChange = { user = it }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(0.7f),
+            placeholder = { androidx.compose.material3.Text("Username") }
+        )
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = pass, onValueChange = { pass = it }, singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth(0.7f),
+            placeholder = { androidx.compose.material3.Text("Password") }
+        )
+        Spacer(Modifier.height(10.dp))
+        Button(
+            onClick = { if (host.isNotBlank() && user.isNotBlank() && pass.isNotBlank()) vm.setXtream(host, user, pass) },
+            modifier = Modifier.focusRequester(firstFocus)
+        ) { Text("دخول Xtream") }
+
+        Spacer(Modifier.height(20.dp))
+        Text("أو رابط M3U", fontSize = 20.sp)
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = url, onValueChange = { url = it }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(0.7f),
+            placeholder = { androidx.compose.material3.Text("http://.../playlist.m3u") }
+        )
+        Spacer(Modifier.height(10.dp))
+        Button(onClick = { if (url.isNotBlank()) vm.setUrl(url) }) { Text("تحميل M3U") }
+
         Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = { xtream = false }) { Text(if (!xtream) "● رابط M3U" else "رابط M3U") }
-            Button(onClick = { xtream = true }) { Text(if (xtream) "● Xtream Codes" else "Xtream Codes") }
-        }
-        Spacer(Modifier.height(20.dp))
-        if (!xtream) {
-            OutlinedTextField(
-                value = url, onValueChange = { url = it }, singleLine = true,
-                modifier = Modifier.fillMaxWidth(0.7f),
-                placeholder = { androidx.compose.material3.Text("http://.../playlist.m3u") }
-            )
-        } else {
-            OutlinedTextField(
-                value = host, onValueChange = { host = it }, singleLine = true,
-                modifier = Modifier.fillMaxWidth(0.7f),
-                placeholder = { androidx.compose.material3.Text("http://server:port") }
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = user, onValueChange = { user = it }, singleLine = true,
-                modifier = Modifier.fillMaxWidth(0.7f),
-                placeholder = { androidx.compose.material3.Text("Username") }
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = pass, onValueChange = { pass = it }, singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(0.7f),
-                placeholder = { androidx.compose.material3.Text("Password") }
-            )
-        }
-        Spacer(Modifier.height(20.dp))
-        Button(onClick = {
-            if (xtream) { if (host.isNotBlank() && user.isNotBlank() && pass.isNotBlank()) vm.setXtream(host, user, pass) }
-            else if (url.isNotBlank()) vm.setUrl(url)
-        }) { Text(if (vm.loading) "جارٍ التحميل..." else "تحميل القنوات") }
-        vm.error?.let {
-            Spacer(Modifier.height(16.dp))
-            Text(it, color = Color(0xFFFF6B6B))
-        }
+        if (vm.loading) Text("جارٍ الاتصال وتحميل القنوات...", color = Accent)
+        vm.error?.let { Text("خطأ: $it", color = Color(0xFFFF6B6B)) }
     }
 }
 
