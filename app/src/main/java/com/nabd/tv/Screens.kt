@@ -180,7 +180,7 @@ fun HomeScreen(vm: AppViewModel) {
 fun buildPlayer(ctx: android.content.Context): ExoPlayer {
     val http = DefaultHttpDataSource.Factory()
         .setAllowCrossProtocolRedirects(true)
-        .setUserAgent("Mozilla/5.0 (Linux; Android TV) NabdTV/1.0")
+        .setUserAgent(httpUa)
         .setConnectTimeoutMs(10_000).setReadTimeoutMs(10_000)
     // Small buffers = fast channel start / fast zapping
     val load = DefaultLoadControl.Builder().setBufferDurationsMs(3000, 20000, 1000, 2000).build()

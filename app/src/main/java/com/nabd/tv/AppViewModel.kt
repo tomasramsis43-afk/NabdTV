@@ -78,6 +78,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setUrl(url: String) {
         repo.epgManual = false
+        repo.xtream = ""
         repo.playlistUrl = url.trim()
         load(true)
     }
@@ -88,6 +89,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (!base.startsWith("http")) base = "http://$base"
         val q = "username=${Uri.encode(user.trim())}&password=${Uri.encode(pass.trim())}"
         repo.epgManual = true
+        repo.xtream = "$base\n${user.trim()}\n${pass.trim()}"
         repo.epgUrl = "$base/xmltv.php?$q"
         repo.playlistUrl = "$base/get.php?$q&type=m3u_plus&output=ts"
         load(true)
