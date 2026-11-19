@@ -101,6 +101,9 @@ fun PlayerScreen(vm: AppViewModel) {
     var vDur by remember { mutableLongStateOf(0L) }
     var playing by remember { mutableStateOf(true) }
     var ctlMode by remember { mutableStateOf(false) }
+    var locked by remember { mutableStateOf(false) }          // touch lock (MX Player style): ignores gestures and taps
+    var swipeBase by remember { mutableLongStateOf(-1L) }     // horizontal swipe-to-seek
+    var swipeTarget by remember { mutableLongStateOf(0L) }
     val seriesKey = if (vod && kindOf(ch) == Kind.Series) vm.detail?.url else null
     val introEnd = seriesKey?.let { vm.store.introEnd(it) } ?: 0L
     val showSkip = introEnd > 0 && pos < introEnd - 1500
@@ -318,18 +321,19 @@ fun PlayerScreen(vm: AppViewModel) {
     BackHandler(enabled = panel) { panel = false }
     BackHandler(enabled = vod && overlay && nextEp == null) { overlay = false; ctlMode = false; runCatching { focus.requestFocus() } }
     BackHandler(enabled = nextEp != null) { nextEp = null }
+    BackHandler(enabled = locked) { hud = "🔒 الشاشة مقفولة"; ping++ }
 
     Box(
         Modifier.fillMaxSize().background(Color.Black)
             .focusRequester(focus).focusable()
-            .pinchZoom { z, p ->
+            .then(if (locked) Modifier else Modifier.pinchZoom { z, p ->
                 zoomScale = (zoomScale * z).coerceIn(1f, 4f)
                 val mx = (zoomScale - 1f) * (view?.width ?: 0) / 2f
                 val my = (zoomScale - 1f) * (view?.height ?: 0) / 2f
                 panX = (panX + p.x).coerceIn(-mx, mx); panY = (panY + p.y).coerceIn(-my, my)
                 hud = "🔍 ${(zoomScale * 100).toInt()}%"
-            }
-            .playerGestures(
+            })
+            .then(if (locked) Modifier.pointerInput(Unit) { detectTapGestures(onTap = { ping++ }) } else Modifier.playerGestures(
                 key = listOf(ch.url, ratio, speed, boost, live),
                 live = live,
                 onTap = { ping++ },
@@ -339,8 +343,22 @@ fun PlayerScreen(vm: AppViewModel) {
                     hud = if (dir < 0) "⏪ 10" else "10 ⏩"
                 },
                 onZap = { vm.zap(it) },
-                onSide = { left, f -> onSideDrag(left, f) }
-            )
+                onSide = { left, f -> onSideDrag(left, f) },
+                onHDragStart = { swipeBase = player.currentPosition; swipeTarget = swipeBase },
+                onHDrag = { f ->
+                    if (swipeBase >= 0L) {
+                        val total = player.duration.takeIf { it > 0 } ?: 0L
+                        val span = if (total > 0) minOf(total, 180_000L) else 180_000L   // a full-width swipe ≈ 3 min
+                        val t = (swipeBase + (f * span).toLong()).coerceIn(0L, if (total > 0) maxOf(0L, total - 1000) else Long.MAX_VALUE)
+                        swipeTarget = t
+                        val dlt = (t - swipeBase) / 1000
+                        hud = (if (dlt >= 0) "⏩ +" else "⏪ ") + dlt + "ث   " + fmtTime(t)
+                    }
+                },
+                onHDragEnd = {
+                    if (swipeBase >= 0L) { player.seekTo(swipeTarget); pos = swipeTarget; swipeBase = -1L; ping++ }
+                }
+            ))
             .onPreviewKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 if (panel) return@onPreviewKeyEvent false   // let the channel list handle its own navigation
@@ -478,7 +496,7 @@ fun PlayerScreen(vm: AppViewModel) {
             }
         }
 
-        if (!vm.inPip && vod && overlay && nextEp == null) {
+        if (!vm.inPip && vod && overlay && nextEp == null && !locked) {
             val epTitle = vm.detail?.let { d -> if (seriesKey != null) d.name + " — " + ch.name else ch.name } ?: ch.name
             VodControls(
                 title = epTitle, pos = pos, dur = vDur, playing = playing, ctlMode = ctlMode,
@@ -495,8 +513,23 @@ fun PlayerScreen(vm: AppViewModel) {
                 onOptions = { playerMenu(vm, player, view, ch, ratio, speed, { setRatio(it) }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost }) },
                 onStats = { stats = !stats; ping++ },
                 onTouch = { ping++ },
+                onAudio = { audioMenu(vm, player) },
+                onSubs = { subtitleMenu(vm, player) },
+                onSpeed = { speedMenu(vm, player, speed) { speed = it } },
+                onLock = if (LocalDevice.current.touch) ({ locked = true; overlay = false }) else null,
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
+        }
+
+        // Touch devices: an on-screen back button (TV uses the remote's Back key).
+        if (!vm.inPip && vod && overlay && !locked && LocalDevice.current.touch) {
+            IconBtn(Ic.Close, onClick = { vm.stop() }, tint = Color.White, modifier = Modifier.align(Alignment.TopStart).padding(12.dp))
+        }
+        if (locked && overlay && !vm.inPip) {
+            MBtn("🔓 اضغط لفتح القفل", modifier = Modifier.align(Alignment.Center)) { locked = false; ping++ }
+        }
+        if (status == "جارٍ التحميل..." && !vm.inPip) {
+            androidx.compose.material3.CircularProgressIndicator(Modifier.align(Alignment.Center).size(46.dp), color = Accent, strokeWidth = 3.dp)
         }
 
         if (!vm.inPip && ((overlay && live) || status.isNotEmpty())) {
@@ -527,6 +560,57 @@ fun PlayerScreen(vm: AppViewModel) {
     }
 }
 
+@OptIn(UnstableApi::class)
+private fun tracksOf(player: ExoPlayer, type: Int) = player.currentTracks.groups.filter { it.type == type && it.length > 0 }
+
+/** Audio tracks picker (used by the quick "الصوت" button and the full options menu). */
+@OptIn(UnstableApi::class)
+private fun audioMenu(vm: AppViewModel, player: ExoPlayer) {
+    val g = tracksOf(player, C.TRACK_TYPE_AUDIO)
+    if (g.isEmpty()) { vm.say("لا توجد مسارات صوت متعددة"); return }
+    vm.menu = MenuRequest("الصوت",
+        g.flatMap { grp ->
+            (0 until grp.length).map { i ->
+                val f = grp.getTrackFormat(i)
+                val name = listOfNotNull(f.label, f.language, f.channelCount.takeIf { it > 0 }?.let { "${it}ch" }).joinToString(" · ").ifEmpty { "مسار ${i + 1}" }
+                (if (grp.isTrackSelected(i)) "● " else "") + name to {
+                    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                        .setOverrideForType(TrackSelectionOverride(grp.mediaTrackGroup, i)).build()
+                }
+            }
+        })
+}
+
+/** Subtitle tracks picker with an "off" entry. */
+@OptIn(UnstableApi::class)
+private fun subtitleMenu(vm: AppViewModel, player: ExoPlayer) {
+    val g = tracksOf(player, C.TRACK_TYPE_TEXT)
+    if (g.isEmpty()) { vm.say("لا توجد ترجمة لهذا المحتوى"); return }
+    vm.menu = MenuRequest("الترجمة",
+        listOf("إيقاف الترجمة" to {
+            player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
+        }) + g.flatMap { grp ->
+            (0 until grp.length).map { i ->
+                val f = grp.getTrackFormat(i)
+                val name = listOfNotNull(f.label, f.language).joinToString(" · ").ifEmpty { "ترجمة ${i + 1}" }
+                (if (grp.isTrackSelected(i)) "● " else "") + name to {
+                    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                        .setOverrideForType(TrackSelectionOverride(grp.mediaTrackGroup, i)).build()
+                }
+            }
+        })
+}
+
+/** Direct speed picker (0.5x – 2x) instead of cycling through values. */
+@OptIn(UnstableApi::class)
+private fun speedMenu(vm: AppViewModel, player: ExoPlayer, speed: Float, setSpeed: (Float) -> Unit) {
+    vm.menu = MenuRequest("سرعة التشغيل", listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f).map { v ->
+        (if (v == speed) "● " else "") + (if (v == 1f) "عادية (1x)" else "${v}x") to { player.setPlaybackSpeed(v); setSpeed(v) }
+    })
+}
+
 /** Player options: audio track, subtitles, aspect ratio, speed, alternative sources. */
 @OptIn(UnstableApi::class)
 private fun playerMenu(
@@ -537,38 +621,8 @@ private fun playerMenu(
     val items = ArrayList<Pair<String, () -> Unit>>()
     fun tracks(type: Int) = player.currentTracks.groups.filter { it.type == type && it.length > 0 }
 
-    items += "الصوت" to {
-        val g = tracks(C.TRACK_TYPE_AUDIO)
-        if (g.isEmpty()) vm.say("لا توجد مسارات صوت متعددة") else { vm.menu = MenuRequest("الصوت",
-            g.flatMapIndexed { _, grp ->
-                (0 until grp.length).map { i ->
-                    val f = grp.getTrackFormat(i)
-                    val name = listOfNotNull(f.label, f.language, f.channelCount.takeIf { it > 0 }?.let { "${it}ch" }).joinToString(" · ").ifEmpty { "مسار ${i + 1}" }
-                    (if (grp.isTrackSelected(i)) "● " else "") + name to {
-                        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                            .setOverrideForType(TrackSelectionOverride(grp.mediaTrackGroup, i)).build()
-                    }
-                }
-            }) }
-    }
-    items += "الترجمة" to {
-        val g = tracks(C.TRACK_TYPE_TEXT)
-        if (g.isEmpty()) vm.say("لا توجد ترجمة لهذا المحتوى") else { vm.menu = MenuRequest("الترجمة",
-            listOf("إيقاف الترجمة" to {
-                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                    .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
-            }) + g.flatMap { grp ->
-                (0 until grp.length).map { i ->
-                    val f = grp.getTrackFormat(i)
-                    val name = listOfNotNull(f.label, f.language).joinToString(" · ").ifEmpty { "ترجمة ${i + 1}" }
-                    (if (grp.isTrackSelected(i)) "● " else "") + name to {
-                        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                            .setOverrideForType(TrackSelectionOverride(grp.mediaTrackGroup, i)).build()
-                    }
-                }
-            }) }
-    }
+    items += "الصوت" to { audioMenu(vm, player) }
+    items += "الترجمة" to { subtitleMenu(vm, player) }
     items += "جودة الفيديو" to {
         val opts = tracks(C.TRACK_TYPE_VIDEO)
             .flatMap { grp -> (0 until grp.length).map { i -> Triple(grp, i, grp.getTrackFormat(i)) } }
@@ -601,11 +655,7 @@ private fun playerMenu(
         if (vm.store.introEnd(seriesKey) > 0) items += "مسح المقدمة المحفوظة" to { vm.store.setIntroEnd(seriesKey, 0L) }
     }
     items += "نسبة العرض: ${ratios[ratio].first}" to { setRatio((ratio + 1) % ratios.size) }
-    if (vm.playMode != PlayMode.Live) items += "السرعة: ${speed}x" to {
-        val steps = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
-        val n = steps[(steps.indexOf(speed).let { if (it < 0) 1 else it } + 1) % steps.size]
-        player.setPlaybackSpeed(n); setSpeed(n)
-    }
+    if (vm.playMode != PlayMode.Live) items += "السرعة: ${speed}x" to { speedMenu(vm, player, speed, setSpeed) }
     items += "حجم الترجمة +" to { vm.store.subSize = (vm.store.subSize + 0.01f).coerceAtMost(0.12f); view?.subtitleView?.setFractionalTextSize(vm.store.subSize) }
     items += "حجم الترجمة −" to { vm.store.subSize = (vm.store.subSize - 0.01f).coerceAtLeast(0.03f); view?.subtitleView?.setFractionalTextSize(vm.store.subSize) }
     if (vm.playMode == PlayMode.Live) {

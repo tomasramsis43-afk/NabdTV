@@ -3,7 +3,10 @@ package com.nabd.tv
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,6 +54,7 @@ fun VodControls(
     ratioLabel: String, speed: Float,
     onToggle: () -> Unit, onSeekBy: (Long) -> Unit, onSeekTo: (Long) -> Unit, onNext: () -> Unit,
     onAspect: () -> Unit, onOptions: () -> Unit, onStats: () -> Unit, onTouch: () -> Unit,
+    onAudio: () -> Unit = {}, onSubs: () -> Unit = {}, onSpeed: () -> Unit = {}, onLock: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val playFocus = remember { FocusRequester() }
@@ -66,32 +70,35 @@ fun VodControls(
             SeekBar(pos, dur, onSeekBy, onSeekTo, onTouch)
             Spacer(Modifier.height(10.dp))
             Row(
-                Modifier.horizontalScrollSafe(),
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically
             ) {
                 MBtn("⏪ 10", filled = false) { onSeekBy(-10_000) }
                 MBtn(if (playing) "⏸ إيقاف" else "▶ تشغيل", modifier = Modifier.focusRequester(playFocus)) { onToggle() }
                 MBtn("10 ⏩", filled = false) { onSeekBy(10_000) }
                 if (hasNext) MBtn("⏭ التالية", filled = false) { onNext() }
-                MBtn("⚙ الصوت والترجمة", filled = false) { onOptions() }
+                MBtn("🔊 الصوت", filled = false) { onAudio() }
+                MBtn("💬 الترجمة", filled = false) { onSubs() }
+                MBtn("⏱ " + (if (speed == 1f) "السرعة" else "${speed}x"), filled = (speed != 1f)) { onSpeed() }
                 MBtn("⛶ $ratioLabel", filled = false) { onAspect() }
-                if (speed != 1f) Text("${speed}x", color = Accent, fontSize = 14.sp)
+                if (onLock != null) MBtn("🔒 قفل", filled = false) { onLock() }
+                MBtn("⚙ خيارات", filled = false) { onOptions() }
                 MBtn("📊", filled = false) { onStats() }
             }
         }
     }
 }
 
-private fun Modifier.horizontalScrollSafe(): Modifier = this.then(Modifier.fillMaxWidth())
-
 @Composable
 private fun SeekBar(pos: Long, dur: Long, onSeekBy: (Long) -> Unit, onSeekTo: (Long) -> Unit, onTouch: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
-    val frac = if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f
+    var dragFrac by remember { mutableStateOf<Float?>(null) }   // finger position while scrubbing by touch
+    val frac = dragFrac ?: if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f
+    val shownPos = if (dragFrac != null && dur > 0) (frac * dur).toLong() else pos
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(fmtTime(pos), color = Color.White, fontSize = 13.sp, modifier = Modifier.width(62.dp))
+        Text(fmtTime(shownPos), color = Color.White, fontSize = 13.sp, modifier = Modifier.width(62.dp))
         Box(
-            Modifier.weight(1f).height(28.dp)
+            Modifier.weight(1f).height(if (LocalDevice.current.tv) 28.dp else 40.dp)
                 .onFocusChanged { focused = it.isFocused }
                 .onPreviewKeyEvent { ev ->
                     if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -104,13 +111,23 @@ private fun SeekBar(pos: Long, dur: Long, onSeekBy: (Long) -> Unit, onSeekTo: (L
                 .focusable()
                 .pointerInput(dur) {
                     detectTapGestures { o -> if (dur > 0) { onSeekTo((o.x / size.width * dur).toLong()); onTouch() } }
+                }
+                .pointerInput(dur) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { o -> dragFrac = (o.x / size.width).coerceIn(0f, 1f); onTouch() },
+                        onDragEnd = { dragFrac?.let { f -> if (dur > 0) onSeekTo((f * dur).toLong()) }; dragFrac = null; onTouch() },
+                        onDragCancel = { dragFrac = null }
+                    ) { change, _ ->
+                        change.consume()
+                        dragFrac = (change.position.x / size.width).coerceIn(0f, 1f); onTouch()
+                    }
                 },
             contentAlignment = Alignment.CenterStart
         ) {
-            val h = if (focused) 10.dp else 5.dp
+            val h = if (focused || dragFrac != null) 10.dp else 5.dp
             Box(Modifier.fillMaxWidth().height(h).clip(RoundedCornerShape(5.dp)).background(Color(0x44FFFFFF)))
             Box(Modifier.fillMaxWidth(frac).height(h).clip(RoundedCornerShape(5.dp)).background(Accent))
-            if (focused) {
+            if (focused || dragFrac != null) {
                 BoxWithConstraints(Modifier.fillMaxWidth()) {
                     Box(
                         Modifier.offset(x = (maxWidth * frac) - 9.dp).size(18.dp).clip(CircleShape)

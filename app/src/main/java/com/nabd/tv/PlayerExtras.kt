@@ -12,6 +12,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -86,7 +87,8 @@ fun statsText(p: ExoPlayer): String {
 /**
  * Touch gestures:
  *  double-tap left/right = seek ∓10 s (VOD) · vertical drag on the left edge = brightness,
- *  right edge = volume · vertical drag in the middle = zap channels (live) · tap = info · long-press = menu.
+ *  right edge = volume · vertical drag in the middle = zap channels (live) · horizontal swipe = scrub (VOD) ·
+ *  tap = info · long-press = menu.
  */
 fun Modifier.playerGestures(
     key: Any?,
@@ -95,7 +97,10 @@ fun Modifier.playerGestures(
     onLongPress: () -> Unit,
     onSeek: (Int) -> Unit,
     onZap: (Int) -> Unit,
-    onSide: (left: Boolean, delta: Float) -> Unit
+    onSide: (left: Boolean, delta: Float) -> Unit,
+    onHDragStart: () -> Unit = {},
+    onHDrag: (fraction: Float) -> Unit = {},   // fraction of the screen width dragged since the start (negative = back)
+    onHDragEnd: () -> Unit = {}
 ): Modifier = this
     .pointerInput(key) {
         detectTapGestures(
@@ -116,6 +121,17 @@ fun Modifier.playerGestures(
         ) { _, d ->
             acc += d
             if (zone != 0) onSide(zone == 1, -d / size.height)
+        }
+    }
+    .pointerInput(key) {
+        // Swipe left/right anywhere on the video = scrub (VOD only), like MX Player / VLC.
+        var acc = 0f
+        detectHorizontalDragGestures(
+            onDragStart = { acc = 0f; if (!live) onHDragStart() },
+            onDragEnd = { if (!live) onHDragEnd() },
+            onDragCancel = { if (!live) onHDragEnd() }
+        ) { _, d ->
+            if (!live) { acc += d / size.width; onHDrag(acc) }
         }
     }
 
