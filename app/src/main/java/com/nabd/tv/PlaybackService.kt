@@ -12,6 +12,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 
 /** Lets the player screen ask the app to stop when the notification's Stop button is pressed. */
@@ -26,7 +27,7 @@ class PlaybackService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)   // works on API 21+
             stopSelf()
             Handler(Looper.getMainLooper()).post { PlaybackBus.stop?.invoke() }
             return START_NOT_STICKY
