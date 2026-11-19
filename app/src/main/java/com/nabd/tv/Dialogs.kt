@@ -54,7 +54,7 @@ fun PinDialog(title: String, onDismiss: () -> Unit, verify: (String) -> Boolean)
         OutlinedTextField(
             value = code, onValueChange = { v -> if (v.length <= 6 && v.all { it.isDigit() }) { code = v; wrong = false } },
             singleLine = true, visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.NumberPin)
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.NumberPassword)
         )
         if (wrong) Text("رمز خاطئ", color = Danger, fontSize = 13.sp)
         Spacer(Modifier.height(10.dp))
