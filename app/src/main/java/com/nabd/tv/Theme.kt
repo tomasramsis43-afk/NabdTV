@@ -5,9 +5,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 
 val Accent = Color(0xFF00E5A0)
-val Bg = Color(0xFF0B0F14)
-val Surf = Color(0xFF151C26)
-val TextSecondary = Color(0xFFC7D0DB)
+val Bg = Color(0xFF07090D)
+val Surf = Color(0xFF121821)
+val TextSecondary = Color(0xFFB8C2CF)
+val Danger = Color(0xFFFF6B6B)
+val GlassFill = Color(0x1AFFFFFF)
+val GlassFocus = Color(0x33FFFFFF)
+val GlassBorder = Color(0x26FFFFFF)
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
