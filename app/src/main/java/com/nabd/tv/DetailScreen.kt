@@ -6,12 +6,14 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -31,6 +33,8 @@ fun DetailScreen(vm: AppViewModel) {
     val isSeries = kindOf(c) == Kind.Series
     val info = vm.info
     BackHandler { vm.closeDetail() }
+    val playFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(c.url) { if (!isSeries) { kotlinx.coroutines.delay(150); runCatching { playFocus.requestFocus() } } }
     val d = LocalDevice.current
     val narrow = d.widthDp < 600
     Box(Modifier.fillMaxSize().appBackground()) {
@@ -60,7 +64,7 @@ fun DetailScreen(vm: AppViewModel) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (!isSeries) {
                     val h = vm.store.historyOf(c.url)
-                    MBtn(if (h != null && !h.finished && h.position > 10_000) "▶ استكمال (${h.position / 60000} د)" else "▶ تشغيل") { vm.play(c) }
+                    MBtn(if (h != null && !h.finished && h.position > 10_000) "▶ استكمال (${h.position / 60000} د)" else "▶ تشغيل", modifier = Modifier.focusRequester(playFocus)) { vm.play(c) }
                 }
                 MBtn(if (c.url in vm.favs) "★ في المفضلة" else "☆ مفضلة", filled = false) { vm.toggleFav(c) }
                 if (narrow) MBtn("رجوع", filled = false) { vm.closeDetail() }
@@ -110,10 +114,22 @@ private fun Episodes(vm: AppViewModel, s: Channel) {
     if (vm.epLoading) Text("جارٍ تحميل الحلقات...", color = Accent)
     vm.error?.let { Text("خطأ: $it", color = Danger, fontSize = 13.sp) }
     if (!vm.epLoading && vm.episodes.isEmpty() && vm.error == null) Text("لا توجد حلقات", color = TextSecondary)
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(vm.episodes.filter { it.season == vm.season }, key = { it.url }) { e ->
+    val eps = vm.episodes.filter { it.season == vm.season }
+    val target = eps.indexOfFirst { e -> vm.store.historyOf(e.url).let { it == null || !it.finished } }.coerceAtLeast(0)
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val epFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    // Remote: land on the episode to watch next (first unfinished) so OK starts it immediately.
+    LaunchedEffect(eps.size, vm.season) {
+        if (eps.isNotEmpty()) {
+            runCatching { listState.scrollToItem(target) }
+            kotlinx.coroutines.delay(200)
+            runCatching { epFocus.requestFocus() }
+        }
+    }
+    LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        itemsIndexed(eps, key = { _, e -> e.url }) { idx, e ->
             val h = vm.store.historyOf(e.url)
-            Focusable(onClick = { vm.playEpisode(s, e) }, modifier = Modifier.fillMaxWidth()) {
+            Focusable(onClick = { vm.playEpisode(s, e) }, modifier = Modifier.fillMaxWidth(), focusRequester = if (idx == target) epFocus else null) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(

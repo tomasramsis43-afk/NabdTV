@@ -98,6 +98,9 @@ fun PlayerScreen(vm: AppViewModel) {
     var nextEp by remember { mutableStateOf<Episode?>(null) }
     var boost by remember { mutableStateOf(false) }
     var pos by remember { mutableLongStateOf(0L) }
+    var vDur by remember { mutableLongStateOf(0L) }
+    var playing by remember { mutableStateOf(true) }
+    var ctlMode by remember { mutableStateOf(false) }
     val seriesKey = if (vod && kindOf(ch) == Kind.Series) vm.detail?.url else null
     val introEnd = seriesKey?.let { vm.store.introEnd(it) } ?: 0L
     val showSkip = introEnd > 0 && pos < introEnd - 1500
@@ -258,7 +261,14 @@ fun PlayerScreen(vm: AppViewModel) {
         if (nextEp != null) { delay(5000); if (nextEp != null) vm.playNext() }
     }
 
-    LaunchedEffect(ch.url, ping) { overlay = true; delay(if (isTelevision(ctx)) 6000L else 3500L); overlay = false }
+    LaunchedEffect(ch.url, ping) {
+        overlay = true; delay(if (isTelevision(ctx)) 7000L else 3500L)
+        if (!(vod && !player.playWhenReady)) overlay = false   // a paused movie keeps its controls
+    }
+    LaunchedEffect(overlay) { if (!overlay) ctlMode = false }
+    LaunchedEffect(vod, overlay, ch.url) {
+        while (vod && overlay) { pos = player.currentPosition; vDur = player.duration.takeIf { it > 0 } ?: 0L; playing = player.playWhenReady; delay(300) }
+    }
     LaunchedEffect(Unit) {
         while (true) {
             delay(30_000)
@@ -306,6 +316,8 @@ fun PlayerScreen(vm: AppViewModel) {
     LaunchedEffect(Unit) { focus.requestFocus() }
     BackHandler { vm.stop() }
     BackHandler(enabled = panel) { panel = false }
+    BackHandler(enabled = vod && overlay && nextEp == null) { overlay = false; ctlMode = false; runCatching { focus.requestFocus() } }
+    BackHandler(enabled = nextEp != null) { nextEp = null }
 
     Box(
         Modifier.fillMaxSize().background(Color.Black)
@@ -332,6 +344,39 @@ fun PlayerScreen(vm: AppViewModel) {
             .onPreviewKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 if (panel) return@onPreviewKeyEvent false   // let the channel list handle its own navigation
+                if (vod) {
+                    fun scrub(dir: Int) {
+                        val step = seekStep(ev.nativeKeyEvent.repeatCount)
+                        val max = if (player.duration > 0) player.duration - 1000 else Long.MAX_VALUE
+                        val t = (player.currentPosition + dir * step).coerceIn(0L, maxOf(0L, max))
+                        player.seekTo(t); pos = t
+                        hud = (if (dir < 0) "⏪ " else "⏩ ") + fmtTime(t) + (if (vDur > 0) " / " + fmtTime(vDur) else "")
+                        ping++
+                    }
+                    when (ev.key) {
+                        Key.MediaPlayPause -> { player.playWhenReady = !player.playWhenReady; playing = player.playWhenReady; ping++; return@onPreviewKeyEvent true }
+                        Key.MediaPlay -> { player.playWhenReady = true; playing = true; ping++; return@onPreviewKeyEvent true }
+                        Key.MediaPause -> { player.playWhenReady = false; playing = false; ping++; return@onPreviewKeyEvent true }
+                        Key.MediaFastForward -> { player.seekTo(player.currentPosition + 30_000); ping++; return@onPreviewKeyEvent true }
+                        Key.MediaRewind -> { player.seekTo(maxOf(0L, player.currentPosition - 30_000)); ping++; return@onPreviewKeyEvent true }
+                        Key.MediaNext -> { vm.playNext(); return@onPreviewKeyEvent true }
+                        else -> {}
+                    }
+                    if (nextEp != null && (ev.key == Key.DirectionCenter || ev.key == Key.Enter)) { vm.playNext(); return@onPreviewKeyEvent true }
+                    if (ctlMode && overlay) { ping++; return@onPreviewKeyEvent false }   // focus is in the control bar
+                    return@onPreviewKeyEvent when (ev.key) {
+                        Key.DirectionLeft -> { scrub(-1); true }
+                        Key.DirectionRight -> { scrub(1); true }
+                        Key.DirectionUp, Key.DirectionDown -> { ctlMode = true; ping++; true }
+                        Key.DirectionCenter, Key.Enter -> {
+                            if (showSkip) player.seekTo(introEnd)
+                            else { player.playWhenReady = !player.playWhenReady; playing = player.playWhenReady }
+                            ping++; true
+                        }
+                        Key.Menu, Key.Info, Key.M -> { playerMenu(vm, player, view, ch, ratio, speed, { setRatio(it) }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost }); true }
+                        else -> false
+                    }
+                }
                 val digit = when (ev.key) {
                     Key.Zero, Key.NumPad0 -> '0'; Key.One, Key.NumPad1 -> '1'; Key.Two, Key.NumPad2 -> '2'
                     Key.Three, Key.NumPad3 -> '3'; Key.Four, Key.NumPad4 -> '4'; Key.Five, Key.NumPad5 -> '5'
@@ -362,7 +407,7 @@ fun PlayerScreen(vm: AppViewModel) {
             modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = zoomScale; scaleY = zoomScale; translationX = panX; translationY = panY },
             factory = { c ->
                 PlayerView(c).apply {
-                    useController = !live
+                    useController = false
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                     this.player = player
                     view = this
@@ -371,7 +416,7 @@ fun PlayerScreen(vm: AppViewModel) {
             update = {
                 val m = ratios[ratio].second
                 it.resizeMode = if (m == -1) smartMode(vAr, it.width, it.height) else m
-                it.useController = !live && !vm.inPip
+                it.useController = false
             }
         )
 
@@ -409,7 +454,7 @@ fun PlayerScreen(vm: AppViewModel) {
         if (panel && live && !vm.inPip) ChannelPanel(vm, ch, { panel = false }, Modifier.align(Alignment.CenterStart))
 
         // Always-visible options (tap the screen to show): aspect ratio + full options menu.
-        if (!vm.inPip && overlay) {
+        if (!vm.inPip && overlay && live) {
             val dev = LocalDevice.current
             Row(
                 Modifier.align(Alignment.TopEnd)
@@ -431,6 +476,27 @@ fun PlayerScreen(vm: AppViewModel) {
                     playerMenu(vm, player, view, ch, ratio, speed, { setRatio(it) }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost })
                 }
             }
+        }
+
+        if (!vm.inPip && vod && overlay && nextEp == null) {
+            val epTitle = vm.detail?.let { d -> if (seriesKey != null) d.name + " — " + ch.name else ch.name } ?: ch.name
+            VodControls(
+                title = epTitle, pos = pos, dur = vDur, playing = playing, ctlMode = ctlMode,
+                hasNext = seriesKey != null && vm.nextEpisodeOf(ch) != null,
+                ratioLabel = ratios[ratio].first, speed = speed,
+                onToggle = { player.playWhenReady = !player.playWhenReady; playing = player.playWhenReady; ping++ },
+                onSeekBy = { dlt ->
+                    val max = if (player.duration > 0) player.duration - 1000 else Long.MAX_VALUE
+                    val t = (player.currentPosition + dlt).coerceIn(0L, maxOf(0L, max)); player.seekTo(t); pos = t; ping++
+                },
+                onSeekTo = { t -> player.seekTo(t); pos = t; ping++ },
+                onNext = { vm.playNext() },
+                onAspect = { setRatio((ratio + 1) % ratios.size); ping++ },
+                onOptions = { playerMenu(vm, player, view, ch, ratio, speed, { setRatio(it) }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost }) },
+                onStats = { stats = !stats; ping++ },
+                onTouch = { ping++ },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
 
         if (!vm.inPip && ((overlay && live) || status.isNotEmpty())) {
