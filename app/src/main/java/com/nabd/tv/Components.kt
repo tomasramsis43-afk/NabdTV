@@ -172,8 +172,9 @@ fun HealthDot(h: Health) {
 @Composable
 fun rememberCardFocus(vm: AppViewModel, key: String): FocusRequester {
     val fr = remember { FocusRequester() }
-    if (vm.restoreFocus && vm.lastFocusKey == key) {
-        LaunchedEffect(Unit) { runCatching { fr.requestFocus() }; vm.restoreFocus = false }
+    DisposableEffect(key) {
+        vm.cardFocus[key] = fr
+        onDispose { if (vm.cardFocus[key] === fr) vm.cardFocus.remove(key) }
     }
     return fr
 }

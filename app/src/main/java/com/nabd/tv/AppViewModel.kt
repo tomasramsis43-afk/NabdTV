@@ -61,6 +61,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /* Remembered UI position, so coming back from the player / details lands exactly where you were. */
     @JvmField var restoreFocus = false
     @JvmField var lastFocusKey: String? = null
+    /** Focus requesters of the cards currently on screen, by card key; and the key of the first card of the current page. */
+    val cardFocus = HashMap<String, androidx.compose.ui.focus.FocusRequester>()
+    @JvmField var firstKey: String? = null
+    var focusContentTick by mutableIntStateOf(0)
+    /** Where the remote should land when entering the page: the card you left, else the first card. */
+    fun contentEntry(): androidx.compose.ui.focus.FocusRequester? =
+        lastFocusKey?.let { cardFocus[it] } ?: firstKey?.let { cardFocus[it] }
+    fun enterContent(): Boolean = contentEntry()?.let { runCatching { it.requestFocus() }.getOrDefault(false) } ?: false
     private val gridStates = HashMap<String, androidx.compose.foundation.lazy.grid.LazyGridState>()
     private val listStates = HashMap<String, androidx.compose.foundation.lazy.LazyListState>()
     fun gridState(key: String) = gridStates.getOrPut(key) { androidx.compose.foundation.lazy.grid.LazyGridState() }
@@ -297,6 +305,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun selectTab(t: Tab) {
         tab = t; group = GROUP_ALL; query = ""
+        // A fresh start on the first card of the page (scroll + focus), unlike returning from a movie page.
+        lastFocusKey = null; restoreFocus = false
+        gridStates.keys.removeAll { it.startsWith(t.name + "|") || it == "search" }
+        if (t == Tab.Home) listStates.keys.removeAll { it == "home" || it.startsWith("row:") }
+        focusContentTick++
         if (t == Tab.Movies && movies.isEmpty() && hasXtream) loadVod(t, false)
         if (t == Tab.Series && series.isEmpty() && hasXtream) loadVod(t, false)
         if (t == Tab.Guide && guideChannel == null) guideChannel = guideChannels.firstOrNull()

@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -57,8 +58,19 @@ fun MainScreen(vm: AppViewModel) {
         if (vm.query.isNotBlank()) vm.query = "" else vm.selectTab(Tab.Home)
     }
     LaunchedEffect(vm.query, vm.rev) { vm.runSearch() }
-    // A pending "restore focus" that found nothing to focus must not steal focus later.
-    LaunchedEffect(Unit) { delay(900); vm.restoreFocus = false }
+    // TV: land on the card you left (after a movie / player / settings) or on the first card, retrying while the page loads.
+    LaunchedEffect(Unit) {
+        if (d.tv) {
+            repeat(25) { delay(120); if (vm.enterContent()) { vm.restoreFocus = false; return@LaunchedEffect } }
+        }
+        vm.restoreFocus = false
+    }
+    // Pressing a section icon starts at the first card of that section.
+    LaunchedEffect(vm.focusContentTick) {
+        if (vm.focusContentTick == 0 || !d.tv) return@LaunchedEffect
+        delay(320)
+        repeat(15) { if (vm.enterContent()) return@LaunchedEffect; delay(130) }
+    }
 
     Box(Modifier.fillMaxSize()) {
         if (d.nav == NavMode.Bottom) {
@@ -219,6 +231,7 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
         Text("لا يوجد محتوى بعد. حدّث القائمة أو افتح الإعدادات.", color = TextSecondary, modifier = Modifier.padding(16.dp))
         return
     }
+    SideEffect { vm.firstKey = if (vm.hero != null) "hero" else shelves.firstOrNull()?.items?.firstOrNull()?.let { it.url + it.id } }
     LazyColumn(
         state = vm.listState("home"),
         verticalArrangement = Arrangement.spacedBy(d.gap + 6.dp),
@@ -249,8 +262,10 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
 private fun Hero(vm: AppViewModel, d: Device, c: Channel) {
     val shape = RoundedCornerShape(28.dp)
     val play = remember { FocusRequester() }
-    // First time on a TV: put the focus on the main action so the remote works immediately.
-    LaunchedEffect(Unit) { if (d.tv && vm.lastFocusKey == null) runCatching { play.requestFocus() } }
+    DisposableEffect(Unit) {
+        vm.cardFocus["hero"] = play
+        onDispose { if (vm.cardFocus["hero"] === play) vm.cardFocus.remove("hero") }
+    }
     val isLive = kindOf(c) == Kind.Live
     Box(
         Modifier.fillMaxWidth().height(if (d.tv) 220.dp else if (d.portrait) 190.dp else 200.dp)
@@ -268,7 +283,7 @@ private fun Hero(vm: AppViewModel, d: Device, c: Channel) {
             Text(now?.title ?: Classifier.genre(c).label, fontSize = 14.sp, color = Color(0xFFC9CBFF), maxLines = 1)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                MBtn("▶ تشغيل", modifier = Modifier.focusRequester(play)) { vm.open(c) }
+                MBtn("▶ تشغيل", modifier = Modifier.focusRequester(play).onFocusChanged { if (it.isFocused) vm.lastFocusKey = "hero" }) { vm.open(c) }
                 if (d.portrait && d.touch) {
                     IconBtn(Ic.Star, { vm.toggleFav(c) }, tint = if (c.url in vm.favs) Warn else Ink)
                     IconBtn(Ic.Dice, { vm.tonight() })
@@ -316,6 +331,8 @@ private fun GroupItem(vm: AppViewModel, g: String, modifier: Modifier = Modifier
 private fun BrowseTab(vm: AppViewModel, d: Device) {
     val poster = vm.tab != Tab.Live
     val items = vm.visible
+
+    SideEffect { vm.firstKey = items.firstOrNull()?.let { it.url + it.id } }
 
     @Composable
     fun Grid(modifier: Modifier) {
@@ -369,6 +386,7 @@ private fun BrowseTab(vm: AppViewModel, d: Device) {
 @Composable
 private fun SearchResults(vm: AppViewModel, d: Device) {
     val r = vm.searchResults
+    SideEffect { vm.firstKey = r.firstOrNull()?.let { it.url + it.id } }
     Column {
         Text("نتائج البحث: ${r.size}", color = TextSecondary, fontSize = 12.sp)
         LazyVerticalGrid(

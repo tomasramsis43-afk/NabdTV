@@ -15,6 +15,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusGroup
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -34,13 +39,13 @@ fun visibleTabs(vm: AppViewModel): List<Tab> = Tab.entries.filter { (it != Tab.M
 /** Same navy pill and highlight logic everywhere; only its position and size change per device. */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun NavItem(ic: Ic, label: String, selected: Boolean, showLabel: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun NavItem(ic: Ic, label: String, selected: Boolean, showLabel: Boolean, modifier: Modifier = Modifier, focusRequester: FocusRequester? = null, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     val sc by animateFloatAsState(if (focused) 1.1f else 1f, tween(140), label = "navZoom")
     val shape = RoundedCornerShape(22.dp)
     val tint = if (selected || focused) Color.White else Color.White.copy(alpha = 0.62f)
     Column(
-        modifier.scale(sc).onFocusChanged { focused = it.isFocused }.clip(shape)
+        modifier.then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier).scale(sc).onFocusChanged { focused = it.isFocused }.clip(shape)
             .background(if (selected) Color.White.copy(alpha = 0.22f) else if (focused) Color.White.copy(alpha = 0.12f) else Color.Transparent)
             .border(if (focused) 2.dp else 0.dp, if (focused) Color.White else Color.Transparent, shape)
             .clickable(onClick = onClick).padding(vertical = 9.dp, horizontal = 6.dp),
@@ -59,8 +64,19 @@ private fun navBrush() = Brush.verticalGradient(listOf(Navy, NavyDeep))
 fun NavRail(vm: AppViewModel, d: Device) {
     val compact = d.nav == NavMode.RailCompact
     val shape = RoundedCornerShape(if (compact) 28.dp else 36.dp)
+    val reqs = remember { Tab.entries.associateWith { FocusRequester() } }
     Column(
-        Modifier.padding(start = if (compact) 8.dp else 14.dp, end = if (compact) 4.dp else 6.dp, top = 12.dp, bottom = 12.dp)
+        Modifier
+            .focusProperties {
+                // Coming back from the page lands on the current section; leaving the rail goes to the remembered card.
+                enter = { reqs[vm.tab] ?: FocusRequester.Default }
+                exit = { dir ->
+                    if (dir == FocusDirection.Left || dir == FocusDirection.Right) vm.contentEntry() ?: FocusRequester.Default
+                    else FocusRequester.Default
+                }
+            }
+            .focusGroup()
+            .padding(start = if (compact) 8.dp else 14.dp, end = if (compact) 4.dp else 6.dp, top = 12.dp, bottom = 12.dp)
             .fillMaxHeight().width(if (compact) 54.dp else 84.dp)
             .softShadow(shape, 16.dp).clip(shape).background(navBrush()).padding(vertical = 10.dp, horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -74,7 +90,7 @@ fun NavRail(vm: AppViewModel, d: Device) {
             }
             Spacer(Modifier.height(8.dp))
             visibleTabs(vm).forEach { t ->
-                NavItem(tabIcon(t), t.label, vm.tab == t, showLabel = !compact, modifier = Modifier.fillMaxWidth()) { vm.selectTab(t) }
+                NavItem(tabIcon(t), t.label, vm.tab == t, showLabel = !compact, modifier = Modifier.fillMaxWidth(), focusRequester = reqs[t]) { vm.selectTab(t) }
             }
         }
         Spacer(Modifier.height(6.dp))
