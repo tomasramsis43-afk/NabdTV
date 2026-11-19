@@ -29,8 +29,31 @@ fun GuideTab(vm: AppViewModel) {
         return
     }
     val sel = vm.guideChannel ?: channels.first()
+    val d = LocalDevice.current
+    if (d.widthDp < 600) {
+        // Phones: channel chips on top, programmes below.
+        Column(Modifier.fillMaxSize()) {
+            androidx.compose.foundation.lazy.LazyRow(
+                state = vm.listState("guideChips"),
+                horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 4.dp)
+            ) {
+                items(channels, key = { it.url + it.id }) { c ->
+                    Focusable(selected = c.url == sel.url, onClick = { vm.guideChannel = c }, onLongClick = { vm.channelMenu(c) }) {
+                        Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            AsyncImage(model = c.logo, contentDescription = null, modifier = Modifier.size(26.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(c.name, fontSize = 13.sp, color = if (c.url == sel.url) Accent else Ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 120.dp))
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            ProgrammeList(vm, sel, Modifier.weight(1f))
+        }
+        return
+    }
     Row(Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.width(260.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        LazyColumn(Modifier.width(d.sideList), state = vm.listState("guideChannels"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             items(channels, key = { it.url + it.id }) { c ->
                 Focusable(selected = c.url == sel.url, onClick = { vm.guideChannel = c }, onLongClick = { vm.channelMenu(c) }, modifier = Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -66,7 +89,7 @@ fun ProgrammeList(vm: AppViewModel, c: Channel, modifier: Modifier = Modifier) {
                 val past = p.stop <= now
                 Focusable(selected = live, onClick = { programmeMenu(vm, c, p) }, modifier = Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("${hm(p.start)} - ${hm(p.stop)}", fontSize = 13.sp, color = if (live) Accent else TextSecondary, modifier = Modifier.width(110.dp))
+                        Text("${hm(p.start)} - ${hm(p.stop)}", fontSize = 13.sp, color = if (live) Accent else TextSecondary, modifier = Modifier.width(if (LocalDevice.current.widthDp < 600) 92.dp else 110.dp))
                         Column(Modifier.weight(1f)) {
                             Text(p.title, fontSize = 15.sp, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             if (p.desc.isNotBlank()) Text(p.desc, fontSize = 11.sp, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)

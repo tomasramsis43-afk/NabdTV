@@ -31,42 +31,67 @@ fun DetailScreen(vm: AppViewModel) {
     val isSeries = kindOf(c) == Kind.Series
     val info = vm.info
     BackHandler { vm.closeDetail() }
-    Box(Modifier.fillMaxSize().background(Bg)) {
+    val d = LocalDevice.current
+    val narrow = d.widthDp < 600
+    Box(Modifier.fillMaxSize().appBackground()) {
         info?.backdrop?.let {
             AsyncImage(model = it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().alpha(0.22f))
         }
-        Row(Modifier.fillMaxSize().padding(24.dp)) {
-            Column(Modifier.width(190.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                AsyncImage(
-                    model = c.logo, contentDescription = null, contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(RoundedCornerShape(14.dp)).background(Surf)
-                )
-                Spacer(Modifier.height(10.dp))
-                MBtn("رجوع", filled = false) { vm.closeDetail() }
+        val poster: @Composable (Modifier) -> Unit = { m ->
+            AsyncImage(
+                model = c.logo, contentDescription = null, contentScale = ContentScale.Crop,
+                modifier = m.aspectRatio(2f / 3f).softShadow(RoundedCornerShape(Radius.small), 8.dp).clip(RoundedCornerShape(Radius.small)).background(Surf)
+            )
+        }
+        val details: @Composable ColumnScope.() -> Unit = {
+            Text(c.name, fontSize = if (narrow) 20.sp else 26.sp, fontWeight = FontWeight.Bold, color = Ink, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            val meta = listOfNotNull(
+                info?.year?.takeIf { it.isNotBlank() }, info?.genre?.takeIf { it.isNotBlank() },
+                info?.duration?.takeIf { it.isNotBlank() }, info?.rating?.takeIf { it.isNotBlank() }?.let { "★ $it" }
+            ).joinToString("  ·  ")
+            if (meta.isNotEmpty()) Text(meta, fontSize = 13.sp, color = Accent)
+            if (info != null && info.plot.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(info.plot, fontSize = 13.sp, color = TextSecondary, maxLines = if (narrow) 3 else 4, overflow = TextOverflow.Ellipsis)
             }
-            Spacer(Modifier.width(24.dp))
-            Column(Modifier.weight(1f)) {
-                Text(c.name, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Ink)
-                val meta = listOfNotNull(
-                    info?.year?.takeIf { it.isNotBlank() }, info?.genre?.takeIf { it.isNotBlank() },
-                    info?.duration?.takeIf { it.isNotBlank() }, info?.rating?.takeIf { it.isNotBlank() }?.let { "★ $it" }
-                ).joinToString("  ·  ")
-                if (meta.isNotEmpty()) Text(meta, fontSize = 13.sp, color = Accent)
-                if (info != null && info.plot.isNotBlank()) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(info.plot, fontSize = 13.sp, color = TextSecondary, maxLines = 4, overflow = TextOverflow.Ellipsis)
+            if (info != null && info.cast.isNotBlank()) Text("بطولة: ${info.cast}", fontSize = 12.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        val actions: @Composable () -> Unit = {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (!isSeries) {
+                    val h = vm.store.historyOf(c.url)
+                    MBtn(if (h != null && !h.finished && h.position > 10_000) "▶ استكمال (${h.position / 60000} د)" else "▶ تشغيل") { vm.play(c) }
                 }
-                if (info != null && info.cast.isNotBlank()) Text("بطولة: ${info.cast}", fontSize = 12.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                MBtn(if (c.url in vm.favs) "★ في المفضلة" else "☆ مفضلة", filled = false) { vm.toggleFav(c) }
+                if (narrow) MBtn("رجوع", filled = false) { vm.closeDetail() }
+            }
+        }
+        if (narrow) {
+            Column(Modifier.fillMaxSize().padding(d.pad)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    poster(Modifier.width(if (d.portrait) 104.dp else 120.dp))
+                    Column(Modifier.weight(1f), content = details)
+                }
                 Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (!isSeries) {
-                        val h = vm.store.historyOf(c.url)
-                        MBtn(if (h != null && !h.finished && h.position > 10_000) "▶ استكمال (${h.position / 60000} د)" else "▶ تشغيل") { vm.play(c) }
-                    }
-                    MBtn(if (c.url in vm.favs) "★ في المفضلة" else "☆ مفضلة", filled = false) { vm.toggleFav(c) }
-                }
-                Spacer(Modifier.height(12.dp))
+                actions()
+                Spacer(Modifier.height(10.dp))
                 if (isSeries) Episodes(vm, c)
+            }
+        } else {
+            Row(Modifier.fillMaxSize().padding(24.dp)) {
+                Column(Modifier.width(190.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    poster(Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(10.dp))
+                    MBtn("رجوع", filled = false) { vm.closeDetail() }
+                }
+                Spacer(Modifier.width(24.dp))
+                Column(Modifier.weight(1f)) {
+                    details()
+                    Spacer(Modifier.height(10.dp))
+                    actions()
+                    Spacer(Modifier.height(12.dp))
+                    if (isSeries) Episodes(vm, c)
+                }
             }
         }
     }
