@@ -32,6 +32,16 @@ fun SetupScreen(vm: AppViewModel) {
     LaunchedEffect(Unit) { runCatching { firstFocus.requestFocus() } }
     BackHandler(enabled = vm.all.isNotEmpty()) { vm.closeSetup() }
 
+    vm.pairingUrl?.let { u ->
+        GlassDialog("امسح الكود بالموبايل", onDismiss = { vm.stopPairing() }) {
+            QrCode(u)
+            Spacer(Modifier.height(10.dp))
+            Text(u, fontSize = 12.sp, color = TextSecondary)
+            Spacer(Modifier.height(10.dp))
+            MBtn("إلغاء", filled = false) { vm.stopPairing() }
+        }
+    }
+
     Column(
         Modifier.fillMaxSize().background(Bg).verticalScroll(rememberScrollState()).padding(horizontal = 48.dp, vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -44,7 +54,9 @@ fun SetupScreen(vm: AppViewModel) {
             MBtn(if (vm.diagBusy) "جارٍ الفحص..." else "فحص الاتصال والقنوات", filled = false) { vm.runDiag() }
             vm.diag?.let { Text(it, fontSize = 13.sp, color = Color.White) }
         }
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(12.dp))
+        MBtn("إعداد من الموبايل (QR)", filled = false) { vm.startPairing() }
+        Spacer(Modifier.height(8.dp))
         Text("Xtream Codes", fontSize = 20.sp)
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(host, { host = it }, singleLine = true, modifier = Modifier.fillMaxWidth(0.7f),

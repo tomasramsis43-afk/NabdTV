@@ -280,6 +280,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /* ───────── pairing from phone ───────── */
+    var pairingUrl by mutableStateOf<String?>(null); private set
+    private var pairing: PairingServer? = null
+
+    fun startPairing() {
+        val srv = PairingServer { f ->
+            viewModelScope.launch {
+                val ok = when (f["t"]) {
+                    "m3u" -> f["url"].orEmpty().takeIf { it.isNotBlank() }?.also { setUrl(it) }
+                    else -> if (!f["host"].isNullOrBlank() && !f["user"].isNullOrBlank() && !f["pass"].isNullOrBlank()) {
+                        setXtream(f["host"]!!, f["user"]!!, f["pass"]!!); "ok"
+                    } else null
+                }
+                if (ok != null) { stopPairing(); say("وصلت البيانات من الموبايل") } else say("البيانات المرسلة ناقصة")
+            }
+        }
+        val u = srv.start()
+        if (u == null) { say("تعذّر بدء الإعداد: تأكد أن الجهاز على شبكة Wi-Fi"); return }
+        pairing = srv; pairingUrl = u
+    }
+
+    fun stopPairing() { pairing?.stop(); pairing = null; pairingUrl = null }
+
+    override fun onCleared() { stopPairing(); super.onCleared() }
+
     /* ───────── profiles ───────── */
     var profile by mutableStateOf(store.currentProfile); private set
     var profileList by mutableStateOf(store.profiles()); private set

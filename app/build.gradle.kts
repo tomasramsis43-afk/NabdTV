@@ -11,11 +11,25 @@ android {
         applicationId = "com.nabd.tv"
         minSdk = 21
         targetSdk = 35
-        versionCode = 2
-        versionName = "2.0"
+        // CI run number keeps versionCode increasing, so each build installs over the previous one.
+        val run = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionCode = run
+        versionName = "2.0.$run"
+    }
+    // One fixed key for every build (CI would otherwise generate a new debug key each run,
+    // and Android refuses to update an app signed with a different key).
+    signingConfigs {
+        create("nabd") {
+            storeFile = file("nabd-release.jks")
+            storePassword = "nabdtv-sign"
+            keyAlias = "nabd"
+            keyPassword = "nabdtv-sign"
+        }
     }
     buildTypes {
+        debug { signingConfig = signingConfigs.getByName("nabd") }
         release {
+            signingConfig = signingConfigs.getByName("nabd")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -48,4 +62,5 @@ dependencies {
 
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("com.google.zxing:core:3.5.3")
 }
