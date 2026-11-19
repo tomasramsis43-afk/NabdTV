@@ -370,6 +370,12 @@ fun PlayerScreen(vm: AppViewModel) {
         ui.audioTracks = player.audioTracks()
         ui.textTracks = player.textTracks()
         ui.tracksRev++
+        // Silent video: the file has audio but no track could be selected (codec the device cannot decode).
+        val ag = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO && it.length > 0 }
+        if (ag.isNotEmpty() && ag.none { it.isSelected }) {
+            val f = runCatching { ag.first().getTrackFormat(0) }.getOrNull()
+            hud("⚠ لا يوجد مفكّك لصوت هذا الفيلم (" + (f?.sampleMimeType?.substringAfter('/') ?: f?.codecs ?: "?") + ")")
+        }
     }
 
     /* ------------------------------------------------------------------ */
