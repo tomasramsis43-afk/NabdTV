@@ -8,7 +8,9 @@ import java.util.Locale
 
 /** Streaming XMLTV reader. Two cheap passes: channel index first, then only the wanted programmes. */
 object EpgParser {
-    private val fmt = ThreadLocal.withInitial { SimpleDateFormat("yyyyMMddHHmmss Z", Locale.US) }
+    private val fmt = object : ThreadLocal<SimpleDateFormat>() {
+        override fun initialValue() = SimpleDateFormat("yyyyMMddHHmmss Z", Locale.US)
+    }
 
     private fun time(s: String?): Long = try {
         var t = s!!.trim()

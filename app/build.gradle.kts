@@ -10,7 +10,7 @@ android {
     compileSdk = 35
     defaultConfig {
         applicationId = "com.nabd.tv"
-        minSdk = 21
+        minSdk = 24
         targetSdk = 35
         // CI run number keeps versionCode increasing, so each build installs over the previous one.
         val run = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1

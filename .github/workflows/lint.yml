@@ -23,7 +23,7 @@ jobs:
           gradle lintDebug --no-daemon > lint.log 2>&1
           F=app/build/reports/lint-results-debug.txt
           if [ -f "$F" ]; then
-            ERR=$(grep -E "Error:|\[NewApi\]|\[InlinedApi\]|\[ExactAlarm\]|\[ForegroundServicePermission\]|\[ForegroundServiceType\]|\[MissingPermission\]|\[UnspecifiedRegisterReceiverFlag\]" -A1 "$F" | head -70)
+            ERR=$(grep -E "Error:" "$F" | sed "s#/home/runner/work/NabdTV/NabdTV/app/src/main/java/com/nabd/tv/##" | head -40)
             [ -z "$ERR" ] && ERR="No compatibility errors found. $(tail -3 "$F")"
           else
             ERR=$(grep -E "^e: |What went wrong" -A3 lint.log | head -40)
