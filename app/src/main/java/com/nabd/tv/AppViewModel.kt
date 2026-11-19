@@ -122,7 +122,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val groups by derivedStateOf {
         rev
         val pinned = store.pinnedGroups
-        val names = base.map { it.group }.distinct().sorted()
+        val order = repo.groupOrder(when (tab) { Tab.Movies -> "movie"; Tab.Series -> "series"; else -> "live" })
+        val pos = HashMap<String, Int>().also { m -> order.forEachIndexed { i, n -> m[n] = i } }
+        val seen = base.map { it.group }.distinct()
+        // Provider order; before the first refresh (no saved order yet) use the order the list arrived in.
+        val names = if (order.isEmpty()) seen else seen.sortedWith(compareBy({ pos[it] ?: Int.MAX_VALUE }, { it }))
         val ordered = names.filter { it in pinned } + names.filter { it !in pinned }
         val special = mutableListOf(GROUP_ALL, GROUP_FAV)
         if (base.any { it.added > 0 }) special += GROUP_NEW

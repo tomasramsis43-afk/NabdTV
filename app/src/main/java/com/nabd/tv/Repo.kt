@@ -24,7 +24,29 @@ class Repo(private val ctx: Context, val store: Store) {
     private val cacheFile get() = File(ctx.filesDir, "playlist2.m3u")
     val dao: ItemDao by lazy { AppDb.get(ctx).items() }
 
-    private suspend fun store(list: List<Channel>, kind: String) = dao.replace(kind, list.map { it.toEntity(kind) })
+    private suspend fun store(list: List<Channel>, kind: String) {
+        noteGroups(kind, list.map { it.group }.distinct())
+        dao.replace(kind, list.map { it.toEntity(kind) })
+    }
+
+    /* Category order is the provider's own order and stays fixed across refreshes (new categories go to the end). */
+    private val orderCache = HashMap<String, List<String>>()
+    private fun orderFile(kind: String) = File(ctx.filesDir, "gorder_$kind.txt")
+    @Synchronized fun groupOrder(kind: String): List<String> = orderCache.getOrPut(kind) {
+        runCatching { orderFile(kind).takeIf { it.exists() }?.readLines()?.filter { it.isNotEmpty() } }.getOrNull() ?: emptyList()
+    }
+    @Synchronized private fun saveOrder(kind: String, names: List<String>) {
+        orderCache[kind] = names
+        runCatching { orderFile(kind).writeText(names.joinToString("\n")) }
+    }
+    /** Provider categories in the provider's order (authoritative). */
+    private fun setGroupOrder(kind: String, names: Collection<String>) = saveOrder(kind, names.filter { it.isNotBlank() }.distinct())
+    /** Keeps the known order and appends categories seen for the first time (M3U lists and uncategorised items). */
+    private fun noteGroups(kind: String, seen: List<String>) {
+        val known = groupOrder(kind)
+        val extra = seen.filter { it !in known }
+        if (extra.isNotEmpty()) saveOrder(kind, known + extra)
+    }
     val http: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(90, TimeUnit.SECONDS)
@@ -98,7 +120,7 @@ class Repo(private val ctx: Context, val store: Store) {
     }
 
     private fun categories(action: String): Map<String, String> {
-        val m = HashMap<String, String>()
+        val m = LinkedHashMap<String, String>()
         try {
             val c = JSONArray(api(action))
             for (i in 0 until c.length()) c.getJSONObject(i).let { m[str(it, "category_id")] = str(it, "category_name") }
@@ -112,6 +134,7 @@ class Repo(private val ctx: Context, val store: Store) {
     private fun loadXtream(): String {
         val (base, user, pass) = xt()!!
         val names = categories("get_live_categories")
+        if (names.isNotEmpty()) setGroupOrder("live", names.values)
         val streams = JSONArray(api("get_live_streams"))
         val sb = StringBuilder("#EXTM3U\n")
         for (i in 0 until streams.length()) {
@@ -276,6 +299,7 @@ class Repo(private val ctx: Context, val store: Store) {
         val (b, u, p) = xt() ?: return@withContext emptyList()
         if (!force) dao.channels("movie").takeIf { it.isNotEmpty() }?.let { r -> return@withContext r.map { it.toChannel() } }
         val names = categories("get_vod_categories")
+        if (names.isNotEmpty()) setGroupOrder("movie", names.values)
         val t = buildM3u(JSONArray(api("get_vod_streams")), names, "stream_icon") { s ->
             val id = str(s, "stream_id")
             if (id.isBlank()) null else "$b/movie/$u/$p/$id.${str(s, "container_extension").ifBlank { "mp4" }}"
@@ -289,6 +313,7 @@ class Repo(private val ctx: Context, val store: Store) {
         if (xt() == null) return@withContext emptyList()
         if (!force) dao.channels("series").takeIf { it.isNotEmpty() }?.let { r -> return@withContext r.map { it.toChannel() } }
         val names = categories("get_series_categories")
+        if (names.isNotEmpty()) setGroupOrder("series", names.values)
         val t = buildM3u(JSONArray(api("get_series")), names, "cover") { s ->
             val id = str(s, "series_id")
             if (id.isBlank()) null else "series:$id"
