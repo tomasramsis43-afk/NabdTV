@@ -68,7 +68,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Where the remote should land when entering the page: the card you left, else the first card. */
     fun contentEntry(): androidx.compose.ui.focus.FocusRequester? =
         lastFocusKey?.let { cardFocus[it] } ?: firstKey?.let { cardFocus[it] }
-    fun enterContent(): Boolean = contentEntry()?.let { runCatching { it.requestFocus() }.getOrDefault(false) } ?: false
+    fun enterContent(): Boolean = contentEntry()?.let { runCatching { it.requestFocus(); true }.getOrDefault(false) } ?: false
     private val gridStates = HashMap<String, androidx.compose.foundation.lazy.grid.LazyGridState>()
     private val listStates = HashMap<String, androidx.compose.foundation.lazy.LazyListState>()
     fun gridState(key: String) = gridStates.getOrPut(key) { androidx.compose.foundation.lazy.grid.LazyGridState() }

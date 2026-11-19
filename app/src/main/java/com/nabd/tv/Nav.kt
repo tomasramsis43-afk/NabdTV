@@ -17,7 +17,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusGroup
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -59,7 +60,7 @@ private fun NavItem(ic: Ic, label: String, selected: Boolean, showLabel: Boolean
 private fun navBrush() = Brush.verticalGradient(listOf(Navy, NavyDeep))
 
 /** Vertical pill (TV, tablet, landscape phone). */
-@OptIn(ExperimentalTvMaterial3Api::class)
+@OptIn(ExperimentalTvMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun NavRail(vm: AppViewModel, d: Device) {
     val compact = d.nav == NavMode.RailCompact
