@@ -1,0 +1,32 @@
+name: Compatibility lint
+on:
+  workflow_dispatch:
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Android SDK (preinstalled on runner)
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+      - name: Lint (API-level problems for minSdk..targetSdk)
+        run: |
+          set +e
+          gradle lintDebug --no-daemon > lint.log 2>&1
+          F=app/build/reports/lint-results-debug.txt
+          if [ -f "$F" ]; then
+            ERR=$(grep -E "Error:" "$F" | sed "s#/home/runner/work/NabdTV/NabdTV/app/src/main/java/com/nabd/tv/##" | grep -v UnsafeOptInUsageError | grep -v ProtectedPermissions | head -40)
+            [ -z "$ERR" ] && ERR="NO-API-ERRORS: $(tail -2 "$F" | tr "\n" " ")"
+          else
+            ERR=$(grep -E "^e: |What went wrong" -A3 lint.log | head -40)
+          fi
+          ERR="${ERR//$'\n'/%0A}"
+          echo "::error::$ERR"
