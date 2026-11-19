@@ -186,6 +186,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     init {
         RefreshWorker.schedule(app)
         if (repo.playlistUrl.isNotBlank()) { load(false); refreshRecs() }
+        checkUpdate(false)
     }
 
     private fun friendly(e: Exception): String = when (e) {
@@ -277,6 +278,40 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             diagBusy = true; diag = null
             diag = try { repo.diagnose() } catch (e: Exception) { "فشل الفحص: ${e.message}" }
             diagBusy = false
+        }
+    }
+
+    /* ───────── in-app update ───────── */
+    var update by mutableStateOf<Updater.Release?>(null); private set
+    var updateProgress by mutableStateOf<Int?>(null); private set
+    private var pendingApk: java.io.File? = null
+
+    fun checkUpdate(manual: Boolean) {
+        viewModelScope.launch {
+            try {
+                update = Updater.check(ctx, repo.http)
+                if (manual) say(if (update == null) "أنت على آخر إصدار" else "يوجد إصدار جديد ${update!!.tag}")
+            } catch (e: Exception) {
+                if (manual) say("تعذّر فحص التحديث: ${e.message}")
+            }
+        }
+    }
+
+    fun installUpdate() {
+        val rel = update ?: return
+        if (updateProgress != null) return
+        viewModelScope.launch {
+            try {
+                updateProgress = 0
+                val f = pendingApk?.takeIf { it.exists() && it.name.contains("${rel.build}") }
+                    ?: Updater.download(ctx, repo.http, rel) { updateProgress = it }
+                pendingApk = f
+                updateProgress = null
+                if (!Updater.install(ctx, f)) say("اسمح للتطبيق بالتثبيت ثم اضغط تحديث مرة أخرى")
+            } catch (e: Exception) {
+                updateProgress = null
+                say("فشل التنزيل: ${e.message}")
+            }
         }
     }
 

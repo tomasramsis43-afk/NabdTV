@@ -21,9 +21,9 @@ android {
     signingConfigs {
         create("nabd") {
             storeFile = file("nabd-release.jks")
-            storePassword = "nabdtv-sign"
+            storePassword = System.getenv("KEYSTORE_PASS") ?: "nabdtv-sign"
             keyAlias = "nabd"
-            keyPassword = "nabdtv-sign"
+            keyPassword = System.getenv("KEYSTORE_PASS") ?: "nabdtv-sign"
         }
     }
     buildTypes {

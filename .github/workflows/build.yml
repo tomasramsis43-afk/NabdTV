@@ -20,7 +20,14 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.9
+      - name: Use private signing key if the KEYSTORE_B64 secret exists
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then echo "$KEYSTORE_B64" | base64 -d > app/nabd-release.jks; fi
       - run: gradle assembleDebug --no-daemon
+        env:
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
       - name: Publish APK as GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}

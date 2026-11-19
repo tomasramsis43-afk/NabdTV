@@ -35,6 +35,12 @@ fun MainScreen(vm: AppViewModel) {
     }
     Column(Modifier.fillMaxSize().background(Bg).padding(horizontal = 20.dp, vertical = 10.dp)) {
         TopBar(vm)
+        vm.update?.let { u ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("إصدار جديد ${u.tag}", color = Accent, fontSize = 14.sp)
+                MBtn(vm.updateProgress?.let { "جارٍ التنزيل $it%" } ?: "تحديث الآن") { vm.installUpdate() }
+            }
+        }
         Spacer(Modifier.height(6.dp))
         if (vm.loading || vm.vodLoading) Text("جارٍ التحميل...", color = Accent, fontSize = 13.sp)
         vm.error?.let { Text("خطأ: $it", color = Danger, fontSize = 13.sp) }
