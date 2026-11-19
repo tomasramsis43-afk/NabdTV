@@ -69,7 +69,7 @@ private fun TopBar(vm: AppViewModel) {
                 TabChip(t.label, vm.tab == t) { vm.selectTab(t) }
             }
         }
-        SearchField(vm.query, { vm.query = it }, Modifier.weight(1f).widthIn(min = 120.dp))
+        SearchField(vm.query, { vm.query = it })
         MBtn(if (vm.loading || vm.vodLoading) "..." else "تحديث", filled = false) { vm.refresh() }
         if (vm.profileList.size > 1) MBtn("👤 ${vm.profile.name}", filled = false) { vm.openProfiles() }
         MBtn("⚙", filled = false) { vm.openSettings() }

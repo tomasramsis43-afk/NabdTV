@@ -1,5 +1,6 @@
 package com.nabd.tv
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -56,27 +57,29 @@ fun MBtn(text: String, filled: Boolean = true, modifier: Modifier = Modifier, on
 @Composable
 fun SearchField(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier) {
     var focused by remember { mutableStateOf(false) }
+    // Compact by default; grows only while you type.
+    val w by animateDpAsState(if (focused || value.isNotEmpty()) 190.dp else 112.dp, tween(160), label = "searchW")
     val shape = RoundedCornerShape(14.dp)
     Row(
-        modifier.height(40.dp).clip(shape).background(Surf)
+        modifier.width(w).height(34.dp).clip(shape).background(Surf)
             .border(if (focused) 2.dp else 1.dp, if (focused) Accent else Color(0xFF263241), shape)
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("🔍", fontSize = 14.sp)
-        Spacer(Modifier.width(8.dp))
+        Text("🔍", fontSize = 12.sp)
+        Spacer(Modifier.width(6.dp))
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-            if (value.isEmpty()) Text("بحث...", color = TextSecondary, fontSize = 14.sp, maxLines = 1)
+            if (value.isEmpty()) Text("بحث...", color = TextSecondary, fontSize = 12.sp, maxLines = 1)
             BasicTextField(
                 value = value, onValueChange = onChange, singleLine = true,
-                textStyle = TextStyle(color = Color.White, fontSize = 14.sp),
+                textStyle = TextStyle(color = Color.White, fontSize = 13.sp),
                 cursorBrush = SolidColor(Accent),
                 modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused }
             )
         }
         if (value.isNotEmpty()) {
             Text(
-                "✕", color = TextSecondary, fontSize = 14.sp,
+                "✕", color = TextSecondary, fontSize = 12.sp,
                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onChange("") }.padding(6.dp)
             )
         }

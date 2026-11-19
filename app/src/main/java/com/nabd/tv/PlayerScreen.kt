@@ -289,6 +289,16 @@ fun PlayerScreen(vm: AppViewModel) {
             }
         }
 
+        // Always-visible options (tap the screen to show): aspect ratio + full options menu.
+        if (!vm.inPip && overlay) {
+            Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MBtn("⛶ ${ratios[ratio].first}", filled = false) { ratio = (ratio + 1) % ratios.size; ping++ }
+                MBtn("⚙ خيارات") {
+                    playerMenu(vm, player, view, ch, ratio, speed, { ratio = it }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost })
+                }
+            }
+        }
+
         if (!vm.inPip && ((overlay && live) || status.isNotEmpty())) {
             Row(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color(0xCC000000)).padding(24.dp),
