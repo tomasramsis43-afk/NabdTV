@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import android.media.audiofx.LoudnessEnhancer
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -89,6 +90,7 @@ fun PlayerScreen(vm: AppViewModel) {
     var digits by remember { mutableStateOf("") }
     var startedAt by remember { mutableLongStateOf(0L) }
     var nextEp by remember { mutableStateOf<Episode?>(null) }
+    var boost by remember { mutableStateOf(false) }
     var pos by remember { mutableLongStateOf(0L) }
     val seriesKey = if (vod && kindOf(ch) == Kind.Series) vm.detail?.url else null
     val introEnd = seriesKey?.let { vm.store.introEnd(it) } ?: 0L
@@ -166,6 +168,23 @@ fun PlayerScreen(vm: AppViewModel) {
     }
 
     LaunchedEffect(ch.url, ping) { overlay = true; delay(3500); overlay = false }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(30_000)
+            vm.tickWatch(30)
+        }
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(10_000)
+            if (vm.sleepAt > 0 && System.currentTimeMillis() >= vm.sleepAt) { vm.sleepAt = 0; vm.stop(); break }
+        }
+    }
+    // Loudness boost (+8 dB) on the player's audio session.
+    DisposableEffect(boost, ch.url) {
+        val enh = if (boost) runCatching { LoudnessEnhancer(player.audioSessionId).apply { setTargetGain(800); enabled = true } }.getOrNull() else null
+        onDispose { runCatching { enh?.release() } }
+    }
     LaunchedEffect(seriesKey, ch.url) {
         while (seriesKey != null) { pos = player.currentPosition; delay(500) }
     }
@@ -199,7 +218,7 @@ fun PlayerScreen(vm: AppViewModel) {
     Box(
         Modifier.fillMaxSize().background(Color.Black)
             .focusRequester(focus).focusable()
-            .pointerInput(Unit) { detectTapGestures(onTap = { ping++ }, onLongPress = { playerMenu(vm, player, view, ch, ratio, speed, { ratio = it }, { speed = it }, { enterPip(ctx) }, seriesKey) }) }
+            .pointerInput(Unit) { detectTapGestures(onTap = { ping++ }, onLongPress = { playerMenu(vm, player, view, ch, ratio, speed, { ratio = it }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost }) }) }
             .pointerInput(Unit) {
                 var dy = 0f
                 detectVerticalDragGestures(
@@ -229,7 +248,7 @@ fun PlayerScreen(vm: AppViewModel) {
                         ping++; true
                     }
                     Key.DirectionLeft -> if (!live) { player.seekTo(maxOf(0L, player.currentPosition - 10_000)); true } else false
-                    Key.Menu, Key.Info, Key.M -> { playerMenu(vm, player, view, ch, ratio, speed, { ratio = it }, { speed = it }, { enterPip(ctx) }, seriesKey); true }
+                    Key.Menu, Key.Info, Key.M -> { playerMenu(vm, player, view, ch, ratio, speed, { ratio = it }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost }); true }
                     Key.MediaNext -> { if (vod) vm.playNext(); true }
                     else -> false
                 }
@@ -299,7 +318,7 @@ fun PlayerScreen(vm: AppViewModel) {
 private fun playerMenu(
     vm: AppViewModel, player: ExoPlayer, view: PlayerView?, ch: Channel,
     ratio: Int, speed: Float, setRatio: (Int) -> Unit, setSpeed: (Float) -> Unit,
-    onPip: () -> Unit, seriesKey: String?
+    onPip: () -> Unit, seriesKey: String?, boost: Boolean, onBoost: () -> Unit
 ) {
     val items = ArrayList<Pair<String, () -> Unit>>()
     fun tracks(type: Int) = player.currentTracks.groups.filter { it.type == type && it.length > 0 }
@@ -337,6 +356,13 @@ private fun playerMenu(
             }) }
     }
     items += "نافذة عائمة (PiP)" to onPip
+    items += (if (boost) "تعزيز الصوت: مفعّل" else "تعزيز الصوت: متوقف") to onBoost
+    items += (if (vm.sleepAt > 0) "مؤقت النوم: يعمل (إلغاء)" else "مؤقت النوم") to {
+        if (vm.sleepAt > 0) { vm.sleepAt = 0; vm.say("تم إلغاء المؤقت") }
+        else vm.menu = MenuRequest("إيقاف بعد", listOf(15, 30, 60, 90).map { m ->
+            "$m دقيقة" to { vm.sleepAt = System.currentTimeMillis() + m * 60_000L; vm.say("سيتوقف التشغيل بعد $m دقيقة") }
+        })
+    }
     if (seriesKey != null) {
         items += "حفظ نهاية المقدمة هنا" to {
             vm.store.setIntroEnd(seriesKey, player.currentPosition); vm.say("سيظهر زر تخطي المقدمة في حلقات هذا المسلسل")

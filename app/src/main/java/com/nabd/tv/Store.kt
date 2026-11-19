@@ -153,6 +153,15 @@ class Store(private val ctx: Context) {
         return h.isNotEmpty() && hash(pin, salt) == h
     }
 
+    /* ---------- daily watch limit (per profile) ---------- */
+    var limitMinutes: Int
+        get() = p.getInt("limitMin", 0)
+        set(v) = p.edit().putInt("limitMin", v).apply()
+
+    private fun today() = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(java.util.Date())
+    fun watchedSeconds(): Int = p.getInt("watched_${today()}", 0)
+    fun addWatched(sec: Int) = p.edit().putInt("watched_${today()}", watchedSeconds() + sec).apply()
+
     /* ---------- learned intro end (ms) per series ---------- */
     fun introEnd(seriesKey: String): Long = p.getLong("intro_$seriesKey", 0L)
     fun setIntroEnd(seriesKey: String, ms: Long) = p.edit().putLong("intro_$seriesKey", ms).apply()

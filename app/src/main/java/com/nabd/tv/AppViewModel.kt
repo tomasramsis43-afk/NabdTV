@@ -281,6 +281,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /* ───────── sleep timer / daily limit / suggestions ───────── */
+    var sleepAt by mutableStateOf(0L)
+
+    fun limitReached(): Boolean {
+        val lim = store.limitMinutes
+        return lim > 0 && store.hasPin && !parental.unlocked && store.watchedSeconds() >= lim * 60
+    }
+
+    /** Called every 30 s while something is playing. */
+    fun tickWatch(sec: Int) {
+        store.addWatched(sec)
+        if (limitReached() && screen == Screen.Player) {
+            stop()
+            pin = PinRequest("انتهى وقت المشاهدة اليوم. أدخل الرمز السري للمتابعة") { }
+        }
+    }
+
+    /** "What should I watch?" — a few picks that fit the time of day and the user's taste. */
+    fun tonight() {
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        val pool = when {
+            hour in 5..11 -> liveList.filter { Classifier.genre(it) == Genre.News }.ifEmpty { liveList }
+            hour in 18..23 || hour < 2 -> (movieList + seriesList).ifEmpty { liveList }
+            else -> liveList
+        }
+        val picks = (recs.shuffled().take(3) + pool.shuffled().take(5)).distinctBy { it.url }.take(6)
+        if (picks.isEmpty()) { say("لا توجد اقتراحات بعد"); return }
+        menu = MenuRequest("ماذا أشاهد؟", picks.map { c -> (if (kindOf(c) == Kind.Live) "📺 " else "🎬 ") + c.name to { open(c) } })
+    }
+
     /* ───────── in-app update ───────── */
     var update by mutableStateOf<Updater.Release?>(null); private set
     var updateProgress by mutableStateOf<Int?>(null); private set
@@ -480,6 +510,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val zapEnabled: Boolean get() = playMode == PlayMode.Live && zapList.isNotEmpty()
 
     fun play(c: Channel, mode: PlayMode? = null, startAt: Long = -1) = guard(c) {
+        if (limitReached()) { pin = PinRequest("انتهى وقت المشاهدة اليوم. أدخل الرمز السري للمتابعة") { }; return@guard }
         if (screen != Screen.Player) back = screen
         val m = mode ?: if (kindOf(c) == Kind.Live) PlayMode.Live else PlayMode.Vod
         playMode = m

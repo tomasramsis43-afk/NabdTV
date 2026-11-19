@@ -93,6 +93,13 @@ fun SettingsScreen(vm: AppViewModel) {
             }
             Toggle("إخفاء المقفل من القوائم", s.hideLocked) { upd { s.hideLocked = it; vm.lockNow() } }
             if (s.hasPin) Row2("قفل الآن") { vm.lockNow(); vm.say("تم القفل") }
+            Row2("حد المشاهدة اليومي (يتطلب رمزاً سرياً)", if (s.limitMinutes == 0) "بدون" else "${s.limitMinutes} د") {
+                vm.requirePin("أدخل الرمز السري") {
+                    vm.menu = MenuRequest("الحد اليومي", listOf(0, 60, 120, 180, 240).map { m ->
+                        (if (m == 0) "بدون حد" else "$m دقيقة") to { upd { s.limitMinutes = m } }
+                    })
+                }
+            }
             Row2("إظهار كل التصنيفات المخفية", "${s.hiddenGroups.size}") { vm.unhideAllGroups(); tick++ }
             Row2("إظهار كل القنوات المخفية", "${s.hiddenChannels.size}") { vm.unhideAllChannels(); tick++ }
         }
@@ -137,6 +144,22 @@ fun SettingsScreen(vm: AppViewModel) {
             Row2("الإصدار الحالي", Updater.currentName(androidx.compose.ui.platform.LocalContext.current)) { }
             Row2(if (vm.update != null) "تحديث إلى ${vm.update!!.tag}" else "بحث عن تحديث") {
                 if (vm.update != null) vm.installUpdate() else vm.checkUpdate(true)
+            }
+        }
+
+        Section("التشخيص") {
+            val c = androidx.compose.ui.platform.LocalContext.current
+            Row2("آخر أخطاء التطبيق") {
+                val t = CrashLog.read(c)
+                if (t.isBlank()) vm.say("لا توجد أخطاء مسجّلة") else vm.menu = MenuRequest("الأخطاء", listOf(
+                    "مشاركة النص" to {
+                        c.startActivity(android.content.Intent.createChooser(
+                            android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, t), "مشاركة"
+                        ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                    },
+                    "عرض السطور الأخيرة" to { vm.say(t.takeLast(300)) },
+                    "مسح السجل" to { CrashLog.clear(c) }
+                ))
             }
         }
 

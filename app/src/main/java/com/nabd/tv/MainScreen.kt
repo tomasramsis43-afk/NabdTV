@@ -120,6 +120,7 @@ private fun Hero(vm: AppViewModel, c: Channel) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 MBtn("▶ تشغيل") { vm.open(c) }
                 MBtn(if (c.url in vm.favs) "★ في المفضلة" else "☆ مفضلة", filled = false) { vm.toggleFav(c) }
+                MBtn("🎲 ماذا أشاهد؟", filled = false) { vm.tonight() }
             }
         }
     }
