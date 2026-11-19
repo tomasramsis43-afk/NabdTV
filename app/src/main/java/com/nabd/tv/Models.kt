@@ -23,7 +23,8 @@ data class Channel(
     val archiveDays: Int = 0,
     val catchupSource: String? = null,
     val number: Int = 0,
-    val rating: String? = null
+    val rating: String? = null,
+    val added: Long = 0L          // epoch seconds the provider added it (0 = unknown)
 ) {
     val hasCatchup: Boolean get() = archiveDays > 0 || !catchupSource.isNullOrBlank()
 }

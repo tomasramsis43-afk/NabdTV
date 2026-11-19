@@ -17,6 +17,7 @@ object M3uParser {
         var source: String? = null
         var chno = 0
         var rating: String? = null
+        var added = 0L
         var pending = false
         text.lineSequence().forEach { raw ->
             val line = raw.trim()
@@ -30,12 +31,13 @@ object M3uParser {
                     source = a["catchup-source"]?.takeIf { it.isNotBlank() }
                     chno = a["tvg-chno"]?.toIntOrNull() ?: 0
                     rating = a["tn-rating"]?.takeIf { it.isNotBlank() }
+                    added = a["tn-added"]?.toLongOrNull() ?: 0L
                     name = line.substring(line.lastIndexOf('"') + 1).substringAfter(',', "").trim()
                         .ifEmpty { a["tvg-name"] ?: "Channel" }
                     pending = true
                 }
                 line.isNotEmpty() && !line.startsWith("#") && pending -> {
-                    out += Channel(out.size, name, line, logo, group, tvgId, days, source, chno, rating)
+                    out += Channel(out.size, name, line, logo, group, tvgId, days, source, chno, rating, added)
                     pending = false
                 }
             }

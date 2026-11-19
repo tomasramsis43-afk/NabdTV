@@ -30,20 +30,21 @@ data class ItemEntity(
     val archiveDays: Int,
     val catchupSource: String?,
     val number: Int,
-    val rating: String?
+    val rating: String?,
+    val added: Long = 0L
 )
 
 /** Plain row (no defaults) so Room maps it without constructor ambiguity. */
 data class ChannelRow(
     val id: Int, val name: String, val url: String, val logo: String?, val group: String,
-    val tvgId: String?, val archiveDays: Int, val catchupSource: String?, val number: Int, val rating: String?
+    val tvgId: String?, val archiveDays: Int, val catchupSource: String?, val number: Int, val rating: String?, val added: Long
 ) {
-    fun toChannel() = Channel(id, name, url, logo, group, tvgId, archiveDays, catchupSource, number, rating)
+    fun toChannel() = Channel(id, name, url, logo, group, tvgId, archiveDays, catchupSource, number, rating, added)
 }
 
 @Dao
 interface ItemDao {
-    @Query("SELECT idx AS id, name, url, logo, grp AS `group`, tvgId, archiveDays, catchupSource, number, rating FROM items WHERE kind = :k ORDER BY idx")
+    @Query("SELECT idx AS id, name, url, logo, grp AS `group`, tvgId, archiveDays, catchupSource, number, rating, added FROM items WHERE kind = :k ORDER BY idx")
     suspend fun channels(k: String): List<ChannelRow>
 
     @Query("SELECT COUNT(*) FROM items WHERE kind = :k")
@@ -62,7 +63,7 @@ interface ItemDao {
     suspend fun raw(q: SupportSQLiteQuery): List<ChannelRow>
 }
 
-@Database(entities = [ItemEntity::class], version = 1, exportSchema = false)
+@Database(entities = [ItemEntity::class], version = 2, exportSchema = false)
 abstract class AppDb : RoomDatabase() {
     abstract fun items(): ItemDao
 
@@ -77,7 +78,7 @@ abstract class AppDb : RoomDatabase() {
 
 fun Channel.toEntity(kind: String) = ItemEntity(
     0, kind, id, name, Classifier.normalize(name), Classifier.normalize(group), group, url, logo, tvgId,
-    archiveDays, catchupSource, number, rating
+    archiveDays, catchupSource, number, rating, added
 )
 
 /** Smart search: accent/hamza-insensitive, every word must match the name or the category. */
@@ -90,7 +91,7 @@ suspend fun ItemDao.search(query: String, limit: Int = 300): List<ChannelRow> {
     tokens.forEach { bind.add("%$it%"); bind.add("%$it%") }
     bind.add("${tokens.first()}%")
     // Names that START with the first word rank first, then by position in the list.
-    val sql = "SELECT idx AS id, name, url, logo, grp AS `group`, tvgId, archiveDays, catchupSource, number, rating FROM items " +
+    val sql = "SELECT idx AS id, name, url, logo, grp AS `group`, tvgId, archiveDays, catchupSource, number, rating, added FROM items " +
         "WHERE $where ORDER BY (CASE WHEN norm LIKE ? THEN 0 ELSE 1 END), idx LIMIT $limit"
     return raw(SimpleSQLiteQuery(sql, bind.toTypedArray()))
 }

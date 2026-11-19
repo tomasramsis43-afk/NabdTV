@@ -22,6 +22,8 @@ enum class PlayMode { Live, Vod, Catchup, Recording }
 const val GROUP_ALL = "الكل"
 const val GROUP_FAV = "★ المفضلة"
 const val GROUP_RECENT = "◷ شاهدت مؤخراً"
+const val GROUP_NEW = "🆕 المضاف حديثاً"
+private const val NEW_LIMIT = 300
 const val GROUP_CUSTOM = "◆ "
 
 class PinRequest(val title: String, val onOk: () -> Unit)
@@ -115,6 +117,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val names = base.map { it.group }.distinct().sorted()
         val ordered = names.filter { it in pinned } + names.filter { it !in pinned }
         val special = mutableListOf(GROUP_ALL, GROUP_FAV)
+        if (base.any { it.added > 0 }) special += GROUP_NEW
         if (tab == Tab.Live) {
             special += GROUP_RECENT
             special += store.customGroups().keys.map { GROUP_CUSTOM + it }
@@ -123,7 +126,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun groupLabel(g: String): String =
-        if (g.startsWith("★") || g.startsWith("◷") || g.startsWith("◆") || g == GROUP_ALL) g
+        if (g.startsWith("★") || g.startsWith("◷") || g.startsWith("◆") || g.startsWith("🆕") || g == GROUP_ALL) g
         else (if (g in store.pinnedGroups) "📌 " else "") + Classifier.cleanGroup(g, store.filterList) +
             (if (g in store.lockedGroups) " 🔒" else "")
 
@@ -131,9 +134,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         rev
         val custom = if (group.startsWith(GROUP_CUSTOM)) store.customGroups()[group.removePrefix(GROUP_CUSTOM)]?.toSet() ?: emptySet() else emptySet()
         val recent = if (group == GROUP_RECENT) history.filter { it.kind == Kind.Live }.map { it.url }.toSet() else emptySet()
-        base.filter {
+        val src = if (group == GROUP_NEW) base.filter { it.added > 0 }.sortedByDescending { it.added }.take(NEW_LIMIT) else base
+        src.filter {
             val g = when {
-                group == GROUP_ALL -> true
+                group == GROUP_ALL || group == GROUP_NEW -> true
                 group == GROUP_FAV -> it.url in favs
                 group == GROUP_RECENT -> it.url in recent
                 group.startsWith(GROUP_CUSTOM) -> it.url in custom
@@ -176,6 +180,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (onAir.isNotEmpty()) out += Shelf("على الهواء الآن", onAir)
         val recentLive = history.filter { it.kind == Kind.Live }.take(20).map { histChannel(it) }.filter { parental.visible(it) }
         if (recentLive.isNotEmpty()) out += Shelf("شاهدت مؤخراً", recentLive)
+        val newMovies = movieList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30)
+        if (newMovies.isNotEmpty()) out += Shelf("🆕 أفلام أُضيفت حديثاً", newMovies)
+        val newSeries = seriesList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30)
+        if (newSeries.isNotEmpty()) out += Shelf("🆕 مسلسلات أُضيفت حديثاً", newSeries)
         if (movieList.isNotEmpty()) out += Shelf("أفلام", movieList.take(30))
         if (seriesList.isNotEmpty()) out += Shelf("مسلسلات", seriesList.take(30))
         out
@@ -800,7 +808,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun groupMenu(g: String) {
-        if (g == GROUP_ALL || g == GROUP_FAV || g == GROUP_RECENT) return
+        if (g == GROUP_ALL || g == GROUP_FAV || g == GROUP_RECENT || g == GROUP_NEW) return
         val items = ArrayList<Pair<String, () -> Unit>>()
         if (g.startsWith(GROUP_CUSTOM)) {
             items += "حذف المجموعة" to { removeCustomGroup(g.removePrefix(GROUP_CUSTOM)) }

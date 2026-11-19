@@ -21,7 +21,7 @@ import java.util.zip.GZIPInputStream
 
 class Repo(private val ctx: Context, val store: Store) {
     private val prefs = ctx.getSharedPreferences("nabd", Context.MODE_PRIVATE)
-    private val cacheFile get() = File(ctx.filesDir, "playlist.m3u")
+    private val cacheFile get() = File(ctx.filesDir, "playlist2.m3u")
     val dao: ItemDao by lazy { AppDb.get(ctx).items() }
 
     private suspend fun store(list: List<Channel>, kind: String) = dao.replace(kind, list.map { it.toEntity(kind) })
@@ -123,6 +123,7 @@ class Repo(private val ctx: Context, val store: Store) {
                 .append("\" tvg-logo=\"").append(a(str(s, "stream_icon")))
                 .append("\" tvg-chno=\"").append(str(s, "num").toIntOrNull() ?: 0)
                 .append("\" catchup-days=\"").append(days)
+                .append("\" tn-added=\"").append(str(s, "added").toLongOrNull() ?: 0L)
                 .append("\" group-title=\"").append(a(names[str(s, "category_id")] ?: "Other"))
                 .append("\",").append(a(str(s, "name"))).append('\n')
             sb.append("$base/live/$user/$pass/$id.$liveExt\n")
@@ -259,6 +260,7 @@ class Repo(private val ctx: Context, val store: Store) {
             val rating = ratingOf(s)
             sb.append("#EXTINF:-1 tvg-logo=\"").append(a(str(s, icon)))
                 .append("\" tn-rating=\"").append(a(rating))
+                .append("\" tn-added=\"").append((str(s, "added").toLongOrNull() ?: str(s, "last_modified").toLongOrNull()) ?: 0L)
                 .append("\" group-title=\"").append(a(names[str(s, "category_id")] ?: "Other"))
                 .append("\",").append(a(str(s, "name"))).append('\n').append(u).append('\n')
         }
