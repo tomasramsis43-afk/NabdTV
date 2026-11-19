@@ -374,7 +374,7 @@ fun PlayerScreen(vm: AppViewModel) {
         val ag = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO && it.length > 0 }
         if (ag.isNotEmpty() && ag.none { it.isSelected }) {
             val f = runCatching { ag.first().getTrackFormat(0) }.getOrNull()
-            hud("⚠ لا يوجد مفكّك لصوت هذا الفيلم (" + (f?.sampleMimeType?.substringAfter('/') ?: f?.codecs ?: "?") + ")")
+            hud("⚠ لا يوجد مفكّك لصوت هذا الفيلم (" + (f?.sampleMimeType?.substringAfter('/') ?: f?.codecs ?: "?") + ") — جرّب تفعيل مفكّك FFmpeg من الإعدادات")
         }
     }
 

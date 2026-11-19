@@ -111,10 +111,11 @@ class PreferSoftwareCodecSelector : MediaCodecSelector {
 class NabdRenderersFactory(
     context: Context,
     decoder: DecoderMode,
-    private val delay: AudioDelayProcessor
+    private val delay: AudioDelayProcessor,
+    softAudio: Boolean = false
 ) : DefaultRenderersFactory(context) {
     init {
-        setExtensionRendererMode(EXTENSION_RENDERER_MODE_ON)
+        setExtensionRendererMode(if (softAudio) EXTENSION_RENDERER_MODE_ON else EXTENSION_RENDERER_MODE_OFF)
         setEnableDecoderFallback(true)
         if (decoder == DecoderMode.Software) setMediaCodecSelector(PreferSoftwareCodecSelector())
     }
@@ -166,7 +167,7 @@ fun buildPlayer(ctx: Context, store: Store, live: Boolean): ExoPlayer {
 
     AudioDelayBus.ms = store.audioDelayMs
     val delay = AudioDelayProcessor()
-    val renderers = NabdRenderersFactory(ctx, DecoderMode.of(store.decoderMode), delay)
+    val renderers = NabdRenderersFactory(ctx, DecoderMode.of(store.decoderMode), delay, store.softAudio)
 
     val builder = ExoPlayer.Builder(ctx, renderers)
         .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(DefaultDataSource.Factory(ctx, http)))

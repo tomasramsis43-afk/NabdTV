@@ -138,6 +138,11 @@ class Store(private val ctx: Context) {
         get() = p.getString("pl_subEnc", "auto") ?: "auto"
         set(v) = p.edit().putString("pl_subEnc", v).apply()
 
+    /** FFmpeg software audio decoder (AC3 / DTS ...). Off by default: on some devices it produced a loud whistle. */
+    var softAudio: Boolean
+        get() = g.getBoolean("pl_softAudio", false)
+        set(v) = g.edit().putBoolean("pl_softAudio", v).apply()
+
     var audioBoost: Boolean
         get() = p.getBoolean("pl_boost", false)
         set(v) = p.edit().putBoolean("pl_boost", v).apply()
