@@ -33,6 +33,7 @@ fun MainScreen(vm: AppViewModel) {
     BackHandler(enabled = vm.tab != Tab.Home || vm.query.isNotBlank()) {
         if (vm.query.isNotBlank()) vm.query = "" else vm.selectTab(Tab.Home)
     }
+    LaunchedEffect(vm.query, vm.rev) { vm.runSearch() }
     Column(Modifier.fillMaxSize().background(Bg).padding(horizontal = 20.dp, vertical = 10.dp)) {
         TopBar(vm)
         vm.update?.let { u ->

@@ -128,9 +128,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Global search across live, movies and series (name contains). */
-    val searchResults by derivedStateOf {
-        if (query.isBlank()) emptyList() else (liveList + movieList + seriesList).filter { it.name.contains(query, ignoreCase = true) }.take(300)
+    /** Global search across live, movies and series, answered by the database. */
+    var searchResults by mutableStateOf<List<Channel>>(emptyList()); private set
+    private var searchJob: kotlinx.coroutines.Job? = null
+
+    fun runSearch() {
+        searchJob?.cancel()
+        val q = query
+        if (q.isBlank()) { searchResults = emptyList(); return }
+        searchJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(250)   // debounce typing
+            val h = store.hiddenChannels
+            val rows = withContext(Dispatchers.IO) { repo.dao.search(q) }
+            searchResults = rows.map { it.toChannel() }.filter { ok(it, kindOf(it) == Kind.Live, h) }
+        }
     }
 
     /* ───────── home shelves ───────── */
@@ -246,7 +257,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun refresh() { if (tab == Tab.Movies || tab == Tab.Series) loadVod(tab, true) else load(true) }
 
     private fun resetVod() {
-        repo.clearVod(); movies = emptyList(); series = emptyList(); tab = Tab.Home
+        movies = emptyList(); series = emptyList(); tab = Tab.Home
+        viewModelScope.launch { repo.clearVod() }
     }
 
     fun setUrl(url: String) {

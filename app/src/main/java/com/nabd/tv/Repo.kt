@@ -22,29 +22,39 @@ import java.util.zip.GZIPInputStream
 class Repo(private val ctx: Context, val store: Store) {
     private val prefs = ctx.getSharedPreferences("nabd", Context.MODE_PRIVATE)
     private val cacheFile get() = File(ctx.filesDir, "playlist.m3u")
+    val dao: ItemDao by lazy { AppDb.get(ctx).items() }
+
+    private suspend fun store(list: List<Channel>, kind: String) = dao.replace(kind, list.map { it.toEntity(kind) })
     val http: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(90, TimeUnit.SECONDS)
         .followRedirects(true).followSslRedirects(true)
         .build()
 
-    init { prefs.getString("ua", null)?.let { httpUa = it } }
+    init {
+        prefs.getString("ua", null)?.let { httpUa = it }
+        // One-time upgrade: re-save legacy plain-text login details in encrypted form.
+        for (k in listOf("url", "epg", "xt")) {
+            val v = prefs.getString(k, "") ?: ""
+            if (v.isNotEmpty() && !Secret.isEncrypted(v)) { val e = Secret.enc(v); if (e != v) prefs.edit().putString(k, e).apply() }
+        }
+    }
 
     var playlistUrl: String
-        get() = prefs.getString("url", "") ?: ""
-        set(v) = prefs.edit().putString("url", v).apply()
+        get() = Secret.dec(prefs.getString("url", "") ?: "")
+        set(v) = prefs.edit().putString("url", Secret.enc(v)).apply()
 
     var epgUrl: String
-        get() = prefs.getString("epg", "") ?: ""
-        set(v) = prefs.edit().putString("epg", v).apply()
+        get() = Secret.dec(prefs.getString("epg", "") ?: "")
+        set(v) = prefs.edit().putString("epg", Secret.enc(v)).apply()
 
     var epgManual: Boolean
         get() = prefs.getBoolean("epgManual", false)
         set(v) = prefs.edit().putBoolean("epgManual", v).apply()
 
     var xtream: String
-        get() = prefs.getString("xt", "") ?: ""
-        set(v) = prefs.edit().putString("xt", v).apply()
+        get() = Secret.dec(prefs.getString("xt", "") ?: "")
+        set(v) = prefs.edit().putString("xt", Secret.enc(v)).apply()
 
     var liveExt: String
         get() = prefs.getString("liveExt", "ts") ?: "ts"
@@ -122,7 +132,14 @@ class Repo(private val ctx: Context, val store: Store) {
 
     /** Uses the local cache for instant startup; force = re-download. */
     suspend fun load(force: Boolean): List<Channel> = withContext(Dispatchers.IO) {
-        if (!force && cacheFile.exists()) return@withContext M3uParser.parse(cacheFile.readText())
+        if (!force) {
+            val rows = dao.channels("live")
+            if (rows.isNotEmpty()) return@withContext rows.map { it.toChannel() }
+            if (cacheFile.exists()) {   // first run after upgrading from the file cache
+                val l = M3uParser.parse(cacheFile.readText())
+                if (l.isNotEmpty()) { store(l, "live"); return@withContext l }
+            }
+        }
         var body: String? = null
         if (xtream.isNotBlank()) {
             try { body = loadXtream() } catch (_: Exception) { }
@@ -143,6 +160,7 @@ class Repo(private val ctx: Context, val store: Store) {
         val list = M3uParser.parse(text)
         if (list.isEmpty()) error("رد السيرفر ليس قائمة قنوات. تأكد من البيانات أو الاشتراك. الرد: " + text.trim().take(150))
         cacheFile.writeText(text)
+        store(list, "live")
         if (!epgManual) M3uParser.epgFromHeader(text)?.let { epgUrl = it }
         list
     }
@@ -239,35 +257,35 @@ class Repo(private val ctx: Context, val store: Store) {
         return sb.toString()
     }
 
-    fun clearVod() {
-        File(ctx.filesDir, "movies.m3u").delete()
-        File(ctx.filesDir, "series.m3u").delete()
+    suspend fun clearVod() = withContext(Dispatchers.IO) {
+        dao.clear("movie"); dao.clear("series")
+        File(ctx.filesDir, "movies.m3u").delete(); File(ctx.filesDir, "series.m3u").delete()
     }
 
     suspend fun loadMovies(force: Boolean): List<Channel> = withContext(Dispatchers.IO) {
         val (b, u, p) = xt() ?: return@withContext emptyList()
-        val f = File(ctx.filesDir, "movies.m3u")
-        if (!force && f.exists()) return@withContext M3uParser.parse(f.readText())
+        if (!force) dao.channels("movie").takeIf { it.isNotEmpty() }?.let { r -> return@withContext r.map { it.toChannel() } }
         val names = categories("get_vod_categories")
         val t = buildM3u(JSONArray(api("get_vod_streams")), names, "stream_icon") { s ->
             val id = str(s, "stream_id")
             if (id.isBlank()) null else "$b/movie/$u/$p/$id.${str(s, "container_extension").ifBlank { "mp4" }}"
         }
-        f.writeText(t)
-        M3uParser.parse(t)
+        val list = M3uParser.parse(t)
+        store(list, "movie")
+        list
     }
 
     suspend fun loadSeries(force: Boolean): List<Channel> = withContext(Dispatchers.IO) {
         if (xt() == null) return@withContext emptyList()
-        val f = File(ctx.filesDir, "series.m3u")
-        if (!force && f.exists()) return@withContext M3uParser.parse(f.readText())
+        if (!force) dao.channels("series").takeIf { it.isNotEmpty() }?.let { r -> return@withContext r.map { it.toChannel() } }
         val names = categories("get_series_categories")
         val t = buildM3u(JSONArray(api("get_series")), names, "cover") { s ->
             val id = str(s, "series_id")
             if (id.isBlank()) null else "series:$id"
         }
-        f.writeText(t)
-        M3uParser.parse(t)
+        val list = M3uParser.parse(t)
+        store(list, "series")
+        list
     }
 
     suspend fun loadEpisodes(seriesId: Int): List<Episode> = withContext(Dispatchers.IO) {
