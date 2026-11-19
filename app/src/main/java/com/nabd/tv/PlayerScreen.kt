@@ -156,6 +156,26 @@ fun PlayerScreen(vm: AppViewModel) {
         onDispose { act?.window?.let { w -> val lp = w.attributes; lp.screenBrightness = -1f; w.attributes = lp } }
     }
 
+    // Background playback: a foreground service keeps the process alive (with a Stop notification) while a stream plays.
+    LaunchedEffect(ch.url) { PlaybackService.start(ctx, ch.name) }
+    DisposableEffect(Unit) {
+        PlaybackBus.stop = { vm.stop() }
+        onDispose { PlaybackBus.stop = null; PlaybackService.stop(ctx) }
+    }
+    // When the app leaves the screen (not PiP) drop the video track: audio keeps playing, data and battery are saved.
+    DisposableEffect(act) {
+        val lc = (act as? androidx.lifecycle.LifecycleOwner)?.lifecycle
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            val off = e == androidx.lifecycle.Lifecycle.Event.ON_STOP
+            if (off || e == androidx.lifecycle.Lifecycle.Event.ON_START) {
+                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, off).build()
+            }
+        }
+        lc?.addObserver(obs)
+        onDispose { lc?.removeObserver(obs) }
+    }
+
     KeepScreenOn()
 
     // Save resume position when leaving, and every 15 s while a VOD plays.
@@ -522,6 +542,10 @@ private fun playerMenu(
         items += "رجوع 30 ثانية (تأخير البث)" to { rewindLive(vm, player, ch.url, 30) }
         items += "رجوع دقيقتين" to { rewindLive(vm, player, ch.url, 120) }
         items += "العودة للبث المباشر" to { player.seekToDefaultPosition(); player.playWhenReady = true }
+    }
+    items += "تشغيل بالصوت فقط (خلفية)" to {
+        val a = view?.context?.findActivity()
+        if (a == null) vm.say("غير متاح الآن") else a.moveTaskToBack(true)
     }
     items += "فتح في مشغّل خارجي (VLC / MX)" to {
         val ctx = view?.context
