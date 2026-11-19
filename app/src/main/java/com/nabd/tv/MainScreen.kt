@@ -68,6 +68,7 @@ private fun TopBar(vm: AppViewModel) {
             placeholder = { androidx.compose.material3.Text("بحث...") }
         )
         MBtn(if (vm.loading || vm.vodLoading) "..." else "تحديث", filled = false) { vm.refresh() }
+        if (vm.profileList.size > 1) MBtn("👤 ${vm.profile.name}", filled = false) { vm.openProfiles() }
         MBtn("⚙", filled = false) { vm.openSettings() }
     }
 }

@@ -13,7 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-enum class Screen { Setup, Main, Player, Detail, MultiView, Settings }
+enum class Screen { Setup, Profiles, Main, Player, Detail, MultiView, Settings }
 enum class Tab(val label: String) {
     Home("الرئيسية"), Live("مباشر"), Movies("أفلام"), Series("مسلسلات"), Guide("الدليل"), Recordings("التسجيلات")
 }
@@ -42,7 +42,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val health = HealthChecker(repo, store)
 
     /* ───────── navigation ───────── */
-    var screen by mutableStateOf(if (repo.playlistUrl.isBlank()) Screen.Setup else Screen.Main)
+    var screen by mutableStateOf(when {
+        repo.playlistUrl.isBlank() -> Screen.Setup
+        store.profiles().size > 1 -> Screen.Profiles
+        else -> Screen.Main
+    })
         private set
     var tab by mutableStateOf(runCatching { Tab.valueOf(store.startSection) }.getOrDefault(Tab.Home))
         private set
@@ -53,6 +57,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     private fun bump() { rev++ }
 
+    var inPip by mutableStateOf(false)
     var message by mutableStateOf<String?>(null)
     var pin by mutableStateOf<PinRequest?>(null)
     var menu by mutableStateOf<MenuRequest?>(null)
@@ -262,7 +267,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openSetup() { back = Screen.Main; screen = Screen.Setup }
     fun closeSetup() { if (all.isNotEmpty()) screen = Screen.Main }
-    fun openSettings() { screen = Screen.Settings }
+    fun openSettings() { if (profile.kids) requirePin("أدخل الرمز السري") { screen = Screen.Settings } else screen = Screen.Settings }
     fun closeSettings() { screen = Screen.Main; bump() }
 
     var diag by mutableStateOf<String?>(null); private set
@@ -273,6 +278,35 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             diag = try { repo.diagnose() } catch (e: Exception) { "فشل الفحص: ${e.message}" }
             diagBusy = false
         }
+    }
+
+    /* ───────── profiles ───────── */
+    var profile by mutableStateOf(store.currentProfile); private set
+    var profileList by mutableStateOf(store.profiles()); private set
+
+    private fun reloadProfileState() {
+        profile = store.currentProfile; profileList = store.profiles()
+        favs = store.favorites; history = store.history()
+        tab = runCatching { Tab.valueOf(store.startSection) }.getOrDefault(Tab.Home)
+        group = GROUP_ALL; query = ""
+        parental.lock(); bump(); refreshRecs()
+    }
+
+    private fun doSwitch(id: String) { store.switchProfile(id); reloadProfileState(); screen = Screen.Main }
+
+    /** Leaving a kids profile needs the PIN (when one is set), so a child cannot hop to an adult profile. */
+    fun switchProfile(id: String) {
+        if (id == profile.id) { screen = Screen.Main; return }
+        if (profile.kids && store.hasPin && !parental.unlocked) pin = PinRequest("أدخل الرمز للتبديل") { doSwitch(id) }
+        else doSwitch(id)
+    }
+
+    fun openProfiles() { reloadProfileState(); screen = Screen.Profiles }
+
+    fun addProfile(name: String, kids: Boolean) { store.addProfile(name, kids); profileList = store.profiles() }
+
+    fun deleteProfile(id: String) {
+        requirePin("أدخل الرمز السري") { store.deleteProfile(id); reloadProfileState() }
     }
 
     /* ───────── parental control ───────── */

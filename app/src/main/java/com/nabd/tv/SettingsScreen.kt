@@ -63,6 +63,21 @@ fun SettingsScreen(vm: AppViewModel) {
             }
         }
 
+        Section("الملفات الشخصية") {
+            Row2("الملف الحالي", vm.profile.name + if (vm.profile.kids) " (أطفال)" else "") { vm.openProfiles() }
+            Row2("إضافة ملف") {
+                vm.prompt = PromptRequest("اسم الملف", "") { n ->
+                    if (n.isNotBlank()) vm.menu = MenuRequest(n.trim(), listOf(
+                        "ملف عادي" to { vm.addProfile(n, false); tick++ },
+                        "ملف أطفال" to { vm.addProfile(n, true); tick++ }
+                    ))
+                }
+            }
+            vm.profileList.filter { it.id != "main" }.forEach { pr ->
+                Row2("حذف: ${pr.name}") { vm.deleteProfile(pr.id); tick++ }
+            }
+        }
+
         Section("التحكم الأبوي") {
             Row2(if (s.hasPin) "تغيير الرمز السري" else "تعيين رمز سري") {
                 val set = { vm.prompt = PromptRequest("الرمز الجديد (4–6 أرقام)", "") { c -> if (c.length in 4..6 && c.all { it.isDigit() }) upd { vm.setPin(c) } else vm.say("الرمز يجب أن يكون 4–6 أرقام") } }

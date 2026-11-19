@@ -2,6 +2,7 @@ package com.nabd.tv
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -88,6 +89,10 @@ fun PlayerScreen(vm: AppViewModel) {
     var digits by remember { mutableStateOf("") }
     var startedAt by remember { mutableLongStateOf(0L) }
     var nextEp by remember { mutableStateOf<Episode?>(null) }
+    var pos by remember { mutableLongStateOf(0L) }
+    val seriesKey = if (vod && kindOf(ch) == Kind.Series) vm.detail?.url else null
+    val introEnd = seriesKey?.let { vm.store.introEnd(it) } ?: 0L
+    val showSkip = introEnd > 0 && pos < introEnd - 1500
     val chUrl by rememberUpdatedState(ch.url)
     val chRef by rememberUpdatedState(ch)
 
@@ -161,6 +166,9 @@ fun PlayerScreen(vm: AppViewModel) {
     }
 
     LaunchedEffect(ch.url, ping) { overlay = true; delay(3500); overlay = false }
+    LaunchedEffect(seriesKey, ch.url) {
+        while (seriesKey != null) { pos = player.currentPosition; delay(500) }
+    }
 
     // Digits typed on the remote → jump to that channel number after a short pause.
     LaunchedEffect(digits) {
@@ -191,7 +199,7 @@ fun PlayerScreen(vm: AppViewModel) {
     Box(
         Modifier.fillMaxSize().background(Color.Black)
             .focusRequester(focus).focusable()
-            .pointerInput(Unit) { detectTapGestures(onTap = { ping++ }, onLongPress = { playerMenu(vm, player, view, ch, ratio, speed, { ratio = it }, { speed = it }) }) }
+            .pointerInput(Unit) { detectTapGestures(onTap = { ping++ }, onLongPress = { playerMenu(vm, player, view, ch, ratio, speed, { ratio = it }, { speed = it }, { enterPip(ctx) }, seriesKey) }) }
             .pointerInput(Unit) {
                 var dy = 0f
                 detectVerticalDragGestures(
@@ -212,7 +220,8 @@ fun PlayerScreen(vm: AppViewModel) {
                     Key.DirectionUp, Key.ChannelUp -> if (vm.zapEnabled) { vm.zap(1); true } else false
                     Key.DirectionDown, Key.ChannelDown -> if (vm.zapEnabled) { vm.zap(-1); true } else false
                     Key.DirectionCenter, Key.Enter -> {
-                        if (!live) player.playWhenReady = !player.playWhenReady
+                        if (showSkip) player.seekTo(introEnd)
+                        else if (!live) player.playWhenReady = !player.playWhenReady
                         ping++; true
                     }
                     Key.DirectionRight -> {
@@ -220,7 +229,7 @@ fun PlayerScreen(vm: AppViewModel) {
                         ping++; true
                     }
                     Key.DirectionLeft -> if (!live) { player.seekTo(maxOf(0L, player.currentPosition - 10_000)); true } else false
-                    Key.Menu, Key.Info, Key.M -> { playerMenu(vm, player, view, ch, ratio, speed, { ratio = it }, { speed = it }); true }
+                    Key.Menu, Key.Info, Key.M -> { playerMenu(vm, player, view, ch, ratio, speed, { ratio = it }, { speed = it }, { enterPip(ctx) }, seriesKey); true }
                     Key.MediaNext -> { if (vod) vm.playNext(); true }
                     else -> false
                 }
@@ -236,10 +245,17 @@ fun PlayerScreen(vm: AppViewModel) {
                     view = this
                 }
             },
-            update = { it.resizeMode = ratios[ratio].second }
+            update = { it.resizeMode = ratios[ratio].second; it.useController = !live && !vm.inPip }
         )
 
-        if (digits.isNotEmpty()) Text(digits, fontSize = 44.sp, color = Accent, modifier = Modifier.align(Alignment.TopEnd).padding(32.dp))
+        if (digits.isNotEmpty() && !vm.inPip) Text(digits, fontSize = 44.sp, color = Accent, modifier = Modifier.align(Alignment.TopEnd).padding(32.dp))
+
+        if (showSkip && !vm.inPip) {
+            Box(
+                Modifier.align(Alignment.BottomEnd).padding(36.dp)
+                    .background(Color(0xCC000000)).clickable { player.seekTo(introEnd) }.padding(horizontal = 18.dp, vertical = 12.dp)
+            ) { Text("⏭ تخطي المقدمة  (OK)", color = Accent, fontSize = 15.sp) }
+        }
 
         nextEp?.let { e ->
             Column(Modifier.align(Alignment.BottomEnd).padding(32.dp).background(Color(0xDD000000)).padding(16.dp)) {
@@ -251,7 +267,7 @@ fun PlayerScreen(vm: AppViewModel) {
             }
         }
 
-        if ((overlay && live) || status.isNotEmpty()) {
+        if (!vm.inPip && ((overlay && live) || status.isNotEmpty())) {
             Row(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color(0xCC000000)).padding(24.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -282,7 +298,8 @@ fun PlayerScreen(vm: AppViewModel) {
 @OptIn(UnstableApi::class)
 private fun playerMenu(
     vm: AppViewModel, player: ExoPlayer, view: PlayerView?, ch: Channel,
-    ratio: Int, speed: Float, setRatio: (Int) -> Unit, setSpeed: (Float) -> Unit
+    ratio: Int, speed: Float, setRatio: (Int) -> Unit, setSpeed: (Float) -> Unit,
+    onPip: () -> Unit, seriesKey: String?
 ) {
     val items = ArrayList<Pair<String, () -> Unit>>()
     fun tracks(type: Int) = player.currentTracks.groups.filter { it.type == type && it.length > 0 }
@@ -319,6 +336,13 @@ private fun playerMenu(
                 }
             }) }
     }
+    items += "نافذة عائمة (PiP)" to onPip
+    if (seriesKey != null) {
+        items += "حفظ نهاية المقدمة هنا" to {
+            vm.store.setIntroEnd(seriesKey, player.currentPosition); vm.say("سيظهر زر تخطي المقدمة في حلقات هذا المسلسل")
+        }
+        if (vm.store.introEnd(seriesKey) > 0) items += "مسح المقدمة المحفوظة" to { vm.store.setIntroEnd(seriesKey, 0L) }
+    }
     items += "نسبة العرض: ${ratios[ratio].first}" to { setRatio((ratio + 1) % ratios.size) }
     if (vm.playMode != PlayMode.Live) items += "السرعة: ${speed}x" to {
         val steps = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
@@ -334,4 +358,12 @@ private fun playerMenu(
         }
     }
     vm.menu = MenuRequest(ch.name, items)
+}
+
+
+/** Enters Picture-in-Picture if the device supports it. */
+fun enterPip(ctx: android.content.Context) {
+    var c = ctx
+    while (c is android.content.ContextWrapper && c !is android.app.Activity) c = c.baseContext
+    (c as? MainActivity)?.enterPip()
 }

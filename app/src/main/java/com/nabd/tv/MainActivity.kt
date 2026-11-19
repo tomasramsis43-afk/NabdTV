@@ -13,6 +13,29 @@ class MainActivity : ComponentActivity() {
     private val vm: AppViewModel by viewModels()
     private val notifPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
+    /** Floating window for the player (also used automatically when the user presses Home during playback). */
+    fun enterPip(): Boolean {
+        if (Build.VERSION.SDK_INT < 26 || !packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
+            vm.say("الجهاز لا يدعم النافذة العائمة"); return false
+        }
+        return try {
+            enterPictureInPictureMode(
+                android.app.PictureInPictureParams.Builder().setAspectRatio(android.util.Rational(16, 9)).build()
+            )
+            true
+        } catch (e: Exception) { false }
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (vm.screen == Screen.Player) enterPip()
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        vm.inPip = isInPictureInPictureMode
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Recorder.ensureChannel(this)
@@ -25,6 +48,7 @@ class MainActivity : ComponentActivity() {
 fun App(vm: AppViewModel) {
     when (vm.screen) {
         Screen.Setup -> SetupScreen(vm)
+        Screen.Profiles -> ProfilesScreen(vm)
         Screen.Main -> MainScreen(vm)
         Screen.Player -> PlayerScreen(vm)
         Screen.Detail -> DetailScreen(vm)

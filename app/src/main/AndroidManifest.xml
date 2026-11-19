@@ -22,7 +22,9 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|uiMode"
+            android:supportsPictureInPicture="true"
+            android:resizeableActivity="true"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|smallestScreenSize|screenLayout|uiMode"
             android:screenOrientation="sensorLandscape">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

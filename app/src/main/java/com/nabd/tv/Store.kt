@@ -7,19 +7,64 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 
 /** Local persistence (SharedPreferences + JSON). Nothing leaves the device. */
-class Store(ctx: Context) {
-    private val p = ctx.getSharedPreferences("nabd2", Context.MODE_PRIVATE)
+class Store(private val ctx: Context) {
+    /** Global data shared by every profile (provider-level state, PIN, recordings, health…). */
+    private val g = ctx.getSharedPreferences("nabd2", Context.MODE_PRIVATE)
+    /** Per-profile data. The "main" profile keeps using the original file, so nothing is lost on upgrade. */
+    private var p = prefsFor(g.getString("profileId", "main") ?: "main")
+
+    private fun prefsFor(id: String) =
+        if (id == "main") g else ctx.getSharedPreferences("nabd2_p_$id", Context.MODE_PRIVATE)
+
+    data class Profile(val id: String, val name: String, val kids: Boolean)
+
+    fun profiles(): List<Profile> {
+        val out = ArrayList<Profile>()
+        runCatching {
+            val a = JSONArray(g.getString("profiles", "[]"))
+            for (i in 0 until a.length()) a.getJSONObject(i).let { out += Profile(it.getString("id"), it.optString("n"), it.optBoolean("k")) }
+        }
+        if (out.none { it.id == "main" }) out.add(0, Profile("main", "الرئيسي", false))
+        return out
+    }
+
+    private fun saveProfiles(l: List<Profile>) {
+        val a = JSONArray()
+        l.forEach { a.put(JSONObject().put("id", it.id).put("n", it.name).put("k", it.kids)) }
+        g.edit().putString("profiles", a.toString()).apply()
+    }
+
+    val currentProfile: Profile
+        get() { val id = g.getString("profileId", "main") ?: "main"; return profiles().firstOrNull { it.id == id } ?: profiles().first() }
+
+    fun addProfile(name: String, kids: Boolean) {
+        val id = java.lang.Long.toString(System.currentTimeMillis(), 36)
+        saveProfiles(profiles() + Profile(id, name.trim().ifEmpty { "ملف" }, kids))
+    }
+
+    fun deleteProfile(id: String) {
+        if (id == "main") return
+        saveProfiles(profiles().filter { it.id != id })
+        runCatching { ctx.deleteSharedPreferences("nabd2_p_$id") }
+        if (g.getString("profileId", "main") == id) switchProfile("main")
+    }
+
+    fun switchProfile(id: String) {
+        g.edit().putString("profileId", id).apply()
+        p = prefsFor(id)
+        setCache.clear(); histCache = null
+    }
 
     /* ---------- simple settings ---------- */
     var startSection: String
         get() = p.getString("startSection", "Home") ?: "Home"
         set(v) = p.edit().putString("startSection", v).apply()
     var hideDead: Boolean
-        get() = p.getBoolean("hideDead", true)
-        set(v) = p.edit().putBoolean("hideDead", v).apply()
+        get() = g.getBoolean("hideDead", true)
+        set(v) = g.edit().putBoolean("hideDead", v).apply()
     var autoRefresh: Boolean
-        get() = p.getBoolean("autoRefresh", true)
-        set(v) = p.edit().putBoolean("autoRefresh", v).apply()
+        get() = g.getBoolean("autoRefresh", true)
+        set(v) = g.edit().putBoolean("autoRefresh", v).apply()
     var prefSubLang: String
         get() = p.getString("subLang", "ar") ?: "ar"
         set(v) = p.edit().putString("subLang", v).apply()
@@ -36,14 +81,14 @@ class Store(ctx: Context) {
         get() = p.getBoolean("subBg", true)
         set(v) = p.edit().putBoolean("subBg", v).apply()
     var catchupOffsetHours: Int
-        get() = p.getInt("catchupOffset", 0)
-        set(v) = p.edit().putInt("catchupOffset", v).apply()
+        get() = g.getInt("catchupOffset", 0)
+        set(v) = g.edit().putInt("catchupOffset", v).apply()
     var tmdbKey: String
-        get() = p.getString("tmdbKey", "") ?: ""
-        set(v) = p.edit().putString("tmdbKey", v.trim()).apply()
+        get() = g.getString("tmdbKey", "") ?: ""
+        set(v) = g.edit().putString("tmdbKey", v.trim()).apply()
     var filterWords: String
-        get() = p.getString("filterWords", "") ?: ""
-        set(v) = p.edit().putString("filterWords", v).apply()
+        get() = g.getString("filterWords", "") ?: ""
+        set(v) = g.edit().putString("filterWords", v).apply()
     val filterList: List<String> get() = filterWords.split(',', '،', '\n').map { it.trim() }.filter { it.isNotEmpty() }
 
     /* ---------- string sets ---------- */
@@ -74,39 +119,43 @@ class Store(ctx: Context) {
 
     /* ---------- manual EPG overrides: channel url -> xmltv channel id ---------- */
     fun epgOverrides(): Map<String, String> {
-        val o = JSONObject(p.getString("epgOverrides", "{}") ?: "{}")
+        val o = JSONObject(g.getString("epgOverrides", "{}") ?: "{}")
         val m = HashMap<String, String>()
         for (k in o.keys()) m[k] = o.optString(k)
         return m
     }
     fun setEpgOverride(channelUrl: String, xmlId: String?) {
-        val o = JSONObject(p.getString("epgOverrides", "{}") ?: "{}")
+        val o = JSONObject(g.getString("epgOverrides", "{}") ?: "{}")
         if (xmlId.isNullOrBlank()) o.remove(channelUrl) else o.put(channelUrl, xmlId)
-        p.edit().putString("epgOverrides", o.toString()).apply()
+        g.edit().putString("epgOverrides", o.toString()).apply()
     }
 
     /* ---------- parental control ---------- */
     var parentalLevel: Maturity
-        get() = runCatching { Maturity.valueOf(p.getString("parentalLevel", "Teen")!!) }.getOrDefault(Maturity.Teen)
+        get() = if (currentProfile.kids) Maturity.Kids else runCatching { Maturity.valueOf(p.getString("parentalLevel", "Teen")!!) }.getOrDefault(Maturity.Teen)
         set(v) = p.edit().putString("parentalLevel", v.name).apply()
     var hideLocked: Boolean
         get() = p.getBoolean("hideLocked", false)
         set(v) = p.edit().putBoolean("hideLocked", v).apply()
-    val hasPin: Boolean get() = !p.getString("pinHash", "").isNullOrEmpty()
+    val hasPin: Boolean get() = !g.getString("pinHash", "").isNullOrEmpty()
 
     private fun hash(pin: String, salt: String): String =
         MessageDigest.getInstance("SHA-256").digest((salt + pin).toByteArray()).joinToString("") { "%02x".format(it) }
 
     fun setPin(pin: String) {
         val salt = ByteArray(12).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
-        p.edit().putString("pinSalt", salt).putString("pinHash", hash(pin, salt)).apply()
+        g.edit().putString("pinSalt", salt).putString("pinHash", hash(pin, salt)).apply()
     }
-    fun clearPin() { p.edit().remove("pinSalt").remove("pinHash").apply() }
+    fun clearPin() { g.edit().remove("pinSalt").remove("pinHash").apply() }
     fun checkPin(pin: String): Boolean {
-        val salt = p.getString("pinSalt", "") ?: ""
-        val h = p.getString("pinHash", "") ?: ""
+        val salt = g.getString("pinSalt", "") ?: ""
+        val h = g.getString("pinHash", "") ?: ""
         return h.isNotEmpty() && hash(pin, salt) == h
     }
+
+    /* ---------- learned intro end (ms) per series ---------- */
+    fun introEnd(seriesKey: String): Long = p.getLong("intro_$seriesKey", 0L)
+    fun setIntroEnd(seriesKey: String, ms: Long) = p.edit().putLong("intro_$seriesKey", ms).apply()
 
     /* ---------- watch history ---------- */
     private var histCache: LinkedHashMap<String, HistoryEntry>? = null
@@ -161,7 +210,7 @@ class Store(ctx: Context) {
         healthCache?.let { return it }
         val m = HashMap<String, HealthRecord>()
         runCatching {
-            val o = JSONObject(p.getString("health", "{}"))
+            val o = JSONObject(g.getString("health", "{}"))
             for (k in o.keys()) {
                 val r = o.getJSONObject(k)
                 m[k] = HealthRecord(
@@ -184,7 +233,7 @@ class Store(ctx: Context) {
         // keep the store bounded: drop oldest beyond 6000 entries
         val keep = if (m.size > 6000) m.entries.sortedByDescending { it.value.checked }.take(6000) else m.entries.toList()
         keep.forEach { (k, r) -> o.put(k, JSONObject().put("s", r.state.name).put("l", r.latencyMs).put("t", r.checked).put("f", r.failures)) }
-        p.edit().putString("health", o.toString()).apply()
+        g.edit().putString("health", o.toString()).apply()
     }
 
     fun clearHealth() { healthMap().clear(); saveHealth() }
@@ -193,7 +242,7 @@ class Store(ctx: Context) {
     fun recordings(): List<Recording> {
         val out = ArrayList<Recording>()
         runCatching {
-            val a = JSONArray(p.getString("recordings", "[]"))
+            val a = JSONArray(g.getString("recordings", "[]"))
             for (i in 0 until a.length()) {
                 val o = a.getJSONObject(i)
                 out += Recording(
@@ -213,14 +262,14 @@ class Store(ctx: Context) {
             a.put(JSONObject().put("id", r.id).put("cn", r.channelName).put("cu", r.channelUrl).put("t", r.title)
                 .put("s", r.start).put("e", r.stop).put("st", r.status.name).put("f", r.file ?: ""))
         }
-        p.edit().putString("recordings", a.toString()).apply()
+        g.edit().putString("recordings", a.toString()).apply()
     }
 
     /* ---------- reminders ---------- */
     fun reminders(): List<Reminder> {
         val out = ArrayList<Reminder>()
         runCatching {
-            val a = JSONArray(p.getString("reminders", "[]"))
+            val a = JSONArray(g.getString("reminders", "[]"))
             for (i in 0 until a.length()) {
                 val o = a.getJSONObject(i)
                 out += Reminder(o.getString("id"), o.optString("c"), o.optString("t"), o.optLong("s"))
@@ -232,7 +281,7 @@ class Store(ctx: Context) {
     fun saveReminders(list: List<Reminder>) {
         val a = JSONArray()
         list.forEach { a.put(JSONObject().put("id", it.id).put("c", it.channelName).put("t", it.title).put("s", it.start)) }
-        p.edit().putString("reminders", a.toString()).apply()
+        g.edit().putString("reminders", a.toString()).apply()
     }
 
     /* ---------- custom groups: name -> channel urls ---------- */
