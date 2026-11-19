@@ -48,10 +48,14 @@ fun SettingsScreen(vm: AppViewModel) {
     val observed = tick
     if (observed < 0) return
 
-    Column(Modifier.fillMaxSize().background(Bg).verticalScroll(rememberScrollState()).padding(horizontal = 40.dp, vertical = 24.dp)) {
+    Column(Modifier.fillMaxSize().appBackground().verticalScroll(rememberScrollState()).padding(horizontal = if (LocalDevice.current.tv) 40.dp else 16.dp, vertical = 24.dp).widthIn(max = 900.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("الإعدادات", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Ink)
             MBtn("رجوع", filled = false) { vm.closeSettings() }
+        }
+
+        Section("المظهر") {
+            Row2("وضع التصميم", if (vm.darkPref) "داكن" else "فاتح") { vm.setDark(!vm.darkPref) }
         }
 
         Section("المصدر") {
