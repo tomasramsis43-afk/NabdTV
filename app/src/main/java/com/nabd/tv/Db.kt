@@ -86,9 +86,11 @@ suspend fun ItemDao.search(query: String, limit: Int = 300): List<ChannelRow> {
     if (tokens.isEmpty()) tokens = query.lowercase().split(' ').filter { it.isNotBlank() }
     if (tokens.isEmpty()) return emptyList()
     val where = tokens.joinToString(" AND ") { "(norm LIKE ? OR normGrp LIKE ?)" }
-    val args = tokens.flatMap { listOf("%$it%", "%$it%") }.toTypedArray<Any>()
+    val bind = ArrayList<Any>()
+    tokens.forEach { bind.add("%$it%"); bind.add("%$it%") }
+    bind.add("${tokens.first()}%")
     // Names that START with the first word rank first, then by position in the list.
     val sql = "SELECT idx AS id, name, url, logo, grp AS `group`, tvgId, archiveDays, catchupSource, number, rating FROM items " +
         "WHERE $where ORDER BY (CASE WHEN norm LIKE ? THEN 0 ELSE 1 END), idx LIMIT $limit"
-    return raw(SimpleSQLiteQuery(sql, args + arrayOf<Any>("${tokens.first()}%")))
+    return raw(SimpleSQLiteQuery(sql, bind.toTypedArray()))
 }
