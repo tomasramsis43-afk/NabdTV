@@ -25,6 +25,8 @@ jobs:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
         run: |
           if [ -n "$KEYSTORE_B64" ]; then echo "$KEYSTORE_B64" | base64 -d > app/nabd-release.jks; fi
+      - name: Unit tests
+        run: gradle testDebugUnitTest --no-daemon
       - name: Build
         run: |
           set +e

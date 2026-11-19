@@ -66,10 +66,29 @@ class HealthChecker(private val repo: Repo, private val store: Store) {
     fun alternatives(current: Channel, all: List<Channel>): List<Channel> {
         val key = Classifier.normalize(current.name)
         if (key.isEmpty()) return emptyList()
-        val rank = mapOf(Health.Ok to 0, Health.Unknown to 1, Health.Slow to 2)
         return all.asSequence()
             .filter { it.url != current.url && Classifier.normalize(it.name) == key && state(it.url) != Health.Dead }
-            .sortedBy { rank[state(it.url)] ?: 3 }
+            .sortedBy { score(it.url) }
             .take(5).toList()
+    }
+
+    /**
+     * Lower is better. Combines the health state, how fast the stream started last time and how often it failed,
+     * so a source that always starts in 1 s beats one that is merely "not known to be dead".
+     * Unknown sources sit between a good Ok and a Slow one, so they still get a chance to be measured.
+     */
+    fun score(url: String): Long {
+        val r = store.health(url) ?: return UNKNOWN_SCORE
+        val base = when (state(url)) {
+            Health.Ok -> 0L
+            Health.Unknown -> UNKNOWN_SCORE
+            Health.Slow -> 20_000L
+            Health.Dead -> 100_000L
+        }
+        return base + r.latencyMs.coerceIn(0, 15_000) + r.failures * 3_000L
+    }
+
+    private companion object {
+        const val UNKNOWN_SCORE = 8_000L
     }
 }
