@@ -233,6 +233,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 all = repo.load(force)
                 group = GROUP_ALL
                 screen = Screen.Main
+                preloadVod()
                 launch {
                     epg = repo.loadEpg(all, force)
                     Recorder.syncAuto(ctx, store, all, epg)
@@ -248,18 +249,41 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Tabs whose VOD list is being fetched right now (prevents duplicate / parallel loads of the same list). */
+    private val vodActive = HashSet<Tab>()
+    private var vodBusy = 0
+    private var clearJob: kotlinx.coroutines.Job? = null
+
+    private suspend fun fetchVod(t: Tab, force: Boolean, silent: Boolean) {
+        if (!vodActive.add(t)) return
+        vodBusy++; vodLoading = true
+        if (!silent) error = null
+        try {
+            if (t == Tab.Movies) movies = repo.loadMovies(force) else series = repo.loadSeries(force)
+            refreshRecs()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (!silent) error = friendly(e)
+        } catch (e: OutOfMemoryError) {
+            if (!silent) error = "الذاكرة لا تكفي لتحميل قائمة بهذا الحجم"
+        } finally {
+            vodActive.remove(t)
+            vodBusy--; vodLoading = vodBusy > 0
+        }
+    }
+
     private fun loadVod(t: Tab, force: Boolean) {
+        viewModelScope.launch { clearJob?.join(); fetchVod(t, force, silent = false) }
+    }
+
+    /** Movies and series load automatically in the background right after the live list, so Home shelves are filled without visiting those tabs. */
+    private fun preloadVod() {
+        if (!hasXtream) return
         viewModelScope.launch {
-            vodLoading = true; error = null
-            try {
-                if (t == Tab.Movies) movies = repo.loadMovies(force) else series = repo.loadSeries(force)
-                refreshRecs()
-            } catch (e: Exception) {
-                error = friendly(e)
-            } catch (e: OutOfMemoryError) {
-                error = "الذاكرة لا تكفي لتحميل قائمة بهذا الحجم"
-            }
-            vodLoading = false
+            clearJob?.join()
+            if (movies.isEmpty()) fetchVod(Tab.Movies, false, silent = true)
+            if (series.isEmpty()) fetchVod(Tab.Series, false, silent = true)
         }
     }
 
@@ -275,7 +299,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun resetVod() {
         movies = emptyList(); series = emptyList(); tab = Tab.Home
-        viewModelScope.launch { repo.clearVod() }
+        clearJob = viewModelScope.launch { repo.clearVod() }
     }
 
     fun setUrl(url: String) {
