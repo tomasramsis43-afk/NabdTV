@@ -24,7 +24,7 @@ private val avatarColors = listOf(Color(0xFF00E5A0), Color(0xFF4FC3F7), Color(0x
 @Composable
 fun ProfilesScreen(vm: AppViewModel) {
     Column(Modifier.fillMaxSize().background(Bg).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Text("من يشاهد؟", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text("من يشاهد؟", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Ink)
         Spacer(Modifier.height(28.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
             items(vm.profileList, key = { it.id }) { p ->
@@ -35,7 +35,7 @@ fun ProfilesScreen(vm: AppViewModel) {
                             contentAlignment = Alignment.Center
                         ) { Text(if (p.kids) "★" else p.name.take(1), fontSize = 34.sp, color = Color.Black, fontWeight = FontWeight.Bold) }
                         Spacer(Modifier.height(10.dp))
-                        Text(p.name, fontSize = 15.sp, color = Color.White, maxLines = 1)
+                        Text(p.name, fontSize = 15.sp, color = Ink, maxLines = 1)
                         if (p.kids) Text("أطفال", fontSize = 11.sp, color = Accent)
                     }
                 }

@@ -29,7 +29,7 @@ fun Overlays(vm: AppViewModel) {
             LazyColumn(Modifier.widthIn(min = 260.dp).heightIn(max = 320.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(m.items) { (label, act) ->
                     Focusable(onClick = { vm.menu = null; act() }, modifier = Modifier.fillMaxWidth()) {
-                        Text(label, color = Color.White, fontSize = 15.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp))
+                        Text(label, color = Ink, fontSize = 15.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp))
                     }
                 }
             }

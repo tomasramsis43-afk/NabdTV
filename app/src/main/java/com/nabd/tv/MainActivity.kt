@@ -81,7 +81,7 @@ fun App(vm: AppViewModel) {
     // Video screens use every pixel (even under the camera notch); the rest keep clear of the notch and the keyboard.
     val full = vm.screen == Screen.Player || vm.screen == Screen.MultiView
     Box(
-        Modifier.fillMaxSize().background(Bg)
+        Modifier.fillMaxSize().appBackground()
             .then(if (full) Modifier else Modifier.windowInsetsPadding(WindowInsets.displayCutout).imePadding())
     ) {
         when (vm.screen) {

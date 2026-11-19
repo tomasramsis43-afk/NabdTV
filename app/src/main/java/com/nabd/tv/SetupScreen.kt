@@ -52,7 +52,7 @@ fun SetupScreen(vm: AppViewModel) {
         if (vm.hasXtream) {
             Spacer(Modifier.height(8.dp))
             MBtn(if (vm.diagBusy) "جارٍ الفحص..." else "فحص الاتصال والقنوات", filled = false) { vm.runDiag() }
-            vm.diag?.let { Text(it, fontSize = 13.sp, color = Color.White) }
+            vm.diag?.let { Text(it, fontSize = 13.sp, color = Ink) }
         }
         Spacer(Modifier.height(12.dp))
         MBtn("إعداد من الموبايل (QR)", filled = false) { vm.startPairing() }

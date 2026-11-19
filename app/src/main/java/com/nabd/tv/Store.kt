@@ -59,6 +59,9 @@ class Store(private val ctx: Context) {
     var startSection: String
         get() = p.getString("startSection", "Home") ?: "Home"
         set(v) = p.edit().putString("startSection", v).apply()
+    var darkMode: Boolean
+        get() = g.getBoolean("darkMode", false)
+        set(v) = g.edit().putBoolean("darkMode", v).apply()
     var hideDead: Boolean
         get() = g.getBoolean("hideDead", true)
         set(v) = g.edit().putBoolean("hideDead", v).apply()
@@ -246,6 +249,12 @@ class Store(private val ctx: Context) {
     }
 
     fun clearHealth() { healthMap().clear(); saveHealth() }
+
+    /** (healthy, tested): Ok and Slow count as working. */
+    fun healthStats(): Pair<Int, Int> {
+        val known = healthMap().values.filter { it.state != Health.Unknown }
+        return known.count { it.state == Health.Ok || it.state == Health.Slow } to known.size
+    }
 
     /* ---------- recordings ---------- */
     fun recordings(): List<Recording> {

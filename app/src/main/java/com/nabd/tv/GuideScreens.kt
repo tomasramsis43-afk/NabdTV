@@ -37,7 +37,7 @@ fun GuideTab(vm: AppViewModel) {
                         AsyncImage(model = c.logo, contentDescription = null, modifier = Modifier.size(34.dp))
                         Spacer(Modifier.width(8.dp))
                         Column {
-                            Text(c.name, fontSize = 13.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(c.name, fontSize = 13.sp, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(vm.nowNext(c).first?.title ?: "", fontSize = 11.sp, color = Accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
@@ -58,7 +58,7 @@ fun ProgrammeList(vm: AppViewModel, c: Channel, modifier: Modifier = Modifier) {
     val firstCurrent = list.indexOfFirst { it.stop > now }.coerceAtLeast(0)
     LaunchedEffect(c.url) { runCatching { state.scrollToItem(firstCurrent) } }
     Column(modifier) {
-        Text(c.name, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text(c.name, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Ink)
         Spacer(Modifier.height(6.dp))
         LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(6.dp)) {
             items(list) { p ->
@@ -68,7 +68,7 @@ fun ProgrammeList(vm: AppViewModel, c: Channel, modifier: Modifier = Modifier) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("${hm(p.start)} - ${hm(p.stop)}", fontSize = 13.sp, color = if (live) Accent else TextSecondary, modifier = Modifier.width(110.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(p.title, fontSize = 15.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(p.title, fontSize = 15.sp, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             if (p.desc.isNotBlank()) Text(p.desc, fontSize = 11.sp, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                         if (live) Text("● الآن", color = Accent, fontSize = 12.sp)
@@ -109,7 +109,7 @@ fun RecordingsTab(vm: AppViewModel) {
     val list = vm.recordings.filter { it.status != RecStatus.Cancelled }.sortedByDescending { it.start }
     Column {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("التسجيلات (${list.size})", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text("التسجيلات (${list.size})", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Ink)
             MBtn("تحديث", filled = false) { vm.refreshRecordings() }
         }
         if (list.isEmpty()) Text("لا توجد تسجيلات. من الدليل اختر برنامجاً قادماً ← تسجيل.", color = TextSecondary, modifier = Modifier.padding(top = 12.dp))
@@ -131,7 +131,7 @@ fun RecordingsTab(vm: AppViewModel) {
                 ) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text(r.title, fontSize = 15.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(r.title, fontSize = 15.sp, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text("${r.channelName} · ${dayHm(r.start)}", fontSize = 12.sp, color = TextSecondary)
                         }
                         Text(label, color = if (r.status == RecStatus.Failed) Danger else Accent, fontSize = 13.sp)

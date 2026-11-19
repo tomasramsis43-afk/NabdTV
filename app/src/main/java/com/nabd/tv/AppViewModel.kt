@@ -42,12 +42,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val health = HealthChecker(repo, store)
 
     /* ───────── navigation ───────── */
-    var screen by mutableStateOf(when {
+    private var screenState by mutableStateOf(when {
         repo.playlistUrl.isBlank() -> Screen.Setup
         store.profiles().size > 1 -> Screen.Profiles
         else -> Screen.Main
     })
-        private set
+    var screen: Screen
+        get() = screenState
+        private set(v) { screenState = v; syncTheme() }
+
+    /** User's light/dark choice. Video screens are always dark so controls and overlays stay readable. */
+    var darkPref by mutableStateOf(store.darkMode); private set
+    private fun syncTheme() { Ui.dark = darkPref || screenState == Screen.Player || screenState == Screen.MultiView }
+    fun setDark(on: Boolean) { store.darkMode = on; darkPref = on; syncTheme() }
+
+    /* Remembered UI position, so coming back from the player / details lands exactly where you were. */
+    @JvmField var restoreFocus = false
+    @JvmField var lastFocusKey: String? = null
+    private val gridStates = HashMap<String, androidx.compose.foundation.lazy.grid.LazyGridState>()
+    private val listStates = HashMap<String, androidx.compose.foundation.lazy.LazyListState>()
+    fun gridState(key: String) = gridStates.getOrPut(key) { androidx.compose.foundation.lazy.grid.LazyGridState() }
+    fun listState(key: String) = listStates.getOrPut(key) { androidx.compose.foundation.lazy.LazyListState() }
     var tab by mutableStateOf(runCatching { Tab.valueOf(store.startSection) }.getOrDefault(Tab.Home))
         private set
     private var back = Screen.Main
@@ -195,6 +210,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /* ───────── loading ───────── */
     init {
+        syncTheme()
         RefreshWorker.schedule(app)
         if (repo.playlistUrl.isNotBlank()) { load(false); refreshRecs() }
         checkUpdate(false)
@@ -281,7 +297,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openSetup() { back = Screen.Main; screen = Screen.Setup }
     fun closeSetup() { if (all.isNotEmpty()) screen = Screen.Main }
     fun openSettings() { if (profile.kids) requirePin("أدخل الرمز السري") { screen = Screen.Settings } else screen = Screen.Settings }
-    fun closeSettings() { screen = Screen.Main; bump() }
+    fun closeSettings() { restoreFocus = true; screen = Screen.Main; bump() }
 
     var diag by mutableStateOf<String?>(null); private set
     var diagBusy by mutableStateOf(false); private set
@@ -500,7 +516,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun closeDetail() { screen = Screen.Main }
+    fun closeDetail() { restoreFocus = true; screen = Screen.Main }
     fun selectSeason(n: Int) { season = n }
 
     /** Opens the right screen for an item from any shelf or grid. */
@@ -563,7 +579,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         play(Channel(-1, r.title, "file://$f", null, r.channelName), PlayMode.Recording, 0)
     }
 
-    fun stop() { history = store.history(); screen = back; bump(); refreshRecs() }
+    fun stop() { history = store.history(); restoreFocus = true; screen = back; bump(); refreshRecs() }
 
     fun zap(delta: Int) {
         if (!zapEnabled) return
@@ -656,6 +672,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearHealth() { store.clearHealth(); bump() }
 
+    /** (healthy, total) among the links that have actually been tested. */
+    val healthSummary by derivedStateOf { rev; store.healthStats() }
+
     /* ───────── multi-view ───────── */
     var multi by mutableStateOf<List<Channel>>(emptyList()); private set
 
@@ -670,7 +689,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         back = Screen.Main; screen = Screen.MultiView
     }
 
-    fun closeMulti() { screen = Screen.Main }
+    fun closeMulti() { restoreFocus = true; screen = Screen.Main }
     fun clearMulti() { multi = emptyList() }
 
     /* ───────── manual EPG match ───────── */

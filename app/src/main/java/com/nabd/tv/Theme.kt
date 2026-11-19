@@ -4,34 +4,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 
-val Accent = Color(0xFF00E5A0)
-val Bg = Color(0xFF07090D)
-val Surf = Color(0xFF121821)
-val TextSecondary = Color(0xFFB8C2CF)
-val Danger = Color(0xFFFF6B6B)
-val GlassFill = Color(0x1AFFFFFF)
-val GlassFocus = Color(0x33FFFFFF)
-val GlassBorder = Color(0x26FFFFFF)
-
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun AppTheme(content: @Composable () -> Unit) {
+    val dark = Ui.dark
     androidx.tv.material3.MaterialTheme(
-        colorScheme = androidx.tv.material3.darkColorScheme(
-            primary = Accent, onPrimary = Color.Black,
-            background = Bg, onBackground = Color.White,
-            surface = Surf, onSurface = Color.White,
-            surfaceVariant = Color(0xFF1E2733), onSurfaceVariant = Color(0xFFB8C2CF),
+        colorScheme = if (dark) androidx.tv.material3.darkColorScheme(
+            primary = Accent, onPrimary = OnAccent, background = Bg, onBackground = Ink,
+            surface = Surf, onSurface = Ink, surfaceVariant = Navy, onSurfaceVariant = TextSecondary,
+        ) else androidx.tv.material3.lightColorScheme(
+            primary = Accent, onPrimary = OnAccent, background = Bg, onBackground = Ink,
+            surface = Surf, onSurface = Ink, surfaceVariant = Color(0xFFE6E8FA), onSurfaceVariant = TextSecondary,
         )
     ) {
         androidx.compose.material3.MaterialTheme(
-            colorScheme = androidx.compose.material3.darkColorScheme(
-                primary = Accent, onPrimary = Color.Black, background = Bg, surface = Surf,
+            colorScheme = if (dark) androidx.compose.material3.darkColorScheme(
+                primary = Accent, onPrimary = OnAccent, background = Bg, surface = Surf, onSurface = Ink,
+            ) else androidx.compose.material3.lightColorScheme(
+                primary = Accent, onPrimary = OnAccent, background = Bg, surface = Surf, onSurface = Ink,
             ),
             content = {
                 androidx.compose.runtime.CompositionLocalProvider(
-                    androidx.tv.material3.LocalContentColor provides Color.White,
-                    androidx.compose.material3.LocalContentColor provides Color.White,
+                    androidx.tv.material3.LocalContentColor provides Ink,
+                    androidx.compose.material3.LocalContentColor provides Ink,
+                    LocalDevice provides rememberDevice(),
                     content = content
                 )
             }

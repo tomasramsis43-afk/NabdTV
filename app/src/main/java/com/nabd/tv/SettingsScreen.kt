@@ -27,7 +27,7 @@ private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) 
 private fun Row2(label: String, value: String = "", onClick: () -> Unit) {
     Focusable(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(label, fontSize = 15.sp, color = Color.White, modifier = Modifier.weight(1f))
+            Text(label, fontSize = 15.sp, color = Ink, modifier = Modifier.weight(1f))
             if (value.isNotEmpty()) Text(value, fontSize = 14.sp, color = Accent)
         }
     }
@@ -50,14 +50,14 @@ fun SettingsScreen(vm: AppViewModel) {
 
     Column(Modifier.fillMaxSize().background(Bg).verticalScroll(rememberScrollState()).padding(horizontal = 40.dp, vertical = 24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("الإعدادات", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text("الإعدادات", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Ink)
             MBtn("رجوع", filled = false) { vm.closeSettings() }
         }
 
         Section("المصدر") {
             Row2("تغيير السيرفر / الاشتراك") { vm.openSetup() }
             if (vm.hasXtream) Row2(if (vm.diagBusy) "جارٍ الفحص..." else "فحص الحساب والاتصالات") { vm.runDiag() }
-            vm.diag?.let { Text(it, fontSize = 13.sp, color = Color.White) }
+            vm.diag?.let { Text(it, fontSize = 13.sp, color = Ink) }
             Row2("شاشة البداية", Tab.valueOf(s.startSection).label) {
                 vm.menu = MenuRequest("شاشة البداية", Tab.entries.map { t -> t.label to { upd { s.startSection = t.name } } })
             }

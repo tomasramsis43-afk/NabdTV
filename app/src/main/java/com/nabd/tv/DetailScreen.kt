@@ -46,7 +46,7 @@ fun DetailScreen(vm: AppViewModel) {
             }
             Spacer(Modifier.width(24.dp))
             Column(Modifier.weight(1f)) {
-                Text(c.name, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(c.name, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Ink)
                 val meta = listOfNotNull(
                     info?.year?.takeIf { it.isNotBlank() }, info?.genre?.takeIf { it.isNotBlank() },
                     info?.duration?.takeIf { it.isNotBlank() }, info?.rating?.takeIf { it.isNotBlank() }?.let { "★ $it" }
@@ -93,7 +93,7 @@ private fun Episodes(vm: AppViewModel, s: Channel) {
                     Column(Modifier.weight(1f)) {
                         Text(
                             "حلقة ${e.num}" + if (e.title.isNotBlank()) " — ${e.title}" else "",
-                            fontSize = 15.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis
+                            fontSize = 15.sp, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis
                         )
                         if (e.plot.isNotBlank()) Text(e.plot, fontSize = 11.sp, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
