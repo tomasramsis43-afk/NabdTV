@@ -214,6 +214,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         RefreshWorker.schedule(app)
         if (repo.playlistUrl.isNotBlank()) { load(false); refreshRecs() }
         checkUpdate(false)
+        viewModelScope.launch { while (true) { kotlinx.coroutines.delay(20 * 60_000L); checkUpdate(false) } }
     }
 
     private fun friendly(e: Exception): String = when (e) {
@@ -348,6 +349,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 update = Updater.check(ctx, repo.http)
+                if (!manual && update != null && UpdatePrefs.auto(ctx) && screen != Screen.Player && !PlaybackBus.active) installUpdate(auto = true)
                 if (manual) say(if (update == null) "أنت على آخر إصدار" else "يوجد إصدار جديد ${update!!.tag}")
             } catch (e: Exception) {
                 if (manual) say("تعذّر فحص التحديث: ${e.message}")
@@ -355,9 +357,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun installUpdate() {
+    fun installUpdate(auto: Boolean = false) {
         val rel = update ?: return
         if (updateProgress != null) return
+        if (auto && android.os.Build.VERSION.SDK_INT >= 26 && !ctx.packageManager.canRequestPackageInstalls()) {
+            say("لتفعيل التحديث التلقائي: اسمح للتطبيق بالتثبيت من الإعدادات"); return
+        }
         viewModelScope.launch {
             try {
                 updateProgress = 0

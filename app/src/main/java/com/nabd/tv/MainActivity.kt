@@ -37,6 +37,9 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) { false }
     }
 
+    override fun onStart() { super.onStart(); AppState.foreground = true }
+    override fun onStop() { super.onStop(); AppState.foreground = false }
+
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
         if (vm.screen == Screen.Player) enterPip()

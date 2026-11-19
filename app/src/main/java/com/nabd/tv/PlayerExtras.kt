@@ -141,7 +141,11 @@ fun ChannelPanel(vm: AppViewModel, current: Channel, onClose: () -> Unit, modifi
     val state = rememberLazyListState(initialFirstVisibleItemIndex = maxOf(0, idx - 2))
     val fr = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { fr.requestFocus() } }
-    Column(modifier.width(290.dp).fillMaxHeight().background(Color(0xEE0B0F14)).padding(12.dp)) {
+    val dev = LocalDevice.current
+    Column(
+        modifier.fillMaxWidth(0.5f).widthIn(max = 320.dp).fillMaxHeight().background(Color(0xEE0B0F14))
+            .padding(horizontal = if (dev.tv) 36.dp else 12.dp, vertical = if (dev.tv) 27.dp else 12.dp)
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("القنوات (${list.size})", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
             Spacer(Modifier.weight(1f))

@@ -145,6 +145,8 @@ fun SettingsScreen(vm: AppViewModel) {
         }
 
         Section("التطبيق") {
+            val ctxU = androidx.compose.ui.platform.LocalContext.current
+            Toggle("تحديث تلقائي عند صدور إصدار جديد", UpdatePrefs.auto(ctxU)) { upd { UpdatePrefs.setAuto(ctxU, it) } }
             Row2("الإصدار الحالي", Updater.currentName(androidx.compose.ui.platform.LocalContext.current)) { }
             Row2(if (vm.update != null) "تحديث إلى ${vm.update!!.tag}" else "بحث عن تحديث") {
                 if (vm.update != null) vm.installUpdate() else vm.checkUpdate(true)

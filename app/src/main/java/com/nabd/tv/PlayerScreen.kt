@@ -6,7 +6,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -256,7 +258,7 @@ fun PlayerScreen(vm: AppViewModel) {
         if (nextEp != null) { delay(5000); if (nextEp != null) vm.playNext() }
     }
 
-    LaunchedEffect(ch.url, ping) { overlay = true; delay(3500); overlay = false }
+    LaunchedEffect(ch.url, ping) { overlay = true; delay(if (isTelevision(ctx)) 6000L else 3500L); overlay = false }
     LaunchedEffect(Unit) {
         while (true) {
             delay(30_000)
@@ -338,7 +340,7 @@ fun PlayerScreen(vm: AppViewModel) {
                 }
                 if (digit != null && live) { if (digits.length < 4) digits += digit; ping++; return@onPreviewKeyEvent true }
                 when (ev.key) {
-                    Key.DirectionUp, Key.ChannelUp -> if (vm.zapEnabled) { vm.zap(1); true } else false
+                    Key.DirectionUp, Key.ChannelUp -> if (vm.zapEnabled) { vm.zap(1); true } else { ping++; false }
                     Key.DirectionDown, Key.ChannelDown -> if (vm.zapEnabled) { vm.zap(-1); true } else false
                     Key.DirectionCenter, Key.Enter -> {
                         if (showSkip) player.seekTo(introEnd)
@@ -408,7 +410,14 @@ fun PlayerScreen(vm: AppViewModel) {
 
         // Always-visible options (tap the screen to show): aspect ratio + full options menu.
         if (!vm.inPip && overlay) {
-            Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val dev = LocalDevice.current
+            Row(
+                Modifier.align(Alignment.TopEnd)
+                    .padding(horizontal = if (dev.tv) 48.dp else 12.dp, vertical = if (dev.tv) 27.dp else 8.dp)
+                    .widthIn(max = (dev.widthDp - 24).dp)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 if (live) {
                     prevCh?.let { p -> MBtn("↩ ${p.name.take(12)}", filled = false) { vm.switchTo(p) } }
                     MBtn("☰ القنوات", filled = false) { panel = true }
@@ -426,7 +435,8 @@ fun PlayerScreen(vm: AppViewModel) {
 
         if (!vm.inPip && ((overlay && live) || status.isNotEmpty())) {
             Row(
-                Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color(0xCC000000)).padding(24.dp),
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color(0xCC000000))
+                    .padding(horizontal = if (LocalDevice.current.tv) 48.dp else 20.dp, vertical = if (LocalDevice.current.tv) 27.dp else 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AsyncImage(model = ch.logo, contentDescription = null, modifier = Modifier.size(56.dp))

@@ -1,7 +1,9 @@
 package com.nabd.tv
 
 import android.content.Context
+import android.app.PendingIntent
 import android.content.Intent
+import android.content.pm.PackageInstaller
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -70,6 +72,27 @@ object Updater {
         out
     }
 
+    /**
+     * Installs through a PackageInstaller session. On Android 12+ an update of an app that this app installed
+     * earlier needs no confirmation at all; otherwise [InstallResultReceiver] shows the system prompt / a notification.
+     */
+    fun installSession(ctx: Context, apk: File): Boolean = try {
+        val pi = ctx.packageManager.packageInstaller
+        val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+        params.setAppPackageName(ctx.packageName)
+        if (Build.VERSION.SDK_INT >= 31) params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+        val id = pi.createSession(params)
+        pi.openSession(id).use { s ->
+            apk.inputStream().use { i -> s.openWrite("nabd.apk", 0, apk.length()).use { o -> i.copyTo(o); s.fsync(o) } }
+            val pend = PendingIntent.getBroadcast(
+                ctx, id, Intent(ctx, InstallResultReceiver::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0)
+            )
+            s.commit(pend.intentSender)
+        }
+        true
+    } catch (e: Exception) { false }
+
     /** Opens the system installer. Returns false when the user must first allow installs from this app. */
     fun install(ctx: Context, apk: File): Boolean {
         if (Build.VERSION.SDK_INT >= 26 && !ctx.packageManager.canRequestPackageInstalls()) {
@@ -78,6 +101,7 @@ object Updater {
             )
             return false
         }
+        if (installSession(ctx, apk)) return true
         val uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", apk)
         ctx.startActivity(
             Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")

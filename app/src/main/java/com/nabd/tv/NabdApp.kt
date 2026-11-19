@@ -11,6 +11,7 @@ class NabdApp : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         CrashLog.install(this)
+        UpdateWorker.schedule(this)
     }
 
     /** Posters/logos are cached on disk, so scrolling big lists stays smooth and works offline. */

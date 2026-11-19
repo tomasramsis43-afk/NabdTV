@@ -16,7 +16,11 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 
 /** Lets the player screen ask the app to stop when the notification's Stop button is pressed. */
-object PlaybackBus { @Volatile var stop: (() -> Unit)? = null }
+object PlaybackBus {
+    @Volatile var stop: (() -> Unit)? = null
+    /** True while a stream is playing. */
+    @Volatile var active = false
+}
 
 /**
  * Foreground service that runs while a stream is playing. It keeps the process alive when the app is in
@@ -70,10 +74,12 @@ class PlaybackService : Service() {
         }
 
         fun start(ctx: Context, title: String) {
+            PlaybackBus.active = true
             runCatching { ContextCompat.startForegroundService(ctx, Intent(ctx, PlaybackService::class.java).putExtra("title", title)) }
         }
 
         fun stop(ctx: Context) {
+            PlaybackBus.active = false
             runCatching { ctx.stopService(Intent(ctx, PlaybackService::class.java)) }
         }
     }
