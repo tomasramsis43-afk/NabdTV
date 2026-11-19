@@ -7,7 +7,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 class MainActivity : ComponentActivity() {
     private val vm: AppViewModel by viewModels()
@@ -36,8 +47,29 @@ class MainActivity : ComponentActivity() {
         vm.inPip = isInPictureInPictureMode
     }
 
+    /** True full-screen: hides status + navigation bars (swipe from the edge shows them briefly). */
+    private fun hideSystemBars() {
+        val c = WindowInsetsControllerCompat(window, window.decorView)
+        c.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        c.hide(WindowInsetsCompat.Type.systemBars())
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) hideSystemBars()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        if (Build.VERSION.SDK_INT >= 28) {
+            val lp = window.attributes
+            lp.layoutInDisplayCutoutMode =
+                if (Build.VERSION.SDK_INT >= 30) android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                else android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            window.attributes = lp
+        }
+        hideSystemBars()
         Recorder.ensureChannel(this)
         if (Build.VERSION.SDK_INT >= 33) runCatching { notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS) }
         setContent { AppTheme { App(vm) } }
@@ -46,14 +78,21 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun App(vm: AppViewModel) {
-    when (vm.screen) {
-        Screen.Setup -> SetupScreen(vm)
-        Screen.Profiles -> ProfilesScreen(vm)
-        Screen.Main -> MainScreen(vm)
-        Screen.Player -> PlayerScreen(vm)
-        Screen.Detail -> DetailScreen(vm)
-        Screen.MultiView -> MultiViewScreen(vm)
-        Screen.Settings -> SettingsScreen(vm)
+    // Video screens use every pixel (even under the camera notch); the rest keep clear of the notch and the keyboard.
+    val full = vm.screen == Screen.Player || vm.screen == Screen.MultiView
+    Box(
+        Modifier.fillMaxSize().background(Bg)
+            .then(if (full) Modifier else Modifier.windowInsetsPadding(WindowInsets.displayCutout).imePadding())
+    ) {
+        when (vm.screen) {
+            Screen.Setup -> SetupScreen(vm)
+            Screen.Profiles -> ProfilesScreen(vm)
+            Screen.Main -> MainScreen(vm)
+            Screen.Player -> PlayerScreen(vm)
+            Screen.Detail -> DetailScreen(vm)
+            Screen.MultiView -> MultiViewScreen(vm)
+            Screen.Settings -> SettingsScreen(vm)
+        }
+        Overlays(vm)
     }
-    Overlays(vm)
 }
