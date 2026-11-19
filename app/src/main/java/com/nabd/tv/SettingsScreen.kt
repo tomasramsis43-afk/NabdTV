@@ -126,7 +126,6 @@ fun SettingsScreen(vm: AppViewModel) {
         }
 
         Section("الصوت والترجمة") {
-            Toggle("مفكّك الصوت البرمجي FFmpeg (للأفلام الصامتة — يُطبّق على التشغيل التالي)", s.softAudio) { upd { s.softAudio = it } }
             Row2("لغة الصوت المفضلة", s.prefAudioLang) {
                 vm.menu = MenuRequest("لغة الصوت", listOf("ar", "en", "fr", "tr", "es").map { l -> l to { upd { s.prefAudioLang = l } } })
             }

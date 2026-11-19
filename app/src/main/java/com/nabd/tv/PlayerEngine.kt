@@ -115,21 +115,10 @@ class NabdRenderersFactory(
     softAudio: Boolean = false
 ) : DefaultRenderersFactory(context) {
     init {
-        setExtensionRendererMode(if (softAudio) EXTENSION_RENDERER_MODE_ON else EXTENSION_RENDERER_MODE_OFF)
+        setExtensionRendererMode(EXTENSION_RENDERER_MODE_OFF)
         setEnableDecoderFallback(true)
         if (decoder == DecoderMode.Software) setMediaCodecSelector(PreferSoftwareCodecSelector())
     }
-
-    override fun buildAudioSink(
-        context: Context,
-        enableFloatOutput: Boolean,
-        enableAudioTrackPlaybackParams: Boolean
-    ): AudioSink = DefaultAudioSink.Builder(context)
-        .setEnableFloatOutput(enableFloatOutput)
-        .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-        // A normal processor chain (silence skipping + Sonic speed correction) is added after this one.
-        .setAudioProcessors(arrayOf(delay))
-        .build()
 }
 
 /**
