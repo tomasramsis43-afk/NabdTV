@@ -19,18 +19,25 @@ android {
     }
     // One fixed key for every build (CI would otherwise generate a new debug key each run,
     // and Android refuses to update an app signed with a different key).
+    // The signing key lives only in GitHub Secrets (KEYSTORE_B64 + KEYSTORE_PASS); nothing secret is stored in the repo.
+    // Without them (e.g. a local build) the APK falls back to the standard Android debug key.
+    val ksPass: String? = System.getenv("KEYSTORE_PASS")?.takeIf { it.isNotBlank() }
+    val ksFile = file("nabd-release.jks")
+    val canSign = ksPass != null && ksFile.exists()
     signingConfigs {
-        create("nabd") {
-            storeFile = file("nabd-release.jks")
-            storePassword = System.getenv("KEYSTORE_PASS")?.takeIf { it.isNotBlank() } ?: "nabdtv-sign"
-            keyAlias = "nabd"
-            keyPassword = System.getenv("KEYSTORE_PASS")?.takeIf { it.isNotBlank() } ?: "nabdtv-sign"
+        if (canSign) {
+            create("nabd") {
+                storeFile = ksFile
+                storePassword = ksPass
+                keyAlias = "nabd"
+                keyPassword = ksPass
+            }
         }
     }
     buildTypes {
-        debug { signingConfig = signingConfigs.getByName("nabd") }
+        debug { if (canSign) signingConfig = signingConfigs.getByName("nabd") }
         release {
-            signingConfig = signingConfigs.getByName("nabd")
+            if (canSign) signingConfig = signingConfigs.getByName("nabd")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
