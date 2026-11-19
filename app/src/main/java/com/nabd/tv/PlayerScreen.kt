@@ -212,6 +212,11 @@ fun PlayerScreen(vm: AppViewModel) {
                     Player.STATE_BUFFERING -> status = "جارٍ التحميل..."
                     Player.STATE_READY -> {
                         status = ""; retries = 0
+                        if (LiveRewind.pending > 0) {
+                            val s = LiveRewind.pending; LiveRewind.pending = 0
+                            if (player.isCurrentMediaItemSeekable) player.seekTo(maxOf(0L, player.currentPosition - s * 1000L))
+                            else vm.say("المزوّد لا يدعم الرجوع في هذه القناة")
+                        }
                         if (live) vm.health.markSuccess(chUrl, System.currentTimeMillis() - startedAt)
                         // Pick preferred subtitles if the stream offers them (preferred language is set on the selector).
                     }
@@ -387,6 +392,9 @@ fun PlayerScreen(vm: AppViewModel) {
                 if (live) {
                     prevCh?.let { p -> MBtn("↩ ${p.name.take(12)}", filled = false) { vm.switchTo(p) } }
                     MBtn("☰ القنوات", filled = false) { panel = true }
+                    MBtn("⏪ 30", filled = false) { rewindLive(vm, player, ch.url, 30); ping++ }
+                    if (player.isCurrentMediaItemLive && player.currentLiveOffset > 8000L)
+                        MBtn("🔴 مباشر") { player.seekToDefaultPosition(); ping++ }
                 }
                 MBtn("📊", filled = false) { stats = !stats }
                 MBtn("⛶ ${ratios[ratio].first}", filled = false) { setRatio((ratio + 1) % ratios.size); ping++ }
@@ -465,6 +473,23 @@ private fun playerMenu(
                 }
             }) }
     }
+    items += "جودة الفيديو" to {
+        val opts = tracks(C.TRACK_TYPE_VIDEO)
+            .flatMap { grp -> (0 until grp.length).map { i -> Triple(grp, i, grp.getTrackFormat(i)) } }
+            .filter { it.third.height > 0 }
+            .sortedByDescending { it.third.height }
+        if (opts.size < 2) vm.say("هذا البث لا يوفّر أكثر من جودة") else vm.menu = MenuRequest("جودة الفيديو",
+            listOf("تلقائي" to {
+                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                    .clearOverridesOfType(C.TRACK_TYPE_VIDEO).build()
+            }) + opts.map { (grp, i, f) ->
+                val kb = f.bitrate.takeIf { it > 0 }?.let { " · ${it / 1000} kbps" } ?: ""
+                (if (grp.isTrackSelected(i)) "● " else "") + "${f.height}p$kb" to {
+                    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                        .setOverrideForType(TrackSelectionOverride(grp.mediaTrackGroup, i)).build()
+                }
+            })
+    }
     items += "نافذة عائمة (PiP)" to onPip
     items += (if (boost) "تعزيز الصوت: مفعّل" else "تعزيز الصوت: متوقف") to onBoost
     items += (if (vm.sleepAt > 0) "مؤقت النوم: يعمل (إلغاء)" else "مؤقت النوم") to {
@@ -492,6 +517,19 @@ private fun playerMenu(
         if (alts.isNotEmpty()) items += "مصادر بديلة (${alts.size})" to {
             vm.menu = MenuRequest("مصادر بديلة", alts.map { a -> (a.name + " · " + vm.health.state(a.url).name) to { vm.useAlternative(a) } })
         }
+    }
+    if (vm.playMode == PlayMode.Live) {
+        items += "رجوع 30 ثانية (تأخير البث)" to { rewindLive(vm, player, ch.url, 30) }
+        items += "رجوع دقيقتين" to { rewindLive(vm, player, ch.url, 120) }
+        items += "العودة للبث المباشر" to { player.seekToDefaultPosition(); player.playWhenReady = true }
+    }
+    items += "فتح في مشغّل خارجي (VLC / MX)" to {
+        val ctx = view?.context
+        if (ctx == null) vm.say("غير متاح الآن") else try {
+            val i = android.content.Intent(android.content.Intent.ACTION_VIEW)
+                .setDataAndType(android.net.Uri.parse(ch.url), "video/*")
+            ctx.startActivity(android.content.Intent.createChooser(i, "فتح بواسطة").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: Exception) { vm.say("لا يوجد مشغّل مناسب على الجهاز") }
     }
     vm.menu = MenuRequest(ch.name, items)
 }

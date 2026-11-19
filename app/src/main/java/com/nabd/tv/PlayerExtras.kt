@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.tv.material3.Text
@@ -51,6 +52,25 @@ fun smartMode(videoAr: Float, w: Int, h: Int): Int {
     val s = w.toFloat() / h
     val crop = 1f - minOf(videoAr, s) / maxOf(videoAr, s)
     return if (crop <= 0.15f) AspectRatioFrameLayout.RESIZE_MODE_ZOOM else AspectRatioFrameLayout.RESIZE_MODE_FIT
+}
+
+/** Pending "go back N seconds" request that is applied once an HLS (seekable) stream is ready. */
+object LiveRewind { @Volatile var pending = 0 }
+
+/**
+ * Live rewind (time-shift). HLS streams expose a DVR window we can seek in; plain .ts streams cannot,
+ * so for those we reopen the same channel as .m3u8 and apply the rewind when it is ready.
+ */
+fun rewindLive(vm: AppViewModel, player: ExoPlayer, url: String, sec: Int) {
+    if (player.isCurrentMediaItemSeekable) {
+        player.seekTo(maxOf(0L, player.currentPosition - sec * 1000L))
+        vm.say("رجوع $sec ثانية")
+    } else if (url.endsWith(".ts")) {
+        LiveRewind.pending = sec
+        player.setMediaItem(MediaItem.fromUri(url.removeSuffix(".ts") + ".m3u8"))
+        player.prepare(); player.playWhenReady = true
+        vm.say("جارٍ التحويل لنمط يدعم الرجوع...")
+    } else vm.say("هذه القناة لا تدعم الرجوع")
 }
 
 /** Live diagnostics for the stats overlay. */
