@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -25,6 +26,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
@@ -68,7 +70,8 @@ fun buildPlayer(ctx: android.content.Context, store: Store, live: Boolean): ExoP
 private val ratios = listOf(
     "ملاءمة" to AspectRatioFrameLayout.RESIZE_MODE_FIT,
     "ملء الشاشة" to AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
-    "تمديد" to AspectRatioFrameLayout.RESIZE_MODE_FILL
+    "تمديد" to AspectRatioFrameLayout.RESIZE_MODE_FILL,
+    "تلقائي ذكي" to -1
 )
 
 @OptIn(ExperimentalTvMaterial3Api::class, UnstableApi::class)
@@ -98,6 +101,60 @@ fun PlayerScreen(vm: AppViewModel) {
     val showSkip = introEnd > 0 && pos < introEnd - 1500
     val chUrl by rememberUpdatedState(ch.url)
     val chRef by rememberUpdatedState(ch)
+
+    // ── Pro player state: smart aspect + pinch zoom, gestures HUD, channel panel, stats ──
+    var vAr by remember { mutableFloatStateOf(0f) }
+    var zoomScale by remember { mutableFloatStateOf(1f) }
+    var panX by remember { mutableFloatStateOf(0f) }
+    var panY by remember { mutableFloatStateOf(0f) }
+    var hud by remember { mutableStateOf("") }
+    var panel by remember { mutableStateOf(false) }
+    var stats by remember { mutableStateOf(false) }
+    var statsTxt by remember { mutableStateOf("") }
+    var prevCh by remember { mutableStateOf<Channel?>(null) }
+    var curCh by remember { mutableStateOf<Channel?>(null) }
+    var bright by remember { mutableFloatStateOf(-1f) }
+    var volAcc by remember { mutableFloatStateOf(0f) }
+    val act = remember { ctx.findActivity() }
+    val am = remember { ctx.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager }
+    val vprefs = remember { ctx.getSharedPreferences("player_view", android.content.Context.MODE_PRIVATE) }
+    val rKey = "r:" + (seriesKey ?: ch.url).hashCode()
+
+    fun setRatio(i: Int) {
+        ratio = i
+        vprefs.edit().putInt(rKey, i).apply()   // remembered per movie / series / channel
+        zoomScale = 1f; panX = 0f; panY = 0f
+    }
+
+    fun onSideDrag(left: Boolean, f: Float) {
+        if (left) {
+            val cur = if (bright >= 0f) bright else (act?.window?.attributes?.screenBrightness?.takeIf { it >= 0f } ?: 0.5f)
+            bright = (cur + f).coerceIn(0.02f, 1f)
+            act?.window?.let { w -> val lp = w.attributes; lp.screenBrightness = bright; w.attributes = lp }
+            hud = "🔆 ${(bright * 100).toInt()}%"
+        } else {
+            val max = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+            volAcc += f * max * 1.3f
+            val steps = volAcc.toInt()
+            if (steps != 0) {
+                val nv = (am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC) + steps).coerceIn(0, max)
+                am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, nv, 0)
+                volAcc -= steps
+            }
+            hud = "🔊 ${am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)}/$max"
+        }
+    }
+
+    LaunchedEffect(rKey) {
+        ratio = vprefs.getInt(rKey, if (vod) SMART_RATIO else 0)
+        zoomScale = 1f; panX = 0f; panY = 0f
+    }
+    LaunchedEffect(ch.url) { val c = curCh; if (c != null && c.url != ch.url) prevCh = c; curCh = ch }
+    LaunchedEffect(hud) { if (hud.isNotEmpty()) { delay(900); hud = "" } }
+    LaunchedEffect(stats) { while (stats) { statsTxt = statsText(player); delay(1000) } }
+    DisposableEffect(Unit) {
+        onDispose { act?.window?.let { w -> val lp = w.attributes; lp.screenBrightness = -1f; w.attributes = lp } }
+    }
 
     KeepScreenOn()
 
@@ -144,6 +201,10 @@ fun PlayerScreen(vm: AppViewModel) {
                     if (live && vm.failover()) { status = "تحويل تلقائي لمصدر بديل..." }
                     else status = "تعذّر التشغيل" + (code?.let { " (HTTP $it)" } ?: " (${e.errorCodeName})")
                 }
+            }
+
+            override fun onVideoSizeChanged(s: VideoSize) {
+                vAr = if (s.height > 0) s.width * s.pixelWidthHeightRatio / s.height else 0f
             }
 
             override fun onPlaybackStateChanged(state: Int) {
@@ -217,20 +278,33 @@ fun PlayerScreen(vm: AppViewModel) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
     BackHandler { vm.stop() }
+    BackHandler(enabled = panel) { panel = false }
 
     Box(
         Modifier.fillMaxSize().background(Color.Black)
             .focusRequester(focus).focusable()
-            .pointerInput(Unit) { detectTapGestures(onTap = { ping++ }, onLongPress = { playerMenu(vm, player, view, ch, ratio, speed, { ratio = it }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost }) }) }
-            .pointerInput(Unit) {
-                var dy = 0f
-                detectVerticalDragGestures(
-                    onDragStart = { dy = 0f },
-                    onDragEnd = { if (dy < -120f) vm.zap(1) else if (dy > 120f) vm.zap(-1) }
-                ) { _, d -> dy += d }
+            .pinchZoom { z, p ->
+                zoomScale = (zoomScale * z).coerceIn(1f, 4f)
+                val mx = (zoomScale - 1f) * (view?.width ?: 0) / 2f
+                val my = (zoomScale - 1f) * (view?.height ?: 0) / 2f
+                panX = (panX + p.x).coerceIn(-mx, mx); panY = (panY + p.y).coerceIn(-my, my)
+                hud = "🔍 ${(zoomScale * 100).toInt()}%"
             }
+            .playerGestures(
+                key = listOf(ch.url, ratio, speed, boost, live),
+                live = live,
+                onTap = { ping++ },
+                onLongPress = { playerMenu(vm, player, view, ch, ratio, speed, { setRatio(it) }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost }) },
+                onSeek = { dir ->
+                    player.seekTo(maxOf(0L, player.currentPosition + dir * 10_000L))
+                    hud = if (dir < 0) "⏪ 10" else "10 ⏩"
+                },
+                onZap = { vm.zap(it) },
+                onSide = { left, f -> onSideDrag(left, f) }
+            )
             .onPreviewKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                if (panel) return@onPreviewKeyEvent false   // let the channel list handle its own navigation
                 val digit = when (ev.key) {
                     Key.Zero, Key.NumPad0 -> '0'; Key.One, Key.NumPad1 -> '1'; Key.Two, Key.NumPad2 -> '2'
                     Key.Three, Key.NumPad3 -> '3'; Key.Four, Key.NumPad4 -> '4'; Key.Five, Key.NumPad5 -> '5'
@@ -250,15 +324,15 @@ fun PlayerScreen(vm: AppViewModel) {
                         if (live) vm.toggleFav(ch) else player.seekTo(player.currentPosition + 10_000)
                         ping++; true
                     }
-                    Key.DirectionLeft -> if (!live) { player.seekTo(maxOf(0L, player.currentPosition - 10_000)); true } else false
-                    Key.Menu, Key.Info, Key.M -> { playerMenu(vm, player, view, ch, ratio, speed, { ratio = it }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost }); true }
+                    Key.DirectionLeft -> if (!live) { player.seekTo(maxOf(0L, player.currentPosition - 10_000)); true } else { panel = true; true }
+                    Key.Menu, Key.Info, Key.M -> { playerMenu(vm, player, view, ch, ratio, speed, { setRatio(it) }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost }); true }
                     Key.MediaNext -> { if (vod) vm.playNext(); true }
                     else -> false
                 }
             }
     ) {
         AndroidView(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = zoomScale; scaleY = zoomScale; translationX = panX; translationY = panY },
             factory = { c ->
                 PlayerView(c).apply {
                     useController = !live
@@ -267,7 +341,11 @@ fun PlayerScreen(vm: AppViewModel) {
                     view = this
                 }
             },
-            update = { it.resizeMode = ratios[ratio].second; it.useController = !live && !vm.inPip }
+            update = {
+                val m = ratios[ratio].second
+                it.resizeMode = if (m == -1) smartMode(vAr, it.width, it.height) else m
+                it.useController = !live && !vm.inPip
+            }
         )
 
         if (digits.isNotEmpty() && !vm.inPip) Text(digits, fontSize = 44.sp, color = Accent, modifier = Modifier.align(Alignment.TopEnd).padding(32.dp))
@@ -289,12 +367,31 @@ fun PlayerScreen(vm: AppViewModel) {
             }
         }
 
+        if (hud.isNotEmpty() && !vm.inPip) {
+            Text(
+                hud, fontSize = 22.sp, color = Color.White,
+                modifier = Modifier.align(Alignment.Center).background(Color(0xAA000000)).padding(horizontal = 18.dp, vertical = 10.dp)
+            )
+        }
+        if (stats && !vm.inPip) {
+            Text(
+                statsTxt, fontSize = 12.sp, color = Accent,
+                modifier = Modifier.align(Alignment.TopStart).padding(16.dp).background(Color(0xAA000000)).padding(8.dp)
+            )
+        }
+        if (panel && live && !vm.inPip) ChannelPanel(vm, ch, { panel = false }, Modifier.align(Alignment.CenterStart))
+
         // Always-visible options (tap the screen to show): aspect ratio + full options menu.
         if (!vm.inPip && overlay) {
             Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MBtn("⛶ ${ratios[ratio].first}", filled = false) { ratio = (ratio + 1) % ratios.size; ping++ }
+                if (live) {
+                    prevCh?.let { p -> MBtn("↩ ${p.name.take(12)}", filled = false) { vm.switchTo(p) } }
+                    MBtn("☰ القنوات", filled = false) { panel = true }
+                }
+                MBtn("📊", filled = false) { stats = !stats }
+                MBtn("⛶ ${ratios[ratio].first}", filled = false) { setRatio((ratio + 1) % ratios.size); ping++ }
                 MBtn("⚙ خيارات") {
-                    playerMenu(vm, player, view, ch, ratio, speed, { ratio = it }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost })
+                    playerMenu(vm, player, view, ch, ratio, speed, { setRatio(it) }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost })
                 }
             }
         }

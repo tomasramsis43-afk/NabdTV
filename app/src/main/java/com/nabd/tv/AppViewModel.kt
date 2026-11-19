@@ -585,6 +585,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         tried = hashSetOf(c.url); current = c
     }
 
+    /** Switch to a specific channel while the player is open (side panel / last channel). */
+    fun switchTo(c: Channel) {
+        if (parental.needsPin(c)) return
+        tried = hashSetOf(c.url); current = c
+    }
+
     /** Same channel from another source (HD/FHD/SD duplicates), used by manual switch and auto-failover. */
     fun alternativesOf(c: Channel): List<Channel> = health.alternatives(c, all)
 
