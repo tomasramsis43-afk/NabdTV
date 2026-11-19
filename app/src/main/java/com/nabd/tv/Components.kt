@@ -3,7 +3,12 @@ package com.nabd.tv
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -37,8 +42,58 @@ fun dayHm(t: Long): String =
 /** Button that works with both touch and D-pad. */
 @Composable
 fun MBtn(text: String, filled: Boolean = true, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    if (filled) Button(onClick = onClick, modifier = modifier) { androidx.compose.material3.Text(text) }
-    else OutlinedButton(onClick = onClick, modifier = modifier) { androidx.compose.material3.Text(text) }
+    val shape = RoundedCornerShape(14.dp)
+    val pad = PaddingValues(horizontal = 14.dp, vertical = 0.dp)
+    val m = modifier.heightIn(min = 40.dp)
+    if (filled) Button(onClick = onClick, modifier = m, shape = shape, contentPadding = pad) { androidx.compose.material3.Text(text, maxLines = 1) }
+    else OutlinedButton(
+        onClick = onClick, modifier = m, shape = shape, contentPadding = pad,
+        border = BorderStroke(1.dp, Color(0xFF263241))
+    ) { androidx.compose.material3.Text(text, maxLines = 1, color = Color.White) }
+}
+
+/** Search box with the same height, radius and border style as the tabs and buttons next to it. */
+@Composable
+fun SearchField(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier) {
+    var focused by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(14.dp)
+    Row(
+        modifier.height(40.dp).clip(shape).background(Surf)
+            .border(if (focused) 2.dp else 1.dp, if (focused) Accent else Color(0xFF263241), shape)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("🔍", fontSize = 14.sp)
+        Spacer(Modifier.width(8.dp))
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            if (value.isEmpty()) Text("بحث...", color = TextSecondary, fontSize = 14.sp, maxLines = 1)
+            BasicTextField(
+                value = value, onValueChange = onChange, singleLine = true,
+                textStyle = TextStyle(color = Color.White, fontSize = 14.sp),
+                cursorBrush = SolidColor(Accent),
+                modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused }
+            )
+        }
+        if (value.isNotEmpty()) {
+            Text(
+                "✕", color = TextSecondary, fontSize = 14.sp,
+                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onChange("") }.padding(6.dp)
+            )
+        }
+    }
+}
+
+/** Keeps the screen awake while this composable is shown (otherwise it dims after 15–30 s of no touch). */
+@Composable
+fun KeepScreenOn() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    DisposableEffect(Unit) {
+        var c: android.content.Context = ctx
+        while (c is android.content.ContextWrapper && c !is android.app.Activity) c = c.baseContext
+        val w = (c as? android.app.Activity)?.window
+        w?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose { w?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+    }
 }
 
 /** Glass tile: translucent fill, soft border, smooth scale on focus. Touch + D-pad + long-press. */
@@ -77,7 +132,7 @@ fun TabChip(label: String, selected: Boolean, onClick: () -> Unit) {
         Text(
             label, fontSize = 15.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
             color = if (selected) Accent else Color.White,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp), maxLines = 1
+            modifier = Modifier.padding(horizontal = 14.dp).heightIn(min = 40.dp).wrapContentHeight(Alignment.CenterVertically), maxLines = 1
         )
     }
 }

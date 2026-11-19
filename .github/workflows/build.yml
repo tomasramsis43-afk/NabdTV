@@ -25,7 +25,17 @@ jobs:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
         run: |
           if [ -n "$KEYSTORE_B64" ]; then echo "$KEYSTORE_B64" | base64 -d > app/nabd-release.jks; fi
-      - run: gradle assembleDebug --no-daemon
+      - name: Build
+        run: |
+          set +e
+          gradle assembleDebug --no-daemon > build.log 2>&1
+          rc=$?
+          if [ $rc -ne 0 ]; then
+            ERR=$(grep -E "^e: |What went wrong|error:" -A3 build.log | head -40)
+            ERR="${ERR//$'\n'/%0A}"
+            echo "::error::$ERR"
+          fi
+          exit $rc
         env:
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
       - name: Publish APK as GitHub Release

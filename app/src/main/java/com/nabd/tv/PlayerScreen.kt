@@ -57,6 +57,7 @@ fun buildPlayer(ctx: android.content.Context, store: Store, live: Boolean): ExoP
     val p = ExoPlayer.Builder(ctx, renderers)
         .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(DefaultDataSource.Factory(ctx, http)))
         .setLoadControl(load).build()
+    p.setWakeMode(C.WAKE_MODE_NETWORK)
     p.trackSelectionParameters = p.trackSelectionParameters.buildUpon()
         .setPreferredAudioLanguage(store.prefAudioLang)
         .setPreferredTextLanguage(store.prefSubLang)
@@ -97,6 +98,8 @@ fun PlayerScreen(vm: AppViewModel) {
     val showSkip = introEnd > 0 && pos < introEnd - 1500
     val chUrl by rememberUpdatedState(ch.url)
     val chRef by rememberUpdatedState(ch)
+
+    KeepScreenOn()
 
     // Save resume position when leaving, and every 15 s while a VOD plays.
     DisposableEffect(Unit) {

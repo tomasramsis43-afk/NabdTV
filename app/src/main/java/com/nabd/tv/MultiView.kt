@@ -26,6 +26,7 @@ import androidx.tv.material3.Text
 @OptIn(ExperimentalTvMaterial3Api::class, UnstableApi::class)
 @Composable
 fun MultiViewScreen(vm: AppViewModel) {
+    KeepScreenOn()
     val ctx = LocalContext.current
     val channels = vm.multi
     val players = remember(channels.map { it.url }) {
