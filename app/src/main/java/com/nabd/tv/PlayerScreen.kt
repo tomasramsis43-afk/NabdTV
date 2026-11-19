@@ -204,6 +204,7 @@ fun PlayerScreen(vm: AppViewModel) {
         player.setMediaItem(MediaItem.fromUri(ch.url), if (vm.resumeAt > 0) vm.resumeAt else C.TIME_UNSET)
         player.prepare(); player.playWhenReady = true
         vm.noteStart(ch)
+        if (live) { delay(2500); vm.prefetchNeighbors() }
     }
 
     DisposableEffect(player) {

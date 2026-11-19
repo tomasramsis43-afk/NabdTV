@@ -649,6 +649,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun useAlternative(c: Channel) { tried += c.url; current = c }
 
+    /** Optional: warm the next and previous channel of the zap list (see [Prefetch]). */
+    fun prefetchNeighbors() {
+        if (!store.prefetchNext || !zapEnabled) return
+        val list = zapList
+        val i = list.indexOfFirst { it.url == current?.url }
+        if (i < 0 || list.size < 2) return
+        val n = list.size
+        val targets = listOf(list[(i + 1) % n], list[(i - 1 + n) % n])
+            .filter { !parental.needsPin(it) && !health.isDead(it.url) }
+        viewModelScope.launch { targets.forEach { Prefetch.warm(it.url) } }
+    }
+
+    /** Local report of the channels that failed most often, for the settings screen. */
+    fun problemReport(): List<String> = store.worstHealth(15).map { (u, r) ->
+        val name = all.firstOrNull { it.url == u }?.name ?: u.takeLast(30)
+        name + " — " + (if (r.state == Health.Dead) "ميت" else "بطيء") + " · " + r.failures + " فشل"
+    }
+
+
     fun noteStart(c: Channel) {
         val old = store.historyOf(c.url)
         store.recordWatch(c, kindOf(c), old?.position ?: 0, old?.duration ?: 0, true)

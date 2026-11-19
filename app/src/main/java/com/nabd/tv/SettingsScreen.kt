@@ -153,6 +153,25 @@ fun SettingsScreen(vm: AppViewModel) {
             }
         }
 
+        Section("التقارير والنسخ الاحتياطي") {
+            val cx = androidx.compose.ui.platform.LocalContext.current
+            Toggle("تحميل مسبق للقناة التالية (HLS فقط)", s.prefetchNext) { upd { s.prefetchNext = it } }
+            Row2("القنوات الأكثر تقطيعاً") {
+                val l = vm.problemReport()
+                if (l.isEmpty()) vm.say("لا توجد قنوات متعثرة حتى الآن") else vm.menu = MenuRequest("الأكثر تقطيعاً", l.map { it to { } })
+            }
+            Row2("نسخ المفضلة والإعدادات إلى الحافظة") {
+                val cm = cx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("nabd-backup", s.exportBackup()))
+                vm.say("تم النسخ. الصقها في جهاز آخر عبر \"استيراد\"")
+            }
+            Row2("استيراد من الحافظة") {
+                val cm = cx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                val txt = cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString().orEmpty()
+                if (s.importBackup(txt)) { vm.say("تم الاستيراد"); tick++ } else vm.say("الحافظة لا تحتوي نسخة صالحة")
+            }
+        }
+
         Section("التشخيص") {
             val c = androidx.compose.ui.platform.LocalContext.current
             Row2("آخر أخطاء التطبيق") {

@@ -94,6 +94,11 @@ class Store(private val ctx: Context) {
         set(v) = g.edit().putString("filterWords", v).apply()
     val filterList: List<String> get() = filterWords.split(',', '،', '\n').map { it.trim() }.filter { it.isNotEmpty() }
 
+    /** Warm the manifest of the neighbouring channels (HLS only) so zapping starts faster. Off by default: some providers limit connections. */
+    var prefetchNext: Boolean
+        get() = g.getBoolean("prefetchNext", false)
+        set(v) = g.edit().putBoolean("prefetchNext", v).apply()
+
     /* ---------- string sets ---------- */
     private val setCache = HashMap<String, Set<String>>()
     private fun strSet(k: String): Set<String> = setCache.getOrPut(k) { p.getStringSet(k, emptySet())!!.toSet() }
@@ -318,4 +323,55 @@ class Store(private val ctx: Context) {
         m.forEach { (k, v) -> o.put(k, JSONArray(v)) }
         p.edit().putString("customGroups", o.toString()).apply()
     }
+
+    /* ---------- playback problems report ---------- */
+    /** Streams with the most recorded failures, worst first. */
+    fun worstHealth(n: Int): List<Pair<String, HealthRecord>> =
+        healthMap().entries.filter { it.value.failures > 0 || it.value.state == Health.Dead }
+            .sortedByDescending { it.value.failures }.take(n).map { it.key to it.value }
+
+    /* ---------- backup (favorites + preferences, never the PIN or server credentials) ---------- */
+    fun exportBackup(): String {
+        val o = JSONObject().put("v", 1)
+        o.put("fav", JSONArray(favorites.toList()))
+        o.put("pinnedGroups", JSONArray(pinnedGroups.toList()))
+        o.put("hiddenGroups", JSONArray(hiddenGroups.toList()))
+        o.put("hiddenChannels", JSONArray(hiddenChannels.toList()))
+        o.put("filterWords", filterWords)
+        o.put("audioLang", prefAudioLang)
+        o.put("subLang", prefSubLang)
+        o.put("startSection", startSection)
+        val cg = JSONObject()
+        customGroups().forEach { (k, v) -> cg.put(k, JSONArray(v)) }
+        o.put("customGroups", cg)
+        return o.toString()
+    }
+
+    /** Merges a backup produced by [exportBackup]. Returns false when the text is not a valid backup. */
+    fun importBackup(text: String): Boolean = runCatching {
+        val o = JSONObject(text)
+        if (o.optInt("v", 0) != 1) return false
+        fun set(k: String): Set<String> {
+            val a = o.optJSONArray(k) ?: return emptySet()
+            return (0 until a.length()).map { a.getString(it) }.toSet()
+        }
+        favorites = favorites + set("fav")
+        pinnedGroups = pinnedGroups + set("pinnedGroups")
+        hiddenGroups = hiddenGroups + set("hiddenGroups")
+        hiddenChannels = hiddenChannels + set("hiddenChannels")
+        if (o.has("filterWords")) filterWords = o.getString("filterWords")
+        if (o.has("audioLang")) prefAudioLang = o.getString("audioLang")
+        if (o.has("subLang")) prefSubLang = o.getString("subLang")
+        o.optString("startSection").takeIf { s -> Tab.entries.any { it.name == s } }?.let { startSection = it }
+        val cg = o.optJSONObject("customGroups")
+        if (cg != null) {
+            val merged = LinkedHashMap(customGroups())
+            for (k in cg.keys()) {
+                val a = cg.getJSONArray(k)
+                merged[k] = ((merged[k] ?: emptyList()) + (0 until a.length()).map { a.getString(it) }).distinct()
+            }
+            saveCustomGroups(merged)
+        }
+        true
+    }.getOrDefault(false)
 }
