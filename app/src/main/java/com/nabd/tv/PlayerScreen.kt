@@ -1,42 +1,52 @@
+@file:OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.nabd.tv
 
+import android.content.Context
+import android.content.Intent
+import android.content.pm.ActivityInfo
+import android.media.AudioManager
+import android.media.audiofx.LoudnessEnhancer
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import android.media.audiofx.LoudnessEnhancer
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.media3.common.C
-import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.VideoSize
-import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
-import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.DefaultRenderersFactory
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
@@ -44,651 +54,1199 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 
-@OptIn(UnstableApi::class)
-fun buildPlayer(ctx: android.content.Context, store: Store, live: Boolean): ExoPlayer {
-    val http = DefaultHttpDataSource.Factory()
-        .setAllowCrossProtocolRedirects(true)
-        .setUserAgent(httpUa)
-        .setConnectTimeoutMs(10_000).setReadTimeoutMs(10_000)
-    // Live: small buffers = fast channel start / fast zapping. VOD: larger buffer for smooth seeking.
-    val load = (if (live) DefaultLoadControl.Builder().setBufferDurationsMs(3000, 20000, 1000, 2000)
-    else DefaultLoadControl.Builder().setBufferDurationsMs(15000, 60000, 2500, 5000)).build()
-    // Hardware decoders first (default), with software fallback + decoder fallback on init failure.
-    val renderers = DefaultRenderersFactory(ctx)
-        .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
-        .setEnableDecoderFallback(true)
-    val p = ExoPlayer.Builder(ctx, renderers)
-        .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(DefaultDataSource.Factory(ctx, http)))
-        .setLoadControl(load).build()
-    p.setWakeMode(C.WAKE_MODE_NETWORK)
-    p.trackSelectionParameters = p.trackSelectionParameters.buildUpon()
-        .setPreferredAudioLanguage(store.prefAudioLang)
-        .setPreferredTextLanguage(store.prefSubLang)
-        .build()
-    return p
-}
-
-private val ratios = listOf(
-    "ملاءمة" to AspectRatioFrameLayout.RESIZE_MODE_FIT,
-    "ملء الشاشة" to AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
-    "تمديد" to AspectRatioFrameLayout.RESIZE_MODE_FILL,
-    "تلقائي ذكي" to -1
-)
-
-@OptIn(ExperimentalTvMaterial3Api::class, UnstableApi::class)
+/**
+ * Professional player screen.
+ *
+ * The video surface is never recomposed: all changing values live in [PlayerUiState].
+ * Playback logic stays in [buildPlayer] / Media3; this file orchestrates UI, gestures,
+ * TV keys, resume, A–B, sleep, external subtitles and all existing live-TV features.
+ */
+@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun PlayerScreen(vm: AppViewModel) {
     val ctx = LocalContext.current
     val ch = vm.current ?: return
+    val store = vm.store
     val live = vm.playMode == PlayMode.Live
     val vod = vm.playMode == PlayMode.Vod
-    val player = remember { buildPlayer(ctx, vm.store, live) }
-    var view by remember { mutableStateOf<PlayerView?>(null) }
+    val dev = LocalDevice.current
 
-    var retries by remember { mutableIntStateOf(0) }
-    var status by remember { mutableStateOf("") }
-    var ping by remember { mutableIntStateOf(0) }
-    var overlay by remember { mutableStateOf(true) }
-    var alt by remember { mutableStateOf(false) }
-    var ratio by remember { mutableIntStateOf(0) }
-    var speed by remember { mutableFloatStateOf(1f) }
-    var digits by remember { mutableStateOf("") }
-    var startedAt by remember { mutableLongStateOf(0L) }
-    var nextEp by remember { mutableStateOf<Episode?>(null) }
-    var boost by remember { mutableStateOf(false) }
-    var pos by remember { mutableLongStateOf(0L) }
-    var vDur by remember { mutableLongStateOf(0L) }
-    var playing by remember { mutableStateOf(true) }
-    var ctlMode by remember { mutableStateOf(false) }
-    var locked by remember { mutableStateOf(false) }          // touch lock (MX Player style): ignores gestures and taps
-    var swipeBase by remember { mutableLongStateOf(-1L) }     // horizontal swipe-to-seek
-    var swipeTarget by remember { mutableLongStateOf(0L) }
-    val seriesKey = if (vod && kindOf(ch) == Kind.Series) vm.detail?.url else null
-    val introEnd = seriesKey?.let { vm.store.introEnd(it) } ?: 0L
-    val showSkip = introEnd > 0 && pos < introEnd - 1500
+    val ui = remember { PlayerUiState() }
+    val feedback = remember { GestureFeedback() }
+    val act = remember(ctx) { ctx.findActivity() }
+    val am = remember(ctx) { ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+    val vprefs = remember(ctx) { ctx.getSharedPreferences("player_view", Context.MODE_PRIVATE) }
+    val thumbnails = rememberThumbnailLoader(ch.url)
+    val chRef = rememberUpdatedState(ch)
     val chUrl by rememberUpdatedState(ch.url)
-    val chRef by rememberUpdatedState(ch)
 
-    // ── Pro player state: smart aspect + pinch zoom, gestures HUD, channel panel, stats ──
-    var vAr by remember { mutableFloatStateOf(0f) }
-    var zoomScale by remember { mutableFloatStateOf(1f) }
-    var panX by remember { mutableFloatStateOf(0f) }
-    var panY by remember { mutableFloatStateOf(0f) }
-    var hud by remember { mutableStateOf("") }
-    var panel by remember { mutableStateOf(false) }
-    var stats by remember { mutableStateOf(false) }
-    var statsTxt by remember { mutableStateOf("") }
-    var prevCh by remember { mutableStateOf<Channel?>(null) }
-    var curCh by remember { mutableStateOf<Channel?>(null) }
-    var bright by remember { mutableFloatStateOf(-1f) }
+    val seriesKey = if (vod && kindOf(ch) == Kind.Series) vm.detail?.url else null
+    val introEnd = seriesKey?.let { store.introEnd(it) } ?: 0L
+    val showSkip = introEnd > 0 && ui.position < introEnd - 1_500L && vod
+    val rKey = "ratio2:" + (seriesKey ?: ch.url).hashCode()
+
+    // Changing the decoder / buffer profile rebuilds the engine; playback position is carried over.
+    var epoch by remember { mutableIntStateOf(0) }
+    var pendingAt by remember { mutableLongStateOf(-1L) }
+    var pendingPlay by remember { mutableStateOf(true) }
+    var pendingResume by remember { mutableLongStateOf(-1L) }
+    val player = remember(epoch, live) { buildPlayer(ctx, store, live) }
+
+    var view by remember { mutableStateOf<PlayerView?>(null) }
+    var retries by remember { mutableIntStateOf(0) }
+    var altUsed by remember { mutableStateOf(false) }
     var volAcc by remember { mutableFloatStateOf(0f) }
-    val act = remember { ctx.findActivity() }
-    val am = remember { ctx.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager }
-    val vprefs = remember { ctx.getSharedPreferences("player_view", android.content.Context.MODE_PRIVATE) }
-    val rKey = "r:" + (seriesKey ?: ch.url).hashCode()
+    var notedFor by remember { mutableStateOf("") }
+    var startedAt by remember { mutableLongStateOf(0L) }
+    val rootFocus = remember { FocusRequester() }
+    val playFocus = remember { FocusRequester() }
 
-    fun setRatio(i: Int) {
-        ratio = i
-        vprefs.edit().putInt(rKey, i).apply()   // remembered per movie / series / channel
-        zoomScale = 1f; panX = 0f; panY = 0f
+    fun openSheet(tab: PlayerTab) {
+        ui.sheet = tab
+        ui.sheetRev++
+        ui.overlay = true
+        ui.ping++
     }
 
-    fun onSideDrag(left: Boolean, f: Float) {
-        if (left) {
-            val cur = if (bright >= 0f) bright else (act?.window?.attributes?.screenBrightness?.takeIf { it >= 0f } ?: 0.5f)
-            bright = (cur + f).coerceIn(0.02f, 1f)
-            act?.window?.let { w -> val lp = w.attributes; lp.screenBrightness = bright; w.attributes = lp }
-            hud = "🔆 ${(bright * 100).toInt()}%"
-        } else {
-            val max = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
-            volAcc += f * max * 1.3f
-            val steps = volAcc.toInt()
-            if (steps != 0) {
-                val nv = (am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC) + steps).coerceIn(0, max)
-                am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, nv, 0)
-                volAcc -= steps
-            }
-            hud = "🔊 ${am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)}/$max"
+    fun hud(text: String) {
+        ui.hudText = text
+        ui.ping++
+    }
+
+    fun applyBrightness(value: Float) {
+        ui.brightness = value.coerceIn(0.02f, 1f)
+        act?.window?.let { w ->
+            val lp = w.attributes
+            lp.screenBrightness = ui.brightness
+            w.attributes = lp
         }
+    }
+
+    fun applyVolumeDelta(delta: Float) {
+        val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        volAcc += delta * max * 1.3f
+        val steps = volAcc.toInt()
+        if (steps != 0) {
+            val current = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+            am.setStreamVolume(AudioManager.STREAM_MUSIC, (current + steps).coerceIn(0, max), 0)
+            volAcc -= steps
+        }
+        ui.volume = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+        ui.volumeMax = max
+    }
+
+    fun clearSubtitleFile() {
+        store.clearExternalSubtitle(chRef.value.url)
+        ui.extSub = null
+        ui.extCues = emptyList()
+        ui.extCharset = ""
+        ui.extError = null
+        ui.activeCue = null
+        if (store.subEnabled) player.setSubtitlesEnabled(true)
+        ui.settingsRev++
+    }
+
+    val subPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val copied = SubtitleFiles.copy(ctx, uri, chRef.value.url)
+        if (copied == null) {
+            vm.say("تعذّر قراءة ملف الترجمة")
+        } else {
+            val res = SubtitleFiles.load(copied)
+            store.setExternalSubtitle(chRef.value.url, copied)
+            store.subEncoding = "auto"
+            ui.extSub = copied
+            ui.extCues = res.cues
+            ui.extCharset = res.charset
+            ui.extError = res.error
+            ui.subOn = true
+            store.subEnabled = true
+            player.setSubtitlesEnabled(false)   // avoid double subtitles with Media3's renderer
+            ui.settingsRev++
+            vm.say(
+                if (res.cues.isEmpty()) res.error ?: "لم يتم العثور على ترجمة في الملف"
+                else "تم تحميل ${res.cues.size} سطر ترجمة"
+            )
+        }
+    }
+
+    val actions = remember(player, rKey, seriesKey, subPicker) {
+        PlayerActions(
+            togglePlay = { player.playWhenReady = !player.playWhenReady; ui.ping++ },
+            play = { player.playWhenReady = true; ui.ping++ },
+            pause = { player.playWhenReady = false; ui.ping++ },
+            stopPlayback = { vm.stop() },
+            seekBy = { delta ->
+                val max = if (player.duration > 0) player.duration - 500L else Long.MAX_VALUE
+                val t = (player.currentPosition + delta).coerceIn(0L, maxOf(0L, max))
+                player.seekTo(t)
+                ui.position = t
+                hud((if (delta < 0) "⏪ " else "⏩ ") + fmtTime(t))
+            },
+            seekTo = { t -> player.seekTo(t); ui.position = t; ui.ping++ },
+            restart = {
+                player.seekTo(0L)
+                ui.position = 0L
+                ui.ended = false
+                if (player.playbackState == Player.STATE_ENDED) player.prepare()
+                player.playWhenReady = true
+                ui.ping++
+            },
+            jumpTo = { t ->
+                val max = if (player.duration > 0) player.duration - 500L else Long.MAX_VALUE
+                val target = t.coerceIn(0L, maxOf(0L, max))
+                player.seekTo(target); ui.position = target; hud("⏱ ${fmtTime(target)}")
+            },
+            nextVideo = { vm.playNeighbor(1) },
+            prevVideo = { vm.playNeighbor(-1) },
+            nextEpisode = { if (vm.hasNextEpisode(chRef.value)) { vm.playNext(); ui.nextEp = null } },
+            prevEpisode = { if (vm.hasPreviousEpisode(chRef.value)) vm.playPrevious() },
+            setSpeed = { v ->
+                player.setPlaybackSpeed(v); ui.speed = v; store.defaultSpeed = v; ui.settingsRev++
+                hud("⏱ ${v}x")
+            },
+            setAspect = { mode ->
+                ui.aspect = mode
+                vprefs.edit().putString(rKey, mode.name).apply()
+                ui.zoom = 1f; ui.panX = 0f; ui.panY = 0f
+                hud("⛶ ${mode.label}")
+            },
+            zoomBy = { delta ->
+                val z = (ui.zoom + delta).coerceIn(1f, 4f)
+                ui.zoom = z
+                if (z <= 1.001f) { ui.panX = 0f; ui.panY = 0f }
+                hud("🔍 ${(z * 100).roundToInt()}%")
+            },
+            resetZoom = { ui.zoom = 1f; ui.panX = 0f; ui.panY = 0f; hud("🔍 100%") },
+            rotate = { ui.rotation = (ui.rotation + 90) % 360; hud("↻ ${ui.rotation}°") },
+            resetTransform = { ui.zoom = 1f; ui.panX = 0f; ui.panY = 0f; ui.rotation = 0; hud("↺") },
+            setLoop = { on -> ui.loop = on; store.loopByDefault = on; ui.settingsRev++; hud(if (on) "🔁 تكرار" else "🔁 إيقاف التكرار") },
+            setPointA = {
+                ui.abStart = player.currentPosition
+                if (ui.abEnd <= ui.abStart) ui.abEnd = -1L
+                hud("A · ${fmtTime(ui.abStart)}")
+            },
+            setPointB = {
+                if (ui.abStart < 0) vm.say("حدد النقطة A أولاً")
+                else if (player.currentPosition <= ui.abStart) vm.say("يجب أن تكون B بعد A")
+                else { ui.abEnd = player.currentPosition; hud("B · ${fmtTime(ui.abEnd)}") }
+            },
+            clearAb = { ui.abStart = -1L; ui.abEnd = -1L; hud("تم مسح A–B") },
+            setSleep = { minutes ->
+                if (minutes <= 0) { vm.sleepAt = 0L; ui.sleepEnd = false; vm.say("تم إلغاء المؤقت") }
+                else {
+                    vm.sleepAt = System.currentTimeMillis() + minutes * 60_000L
+                    ui.sleepEnd = false
+                    vm.say("سيتوقف التشغيل بعد $minutes دقيقة")
+                }
+                ui.settingsRev++
+            },
+            setSleepEnd = { ui.sleepEnd = true; vm.sleepAt = 0L; vm.say("سيتوقف بعد انتهاء المحتوى الحالي"); ui.settingsRev++ },
+            cancelSleep = { ui.sleepEnd = false; vm.sleepAt = 0L; vm.say("تم إلغاء المؤقت"); ui.settingsRev++ },
+            toggleLock = {
+                ui.locked = !ui.locked
+                ui.overlay = !ui.locked
+                ui.lockHint = ui.locked
+                ui.ping++
+            },
+            enterPip = {
+                val ok = (act as? MainActivity)?.enterPip() == true
+                if (!ok) vm.say("الجهاز لا يدعم النافذة العائمة")
+            },
+            hideControls = { ui.overlay = false },
+            openChannels = { if (live) { ui.panel = true; ui.ping++ } else vm.say("قائمة القنوات متاحة في البث المباشر فقط") },
+            loadSubtitle = { subPicker.launch(arrayOf("*/*")) },
+            removeSubtitle = { clearSubtitleFile(); vm.say("تمت إزالة الترجمة الخارجية") },
+            selectSubtitle = { index ->
+                val track = ui.textTracks.getOrNull(index) ?: return@PlayerActions
+                if (ui.extSub != null) clearSubtitleFile()
+                player.selectTrack(C.TRACK_TYPE_TEXT, track)
+                ui.subOn = true
+                store.subEnabled = true
+                player.setSubtitlesEnabled(true)
+                ui.settingsRev++
+            },
+            setSubtitleEncoding = { enc ->
+                store.subEncoding = enc
+                ui.extSub?.let { sub ->
+                    val updated = sub.copy(encoding = enc)
+                    val res = SubtitleFiles.reDecode(sub, enc)
+                    store.setExternalSubtitle(chRef.value.url, updated)
+                    ui.extSub = updated
+                    ui.extCues = res.cues
+                    ui.extCharset = res.charset
+                    ui.extError = res.error
+                }
+                ui.settingsRev++
+                vm.say(if (enc == "auto") "كشف الترميز تلقائياً" else "تم تغيير الترميز إلى $enc")
+            },
+            setSubtitleDelay = { ms ->
+                store.subDelayMs = ms.coerceIn(-10_000, 10_000)
+                ui.settingsRev++
+                hud("💬 ${store.subDelayMs} ms")
+            },
+            setSubtitlesEnabled = { on ->
+                ui.subOn = on
+                store.subEnabled = on
+                if (on && ui.extSub == null) player.setSubtitlesEnabled(true)
+                else if (!on) player.setSubtitlesEnabled(false)
+                ui.settingsRev++
+            },
+            setAudioTrack = { track -> player.selectTrack(C.TRACK_TYPE_AUDIO, track); ui.tracksRev++; hud("🔊 ${track.label}") },
+            clearAudioOverride = { player.clearTrackOverride(C.TRACK_TYPE_AUDIO); hud("🔊 تلقائي") },
+            setAudioDelay = { ms ->
+                store.audioDelayMs = ms.coerceIn(-2_000, 2_000)
+                AudioDelayBus.ms = store.audioDelayMs
+                ui.settingsRev++
+                hud("🔊 ${store.audioDelayMs} ms")
+            },
+            adjustBrightness = { delta ->
+                applyBrightness(ui.brightness + delta)
+                feedback.kind = GestureKind.Brightness
+                feedback.progress = ui.brightness
+                feedback.active = true
+            },
+            resetBrightness = {
+                val current = act?.window?.attributes?.screenBrightness?.takeIf { it >= 0f } ?: 0.5f
+                applyBrightness(current)
+                feedback.kind = GestureKind.Brightness; feedback.progress = ui.brightness; feedback.active = true
+            },
+            setVolumePercent = { percent ->
+                val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                am.setStreamVolume(AudioManager.STREAM_MUSIC, (percent * max).roundToInt().coerceIn(0, max), 0)
+                ui.volume = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+                feedback.kind = GestureKind.Volume
+                feedback.progress = percent.coerceIn(0f, 1f)
+                feedback.active = true
+            },
+            adjustVolume = { up ->
+                am.stepVolume(up)
+                ui.volume = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+                ui.volumeMax = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                feedback.kind = GestureKind.Volume
+                feedback.progress = ui.volume.toFloat() / ui.volumeMax.coerceAtLeast(1)
+                feedback.active = true
+                hud("🔊 ${ui.volume}/${ui.volumeMax}")
+            },
+            toggleMute = {
+                if (am.isStreamMute(AudioManager.STREAM_MUSIC))
+                    am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, AudioManager.FLAG_SHOW_UI)
+                else
+                    am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_MUTE, AudioManager.FLAG_SHOW_UI)
+                hud(if (am.isStreamMute(AudioManager.STREAM_MUSIC)) "🔇" else "🔊")
+            },
+            toggleAudioBoost = { store.audioBoost = !store.audioBoost; ui.settingsRev++; hud(if (store.audioBoost) "🔊 +8 dB" else "🔊") },
+            recreatePlayer = {
+                pendingAt = player.currentPosition
+                pendingPlay = player.playWhenReady
+                runCatching {
+                    player.playWhenReady = false
+                    player.stop()
+                }
+                ui.status = "جارٍ إعادة بناء المحرك..."
+                epoch++
+                ui.ping++
+            },
+            retry = {
+                retries = 0; altUsed = false
+                ui.error = null; ui.errorDetail = ""; ui.status = "جارٍ التحميل..."
+                player.prepare(); player.playWhenReady = true
+                ui.ping++
+            },
+            openExternal = {
+                runCatching {
+                    val i = Intent(Intent.ACTION_VIEW, Uri.parse(chRef.value.url)).setType("video/*")
+                    ctx.startActivity(Intent.createChooser(i, "فتح بواسطة").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                }.onFailure { vm.say("لا يوجد مشغّل مناسب على الجهاز") }
+            },
+            interact = { ui.overlay = true; ui.ping++ },
+            changed = { ui.settingsRev++ }
+        )
+    }
+
+    fun refreshTracks() {
+        ui.audioTracks = player.audioTracks()
+        ui.textTracks = player.textTracks()
+        ui.tracksRev++
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Initial state and appearance                                       */
+    /* ------------------------------------------------------------------ */
+
+    LaunchedEffect(Unit) {
+        ui.volumeMax = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        ui.volume = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+        ui.brightness = act?.window?.attributes?.screenBrightness?.takeIf { it >= 0f } ?: 0.5f
+        rootFocus.requestFocus()
     }
 
     LaunchedEffect(rKey) {
-        ratio = vprefs.getInt(rKey, if (vod) SMART_RATIO else 0)
-        zoomScale = 1f; panX = 0f; panY = 0f
-    }
-    LaunchedEffect(ch.url) { val c = curCh; if (c != null && c.url != ch.url) prevCh = c; curCh = ch }
-    LaunchedEffect(hud) { if (hud.isNotEmpty()) { delay(900); hud = "" } }
-    LaunchedEffect(stats) { while (stats) { statsTxt = statsText(player); delay(1000) } }
-    DisposableEffect(Unit) {
-        onDispose { act?.window?.let { w -> val lp = w.attributes; lp.screenBrightness = -1f; w.attributes = lp } }
-    }
-
-    // Background playback: a foreground service keeps the process alive (with a Stop notification) while a stream plays.
-    LaunchedEffect(ch.url) { PlaybackService.start(ctx, ch.name) }
-    DisposableEffect(Unit) {
-        PlaybackBus.stop = { vm.stop() }
-        onDispose { PlaybackBus.stop = null; PlaybackService.stop(ctx) }
-    }
-    // When the app leaves the screen (not PiP) drop the video track: audio keeps playing, data and battery are saved.
-    DisposableEffect(act) {
-        val lc = (act as? androidx.lifecycle.LifecycleOwner)?.lifecycle
-        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
-            val off = e == androidx.lifecycle.Lifecycle.Event.ON_STOP
-            if (off || e == androidx.lifecycle.Lifecycle.Event.ON_START) {
-                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                    .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, off).build()
-            }
+        val legacy = runCatching { vprefs.getInt("r:" + (seriesKey ?: ch.url).hashCode(), -1) }.getOrDefault(-1)
+        val legacyMode = when (legacy) {
+            0 -> AspectMode.Fit
+            1 -> AspectMode.Fill
+            2 -> AspectMode.Stretch
+            3 -> AspectMode.Smart
+            else -> null
         }
-        lc?.addObserver(obs)
-        onDispose { lc?.removeObserver(obs) }
+        val saved = runCatching { vprefs.getString(rKey, null) }.getOrNull()
+        ui.aspect = saved?.let { AspectMode.of(it) } ?: legacyMode ?: AspectMode.of(store.defaultAspect)
+        ui.zoom = 1f; ui.panX = 0f; ui.panY = 0f; ui.rotation = 0
+        ui.abStart = -1L; ui.abEnd = -1L
+        ui.loop = store.loopByDefault
+        ui.seekInterval = store.seekInterval
+        ui.subOn = store.subEnabled
     }
 
-    KeepScreenOn()
-
-    // Save resume position when leaving, and every 15 s while a VOD plays.
-    DisposableEffect(Unit) {
-        onDispose {
-            if (vod) vm.saveProgress(chRef, player.currentPosition, player.duration.takeIf { it > 0 } ?: 0L)
-            vm.health.flush()
-            player.release()
-        }
-    }
-    LaunchedEffect(vod, ch.url) {
-        while (vod) { delay(15_000); vm.saveProgress(chRef, player.currentPosition, player.duration.takeIf { it > 0 } ?: 0L) }
-    }
-
-    LaunchedEffect(ch.url) {
-        retries = 0; status = ""; alt = false; nextEp = null; speed = 1f; player.setPlaybackSpeed(1f)
-        startedAt = System.currentTimeMillis()
-        player.setMediaItem(MediaItem.fromUri(ch.url), if (vm.resumeAt > 0) vm.resumeAt else C.TIME_UNSET)
-        player.prepare(); player.playWhenReady = true
-        vm.noteStart(ch)
-        if (live) { delay(2500); vm.prefetchNeighbors() }
-    }
-
-    DisposableEffect(player) {
-        val l = object : Player.Listener {
-            override fun onPlayerError(e: PlaybackException) {
-                val code = (e.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode
-                val u = chUrl
-                val altUrl = when {
-                    u.endsWith(".ts") -> u.removeSuffix(".ts") + ".m3u8"
-                    u.endsWith(".m3u8") -> u.removeSuffix(".m3u8") + ".ts"
-                    else -> null
-                }
-                if (e.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
-                    player.seekToDefaultPosition(); player.prepare()
-                } else if (retries < 2 && (code == null || code >= 500)) {
-                    retries++; player.prepare()
-                } else if (!alt && altUrl != null) {
-                    alt = true; retries = 0
-                    player.setMediaItem(MediaItem.fromUri(altUrl)); player.prepare()
-                } else {
-                    vm.health.markFailure(u)
-                    // Smart failover: jump to a healthy duplicate of the same channel.
-                    if (live && vm.failover()) { status = "تحويل تلقائي لمصدر بديل..." }
-                    else status = "تعذّر التشغيل" + (code?.let { " (HTTP $it)" } ?: " (${e.errorCodeName})")
-                }
-            }
-
-            override fun onVideoSizeChanged(s: VideoSize) {
-                vAr = if (s.height > 0) s.width * s.pixelWidthHeightRatio / s.height else 0f
-            }
-
-            override fun onPlaybackStateChanged(state: Int) {
-                when (state) {
-                    Player.STATE_BUFFERING -> status = "جارٍ التحميل..."
-                    Player.STATE_READY -> {
-                        status = ""; retries = 0
-                        if (LiveRewind.pending > 0) {
-                            val s = LiveRewind.pending; LiveRewind.pending = 0
-                            if (player.isCurrentMediaItemSeekable) player.seekTo(maxOf(0L, player.currentPosition - s * 1000L))
-                            else vm.say("المزوّد لا يدعم الرجوع في هذه القناة")
-                        }
-                        if (live) vm.health.markSuccess(chUrl, System.currentTimeMillis() - startedAt)
-                        // Pick preferred subtitles if the stream offers them (preferred language is set on the selector).
-                    }
-                    Player.STATE_ENDED -> if (vod) {
-                        vm.saveProgress(chRef, player.duration, player.duration)
-                        val n = vm.nextEpisodeOf(chRef)
-                        if (n != null) nextEp = n
-                    }
-                }
-            }
-        }
-        player.addListener(l); onDispose { player.removeListener(l) }
-    }
-
-    // Auto-play the next episode after a short countdown.
-    LaunchedEffect(nextEp) {
-        if (nextEp != null) { delay(5000); if (nextEp != null) vm.playNext() }
-    }
-
-    LaunchedEffect(ch.url, ping) {
-        overlay = true; delay(if (isTelevision(ctx)) 7000L else 3500L)
-        if (!(vod && !player.playWhenReady)) overlay = false   // a paused movie keeps its controls
-    }
-    LaunchedEffect(overlay) { if (!overlay) ctlMode = false }
-    LaunchedEffect(vod, overlay, ch.url) {
-        while (vod && overlay) { pos = player.currentPosition; vDur = player.duration.takeIf { it > 0 } ?: 0L; playing = player.playWhenReady; delay(300) }
-    }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(30_000)
-            vm.tickWatch(30)
-        }
-    }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(10_000)
-            if (vm.sleepAt > 0 && System.currentTimeMillis() >= vm.sleepAt) { vm.sleepAt = 0; vm.stop(); break }
-        }
-    }
-    // Loudness boost (+8 dB) on the player's audio session.
-    DisposableEffect(boost, ch.url) {
-        val enh = if (boost) runCatching { LoudnessEnhancer(player.audioSessionId).apply { setTargetGain(800); enabled = true } }.getOrNull() else null
-        onDispose { runCatching { enh?.release() } }
-    }
-    LaunchedEffect(seriesKey, ch.url) {
-        while (seriesKey != null) { pos = player.currentPosition; delay(500) }
-    }
-
-    // Digits typed on the remote → jump to that channel number after a short pause.
-    LaunchedEffect(digits) {
-        if (digits.isNotEmpty()) {
-            delay(1500)
-            digits.toIntOrNull()?.let { vm.zapToNumber(it) }
-            digits = ""
-        }
-    }
-
-    // Subtitle appearance (size, colour, background) from settings.
-    LaunchedEffect(view) {
+    LaunchedEffect(view, ui.settingsRev) {
         view?.subtitleView?.apply {
-            setFractionalTextSize(vm.store.subSize)
+            setFractionalTextSize(store.subSize)
             setStyle(
                 CaptionStyleCompat(
-                    vm.store.subColor, if (vm.store.subBackground) 0xAA000000.toInt() else 0,
-                    0, CaptionStyleCompat.EDGE_TYPE_OUTLINE, 0xFF000000.toInt(), null
+                    store.subColor,
+                    if (store.subBackground) 0xAA000000.toInt() else Color.Transparent.value.toInt(),
+                    0,
+                    if (store.subOutline) CaptionStyleCompat.EDGE_TYPE_OUTLINE else CaptionStyleCompat.EDGE_TYPE_NONE,
+                    0xFF000000.toInt(),
+                    null
                 )
             )
         }
     }
 
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
-    BackHandler { vm.stop() }
-    BackHandler(enabled = panel) { panel = false }
-    BackHandler(enabled = vod && overlay && nextEp == null) { overlay = false; ctlMode = false; runCatching { focus.requestFocus() } }
-    BackHandler(enabled = nextEp != null) { nextEp = null }
-    BackHandler(enabled = locked) { hud = "🔒 الشاشة مقفولة"; ping++ }
+    // External subtitle remembered for this title.
+    LaunchedEffect(ch.url, player) {
+        ui.extSub = null; ui.extCues = emptyList(); ui.extCharset = ""; ui.extError = null; ui.activeCue = null
+        val sub = store.externalSubtitle(ch.url)
+        if (sub != null) {
+            val res = SubtitleFiles.load(sub)
+            if (res.error == null && res.cues.isNotEmpty()) {
+                ui.extSub = sub
+                ui.extCues = res.cues
+                ui.extCharset = res.charset
+                ui.extError = null
+                if (store.subEnabled) player.setSubtitlesEnabled(false)
+            } else {
+                store.clearExternalSubtitle(ch.url)
+            }
+        } else if (store.subEnabled) {
+            player.setSubtitlesEnabled(true)
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Engine lifecycle                                                   */
+    /* ------------------------------------------------------------------ */
+
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onTracksChanged(tracks: androidx.media3.common.Tracks) = refreshTracks()
+
+            override fun onVideoSizeChanged(size: VideoSize) {
+                ui.videoW = size.width
+                ui.videoH = size.height
+                ui.videoAr = if (size.height > 0) size.width * size.pixelWidthHeightRatio / size.height else 0f
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) { ui.playing = isPlaying }
+            override fun onPlaybackParametersChanged(parameters: androidx.media3.common.PlaybackParameters) { ui.speed = parameters.speed }
+
+            override fun onPlayerError(error: PlaybackException) {
+                val code = (error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode
+                val url = chUrl
+                val alternate = when {
+                    url.endsWith(".ts") -> url.removeSuffix(".ts") + ".m3u8"
+                    url.endsWith(".m3u8") -> url.removeSuffix(".m3u8") + ".ts"
+                    else -> null
+                }
+                when {
+                    error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW -> {
+                        player.seekToDefaultPosition(); player.prepare()
+                    }
+                    retries < 2 && (code == null || code >= 500) -> {
+                        retries++
+                        player.prepare()
+                    }
+                    !altUsed && alternate != null -> {
+                        altUsed = true; retries = 0
+                        player.setMediaItem(mediaItemFor(alternate)); player.prepare(); player.playWhenReady = true
+                        ui.status = "تجربة مصدر بديل..."
+                    }
+                    else -> {
+                        vm.health.markFailure(url)
+                        if (live && vm.failover()) ui.status = "تحويل تلقائي لمصدر بديل..."
+                        else {
+                            ui.error = "تعذّر تشغيل هذا المحتوى"
+                            ui.errorDetail = (code?.let { "HTTP $it" } ?: error.errorCodeName) +
+                                (error.cause?.message?.let { " · $it" } ?: "")
+                            ui.status = ""
+                        }
+                    }
+                }
+            }
+
+            override fun onPlaybackStateChanged(state: Int) {
+                when (state) {
+                    Player.STATE_BUFFERING -> ui.status = "جارٍ التحميل..."
+                    Player.STATE_READY -> {
+                        ui.status = ""
+                        retries = 0
+                        if (pendingResume > 0) {
+                            if (player.duration > pendingResume + 5_000L) {
+                                player.playWhenReady = false
+                                ui.resumeAt = pendingResume
+                            }
+                            pendingResume = -1L
+                        }
+                        if (LiveRewind.pending > 0) {
+                            val seconds = LiveRewind.pending
+                            LiveRewind.pending = 0
+                            if (player.isCurrentMediaItemSeekable) player.seekTo((player.currentPosition - seconds * 1000L).coerceAtLeast(0L))
+                            else vm.say("المزوّد لا يدعم الرجوع في هذه القناة")
+                        }
+                        if (live) {
+                            vm.health.markSuccess(chUrl, System.currentTimeMillis() - startedAt)
+                            refreshTracks()
+                        }
+                    }
+                    Player.STATE_ENDED -> {
+                        if (ui.loop && !live) {
+                            player.seekTo(0L); player.playWhenReady = true
+                        } else if (vod) {
+                            vm.saveProgress(chRef.value, player.duration, player.duration)
+                            if (ui.sleepEnd) {
+                                ui.sleepEnd = false
+                                vm.stop()
+                            } else {
+                                val next = vm.nextEpisodeOf(chRef.value)
+                                if (next != null) {
+                                    ui.nextEp = next
+                                } else {
+                                    ui.ended = true
+                                }
+                            }
+                        } else if (live) {
+                            ui.status = "انتهى البث أو انقطع الاتصال"
+                        }
+                    }
+                }
+            }
+        }
+        player.addListener(listener)
+        onDispose { player.removeListener(listener) }
+    }
+
+    // Each engine rebuild creates a new ExoPlayer; the old one must be released (audio focus, decoder, network).
+    DisposableEffect(player) {
+        onDispose { runCatching { player.release() } }
+    }
+
+    LaunchedEffect(ch.url, player) {
+        retries = 0; altUsed = false
+        ui.error = null; ui.errorDetail = ""; ui.nextEp = null; ui.ended = false
+        ui.hudText = ""; ui.resumeAt = -1L; ui.status = "جارٍ التحميل..."
+        pendingResume = -1L
+        startedAt = System.currentTimeMillis()
+
+        val mode = vm.playMode
+        val resume = when {
+            pendingAt >= 0L -> pendingAt
+            mode == PlayMode.Vod && store.rememberPosition &&
+                ResumeMode.of(store.resumeMode) == ResumeMode.Always && vm.resumeAt > 5_000L -> vm.resumeAt
+            else -> 0L
+        }
+        if (pendingAt < 0L && mode == PlayMode.Vod && store.rememberPosition &&
+            ResumeMode.of(store.resumeMode) == ResumeMode.Ask && vm.resumeAt > 5_000L
+        ) pendingResume = vm.resumeAt
+        pendingAt = -1L
+
+        player.setMediaItem(mediaItemFor(ch.url), if (resume > 0L) resume else C.TIME_UNSET)
+        player.prepare()
+        player.playWhenReady = pendingPlay && pendingResume <= 0L
+        pendingPlay = true
+        player.setPlaybackSpeed(if (live) 1f else store.defaultSpeed)
+        ui.speed = player.playbackParameters.speed
+        if (notedFor != ch.url) { vm.noteStart(ch); notedFor = ch.url }
+        if (live) { delay(2_500); vm.prefetchNeighbors() }
+    }
+
+    // Position, cue, A–B and volume mirror. Runs independently of control visibility.
+    LaunchedEffect(player) {
+        while (true) {
+            ui.position = player.currentPosition.coerceAtLeast(0L)
+            ui.duration = player.duration.takeIf { it > 0 && it != C.TIME_UNSET } ?: 0L
+            ui.buffered = player.bufferedPosition
+            ui.playing = player.isPlaying
+            ui.speed = player.playbackParameters.speed
+            ui.volume = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+            ui.volumeMax = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            ui.activeCue = if (ui.extCues.isNotEmpty() && ui.subOn && store.subEnabled)
+                SubtitleParser.active(ui.extCues, ui.position, store.subDelayMs) else null
+            if (ui.abStart >= 0 && ui.abEnd > ui.abStart && ui.position >= ui.abEnd) player.seekTo(ui.abStart)
+            delay(200)
+        }
+    }
+
+    LaunchedEffect(ui.sheet, ui.stats, player) {
+        while (true) {
+            if (ui.sheet == PlayerTab.Info || ui.stats) ui.infoText = playbackStats(player)
+            delay(1_000)
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Existing app features kept intact                                  */
+    /* ------------------------------------------------------------------ */
+
+    LaunchedEffect(ch.url) { PlaybackService.start(ctx, ch.name) }
+
+    DisposableEffect(Unit) {
+        PlaybackBus.stop = { vm.stop() }
+        onDispose {
+            PlaybackBus.stop = null
+            PlaybackService.stop(ctx)
+            vm.health.flush()
+            act?.window?.let { w -> val lp = w.attributes; lp.screenBrightness = -1f; w.attributes = lp }
+        }
+    }
+
+    // Stop sending video frames while the app is in the background (audio keeps playing).
+    DisposableEffect(act, player) {
+        val lc = (act as? LifecycleOwner)?.lifecycle
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP || event == androidx.lifecycle.Lifecycle.Event.ON_START) {
+                val disable = event == androidx.lifecycle.Lifecycle.Event.ON_STOP && !vm.inPip
+                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, disable).build()
+            }
+        }
+        lc?.addObserver(observer)
+        onDispose { lc?.removeObserver(observer) }
+    }
+
+    // Save the position of the outgoing title before its media item is replaced.
+    DisposableEffect(ch.url, player) {
+        onDispose {
+            if (store.rememberPosition && vm.playMode == PlayMode.Vod)
+                vm.saveProgress(chRef.value, ui.position, ui.duration)
+        }
+    }
+
+    LaunchedEffect(ch.url, player) {
+        while (true) {
+            delay(10_000)
+            if (store.rememberPosition && vm.playMode == PlayMode.Vod)
+                vm.saveProgress(chRef.value, ui.position, ui.duration)
+        }
+    }
+
+    DisposableEffect(store.audioBoost, player, ui.tracksRev) {
+        val enhancer = if (store.audioBoost) runCatching {
+            LoudnessEnhancer(player.audioSessionId).apply { setTargetGain(800); enabled = true }
+        }.getOrNull() else null
+        onDispose { runCatching { enhancer?.release() } }
+    }
+
+    val originalOrientation = remember(act) { act?.requestedOrientation }
+    DisposableEffect(Unit) {
+        onDispose {
+            if (!dev.tv) act?.requestedOrientation = originalOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+    LaunchedEffect(ui.settingsRev, dev.tv) {
+        if (!dev.tv && act != null) {
+            act.requestedOrientation = when (OrientationPref.of(store.playerOrientation)) {
+                OrientationPref.Auto -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                OrientationPref.Landscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                OrientationPref.Portrait -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+            }
+        }
+    }
+
+    LaunchedEffect(ui.digits) {
+        if (ui.digits.isNotEmpty()) {
+            delay(1_500)
+            ui.digits.toIntOrNull()?.let { vm.zapToNumber(it) }
+            ui.digits = ""
+        }
+    }
+
+    LaunchedEffect(ui.hudText) {
+        if (ui.hudText.isNotEmpty()) {
+            delay(1_100)
+            if (ui.hudText.isNotEmpty()) ui.hudText = ""
+        }
+    }
+
+    LaunchedEffect(ui.lockHint) {
+        if (ui.lockHint) { delay(1_400); ui.lockHint = false }
+    }
+
+    LaunchedEffect(ui.ping, ui.overlay, ui.panel, ui.sheet, ui.locked, ui.error, ui.resumeAt, ui.nextEp, ui.showJump, vm.playMode) {
+        if (ui.overlay && ui.sheet == null && !ui.panel && !ui.locked && ui.error == null &&
+            ui.resumeAt <= 0L && !ui.showJump && ui.nextEp == null
+        ) {
+            delay(if (dev.tv) 7_000L else 3_500L)
+            if (ui.overlay && ui.sheet == null && !ui.panel && !ui.locked && ui.error == null &&
+                ui.resumeAt <= 0L && !ui.showJump && ui.nextEp == null && !(vod && !player.playWhenReady)
+            ) ui.overlay = false
+        }
+    }
+
+    LaunchedEffect(ui.overlay, ui.sheet, ui.panel, dev.tv) {
+        if (ui.overlay && ui.sheet == null && !ui.panel && dev.tv) runCatching { playFocus.requestFocus() }
+    }
+
+    LaunchedEffect(ui.nextEp) {
+        val target = ui.nextEp ?: return@LaunchedEffect
+        if (!store.autoNext || ui.sleepEnd) return@LaunchedEffect
+        delay(5_000)
+        if (ui.nextEp == target) { ui.nextEp = null; vm.playNext() }
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) { delay(30_000); vm.tickWatch(30) }
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1_000)
+            if (vm.sleepAt > 0 && System.currentTimeMillis() >= vm.sleepAt) {
+                vm.sleepAt = 0L
+                vm.stop()
+                break
+            }
+        }
+    }
+
+    KeepScreenOn()
+
+    BackHandler {
+        when {
+            ui.sheet != null -> { ui.sheet = null; ui.sheetRev++; runCatching { rootFocus.requestFocus() } }
+            ui.showJump -> ui.showJump = false
+            ui.panel -> { ui.panel = false; runCatching { rootFocus.requestFocus() } }
+            ui.resumeAt > 0 -> { ui.resumeAt = -1L; player.seekTo(0L); player.playWhenReady = true }
+            ui.error != null -> vm.stop()
+            ui.nextEp != null -> ui.nextEp = null
+            ui.ended -> { ui.ended = false; actions.restart() }
+            ui.locked -> { ui.lockHint = true; hud("🔒 الشاشة مقفولة") }
+            else -> vm.stop()
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* TV remote                                                          */
+    /* ------------------------------------------------------------------ */
+
+    fun handleRemoteKey(ev: KeyEvent): Boolean {
+        if (ev.type != KeyEventType.KeyDown) return false
+        if (ev.key == Key.Back) return false
+        if (ui.sheet != null || ui.panel || ui.showJump || ui.resumeAt > 0 || ui.error != null) return false
+
+        when (ev.key) {
+            Key.MediaPlayPause -> { actions.togglePlay(); return true }
+            Key.MediaPlay -> { actions.play(); return true }
+            Key.MediaPause -> { actions.pause(); return true }
+            Key.MediaFastForward -> { actions.seekBy(30_000L); return true }
+            Key.MediaRewind -> { actions.seekBy(-30_000L); return true }
+            Key.MediaNext -> { actions.nextVideo(); return true }
+            Key.MediaPrevious -> { actions.prevVideo(); return true }
+        }
+
+        val digit = when (ev.key) {
+            Key.Zero, Key.NumPad0 -> '0'; Key.One, Key.NumPad1 -> '1'; Key.Two, Key.NumPad2 -> '2'
+            Key.Three, Key.NumPad3 -> '3'; Key.Four, Key.NumPad4 -> '4'; Key.Five, Key.NumPad5 -> '5'
+            Key.Six, Key.NumPad6 -> '6'; Key.Seven, Key.NumPad7 -> '7'; Key.Eight, Key.NumPad8 -> '8'
+            Key.Nine, Key.NumPad9 -> '9'; else -> null
+        }
+        if (digit != null && live && vm.zapEnabled) {
+            if (ui.digits.length < 4) ui.digits += digit
+            ui.overlay = true; ui.ping++
+            return true
+        }
+
+        if (ui.locked) {
+            if (ev.key in setOf(Key.DirectionCenter, Key.Enter, Key.DirectionLeft, Key.DirectionRight,
+                    Key.DirectionUp, Key.DirectionDown, Key.Menu, Key.Info)
+            ) {
+                ui.lockHint = true; ui.ping++
+                return true
+            }
+            return false
+        }
+
+        // With controls visible, arrows move focus between focusable buttons / the timeline.
+        if (ui.overlay && dev.tv) return false
+
+        fun scrub(direction: Int) {
+            val base = ui.seekInterval.coerceAtLeast(1) * 1_000L
+            val multiplier = when {
+                ev.nativeKeyEvent.repeatCount < 4 -> 1
+                ev.nativeKeyEvent.repeatCount < 12 -> 3
+                ev.nativeKeyEvent.repeatCount < 30 -> 6
+                else -> 12
+            }
+            actions.seekBy(direction * base * multiplier)
+        }
+
+        return when (ev.key) {
+            Key.DirectionLeft -> {
+                if (live && !player.isCurrentMediaItemSeekable) ui.panel = true else scrub(-1)
+                ui.ping++; true
+            }
+            Key.DirectionRight -> {
+                if (live && !player.isCurrentMediaItemSeekable) vm.toggleFav(chRef.value) else scrub(1)
+                ui.ping++; true
+            }
+            Key.DirectionUp, Key.DirectionDown -> {
+                val dir = if (ev.key == Key.DirectionUp) 1 else -1
+                when (UpDownAction.of(store.tvUpDown)) {
+                    UpDownAction.Volume -> {
+                        am.stepVolume(dir > 0)
+                        ui.volume = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+                        hud("🔊 ${ui.volume}/${ui.volumeMax}")
+                    }
+                    UpDownAction.Menu -> openSheet(PlayerTab.Playback)
+                    UpDownAction.Channels -> if (vm.hasNeighbor(dir)) vm.playNeighbor(dir) else Unit
+                }
+                ui.ping++; true
+            }
+            Key.DirectionCenter, Key.Enter -> {
+                if (showSkip) { player.seekTo(introEnd); hud("⏭ تم تخطي المقدمة") }
+                else actions.togglePlay()
+                true
+            }
+            Key.Menu, Key.Info, Key.M -> { openSheet(PlayerTab.Playback); true }
+            Key.ChannelUp -> { if (vm.zapEnabled) { vm.zap(1); true } else false }
+            Key.ChannelDown -> { if (vm.zapEnabled) { vm.zap(-1); true } else false }
+            else -> false
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* UI                                                                 */
+    /* ------------------------------------------------------------------ */
 
     Box(
-        Modifier.fillMaxSize().background(Color.Black)
-            .focusRequester(focus).focusable()
-            .then(if (locked) Modifier else Modifier.pinchZoom { z, p ->
-                zoomScale = (zoomScale * z).coerceIn(1f, 4f)
-                val mx = (zoomScale - 1f) * (view?.width ?: 0) / 2f
-                val my = (zoomScale - 1f) * (view?.height ?: 0) / 2f
-                panX = (panX + p.x).coerceIn(-mx, mx); panY = (panY + p.y).coerceIn(-my, my)
-                hud = "🔍 ${(zoomScale * 100).toInt()}%"
-            })
-            .then(if (locked) Modifier.pointerInput(Unit) { detectTapGestures(onTap = { ping++ }) } else Modifier.playerGestures(
-                key = listOf(ch.url, ratio, speed, boost, live),
-                live = live,
-                onTap = { ping++ },
-                onLongPress = { playerMenu(vm, player, view, ch, ratio, speed, { setRatio(it) }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost }) },
-                onSeek = { dir ->
-                    player.seekTo(maxOf(0L, player.currentPosition + dir * 10_000L))
-                    hud = if (dir < 0) "⏪ 10" else "10 ⏩"
-                },
-                onZap = { vm.zap(it) },
-                onSide = { left, f -> onSideDrag(left, f) },
-                onHDragStart = { swipeBase = player.currentPosition; swipeTarget = swipeBase },
-                onHDrag = { f ->
-                    if (swipeBase >= 0L) {
-                        val total = player.duration.takeIf { it > 0 } ?: 0L
-                        val span = if (total > 0) minOf(total, 180_000L) else 180_000L   // a full-width swipe ≈ 3 min
-                        val t = (swipeBase + (f * span).toLong()).coerceIn(0L, if (total > 0) maxOf(0L, total - 1000) else Long.MAX_VALUE)
-                        swipeTarget = t
-                        val dlt = (t - swipeBase) / 1000
-                        hud = (if (dlt >= 0) "⏩ +" else "⏪ ") + dlt + "ث   " + fmtTime(t)
-                    }
-                },
-                onHDragEnd = {
-                    if (swipeBase >= 0L) { player.seekTo(swipeTarget); pos = swipeTarget; swipeBase = -1L; ping++ }
-                }
-            ))
-            .onPreviewKeyEvent { ev ->
-                if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                if (panel) return@onPreviewKeyEvent false   // let the channel list handle its own navigation
-                if (vod) {
-                    fun scrub(dir: Int) {
-                        val step = seekStep(ev.nativeKeyEvent.repeatCount)
-                        val max = if (player.duration > 0) player.duration - 1000 else Long.MAX_VALUE
-                        val t = (player.currentPosition + dir * step).coerceIn(0L, maxOf(0L, max))
-                        player.seekTo(t); pos = t
-                        hud = (if (dir < 0) "⏪ " else "⏩ ") + fmtTime(t) + (if (vDur > 0) " / " + fmtTime(vDur) else "")
-                        ping++
-                    }
-                    when (ev.key) {
-                        Key.MediaPlayPause -> { player.playWhenReady = !player.playWhenReady; playing = player.playWhenReady; ping++; return@onPreviewKeyEvent true }
-                        Key.MediaPlay -> { player.playWhenReady = true; playing = true; ping++; return@onPreviewKeyEvent true }
-                        Key.MediaPause -> { player.playWhenReady = false; playing = false; ping++; return@onPreviewKeyEvent true }
-                        Key.MediaFastForward -> { player.seekTo(player.currentPosition + 30_000); ping++; return@onPreviewKeyEvent true }
-                        Key.MediaRewind -> { player.seekTo(maxOf(0L, player.currentPosition - 30_000)); ping++; return@onPreviewKeyEvent true }
-                        Key.MediaNext -> { vm.playNext(); return@onPreviewKeyEvent true }
-                        else -> {}
-                    }
-                    if (nextEp != null && (ev.key == Key.DirectionCenter || ev.key == Key.Enter)) { vm.playNext(); return@onPreviewKeyEvent true }
-                    if (ctlMode && overlay) { ping++; return@onPreviewKeyEvent false }   // focus is in the control bar
-                    return@onPreviewKeyEvent when (ev.key) {
-                        Key.DirectionLeft -> { scrub(-1); true }
-                        Key.DirectionRight -> { scrub(1); true }
-                        Key.DirectionUp, Key.DirectionDown -> { ctlMode = true; ping++; true }
-                        Key.DirectionCenter, Key.Enter -> {
-                            if (showSkip) player.seekTo(introEnd)
-                            else { player.playWhenReady = !player.playWhenReady; playing = player.playWhenReady }
-                            ping++; true
-                        }
-                        Key.Menu, Key.Info, Key.M -> { playerMenu(vm, player, view, ch, ratio, speed, { setRatio(it) }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost }); true }
-                        else -> false
-                    }
-                }
-                val digit = when (ev.key) {
-                    Key.Zero, Key.NumPad0 -> '0'; Key.One, Key.NumPad1 -> '1'; Key.Two, Key.NumPad2 -> '2'
-                    Key.Three, Key.NumPad3 -> '3'; Key.Four, Key.NumPad4 -> '4'; Key.Five, Key.NumPad5 -> '5'
-                    Key.Six, Key.NumPad6 -> '6'; Key.Seven, Key.NumPad7 -> '7'; Key.Eight, Key.NumPad8 -> '8'
-                    Key.Nine, Key.NumPad9 -> '9'; else -> null
-                }
-                if (digit != null && live) { if (digits.length < 4) digits += digit; ping++; return@onPreviewKeyEvent true }
-                when (ev.key) {
-                    Key.DirectionUp, Key.ChannelUp -> if (vm.zapEnabled) { vm.zap(1); true } else { ping++; false }
-                    Key.DirectionDown, Key.ChannelDown -> if (vm.zapEnabled) { vm.zap(-1); true } else false
-                    Key.DirectionCenter, Key.Enter -> {
-                        if (showSkip) player.seekTo(introEnd)
-                        else if (!live) player.playWhenReady = !player.playWhenReady
-                        ping++; true
-                    }
-                    Key.DirectionRight -> {
-                        if (live) vm.toggleFav(ch) else player.seekTo(player.currentPosition + 10_000)
-                        ping++; true
-                    }
-                    Key.DirectionLeft -> if (!live) { player.seekTo(maxOf(0L, player.currentPosition - 10_000)); true } else { panel = true; true }
-                    Key.Menu, Key.Info, Key.M -> { playerMenu(vm, player, view, ch, ratio, speed, { setRatio(it) }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost }); true }
-                    Key.MediaNext -> { if (vod) vm.playNext(); true }
-                    else -> false
-                }
-            }
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .focusRequester(rootFocus)
+            .focusable()
+            .onPreviewKeyEvent { handleRemoteKey(it) }
     ) {
-        AndroidView(
-            modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = zoomScale; scaleY = zoomScale; translationX = panX; translationY = panY },
-            factory = { c ->
-                PlayerView(c).apply {
-                    useController = false
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    this.player = player
-                    view = this
+        // Video layer: gestures + zoom/pan/rotation transform. No UI state is read as a key here.
+        val rotationScale = if (ui.rotation % 180 != 0 && ui.surfaceW > 0 && ui.surfaceH > 0)
+            minOf(ui.surfaceW, ui.surfaceH).toFloat() / maxOf(ui.surfaceW, ui.surfaceH) else 1f
+        Box(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = ui.zoom * rotationScale
+                    scaleY = ui.zoom * rotationScale
+                    translationX = ui.panX
+                    translationY = ui.panY
+                    rotationZ = ui.rotation.toFloat()
                 }
-            },
-            update = {
-                val m = ratios[ratio].second
-                it.resizeMode = if (m == -1) smartMode(vAr, it.width, it.height) else m
-                it.useController = false
+                .then(
+                    if (!ui.locked && !vm.inPip && store.gesturesEnabled) {
+                        Modifier.playerGesturesV2(
+                            key = listOf(ch.url, epoch, ui.aspect, live),
+                            enabled = true,
+                            seekEnabled = store.gestureSeek,
+                            brightnessEnabled = store.gestureBrightness,
+                            volumeEnabled = store.gestureVolume,
+                            doubleTapEnabled = store.gestureDoubleTap,
+                            pinchEnabled = store.gesturePinch,
+                            panEnabled = store.gesturePan,
+                            sensitivity = store.gestureSensitivity,
+                            canSeek = { player.isCurrentMediaItemSeekable || player.duration > 0 },
+                            duration = { ui.duration },
+                            position = { player.currentPosition },
+                            zoomed = { ui.zoom > 1.01f },
+                            onTap = { ui.overlay = !ui.overlay; ui.ping++ },
+                            onDoubleTap = { zone ->
+                                if (zone == 0) actions.togglePlay()
+                                else actions.seekBy(zone * ui.seekInterval * 1_000L)
+                            },
+                            onLongPress = { openSheet(PlayerTab.Playback) },
+                            onSeekStart = {
+                                feedback.kind = GestureKind.Seek
+                                feedback.seekTarget = player.currentPosition
+                                feedback.active = true
+                            },
+                            onSeekPreview = { target, delta ->
+                                feedback.kind = GestureKind.Seek
+                                feedback.seekTarget = target
+                                feedback.seekDelta = delta
+                                feedback.active = true
+                            },
+                            onSeekCommit = { target ->
+                                player.seekTo(target)
+                                ui.position = target
+                                hud((if (target >= player.currentPosition) "⏩ " else "⏪ ") + fmtTime(target))
+                                feedback.clear()
+                            },
+                            onBrightness = { delta ->
+                                applyBrightness(ui.brightness + delta)
+                                feedback.kind = GestureKind.Brightness
+                                feedback.progress = ui.brightness
+                                feedback.active = true
+                            },
+                            onVolume = { delta ->
+                                applyVolumeDelta(delta)
+                                feedback.kind = GestureKind.Volume
+                                feedback.progress = ui.volume.toFloat() / ui.volumeMax.coerceAtLeast(1)
+                                feedback.active = true
+                            },
+                            onZoom = { ratio, pan ->
+                                val z = (ui.zoom * ratio).coerceIn(1f, 4f)
+                                ui.zoom = z
+                                val mx = (z - 1f) * (view?.width ?: 0) / 2f
+                                val my = (z - 1f) * (view?.height ?: 0) / 2f
+                                ui.panX = (ui.panX + pan.x).coerceIn(-mx, mx)
+                                ui.panY = (ui.panY + pan.y).coerceIn(-my, my)
+                                feedback.kind = GestureKind.Zoom
+                                feedback.progress = (z - 1f) / 3f
+                                feedback.active = true
+                            },
+                            onPan = { delta ->
+                                val mx = (ui.zoom - 1f) * (view?.width ?: 0) / 2f
+                                val my = (ui.zoom - 1f) * (view?.height ?: 0) / 2f
+                                ui.panX = (ui.panX + delta.x).coerceIn(-mx, mx)
+                                ui.panY = (ui.panY + delta.y).coerceIn(-my, my)
+                                feedback.kind = GestureKind.Pan
+                                feedback.active = true
+                            },
+                            onGestureEnd = { feedback.clear() }
+                        )
+                    } else Modifier.pointerInput(Unit) {
+                        detectTapGestures(onTap = { ui.overlay = !ui.overlay; ui.ping++ })
+                    }
+                )
+        ) {
+            BoxWithConstraints(
+                Modifier
+                    .fillMaxSize()
+                    .onSizeChanged { ui.surfaceW = it.width; ui.surfaceH = it.height }
+            ) {
+                val forced = ui.aspect.forcedRatio
+                var boxW = maxWidth
+                var boxH = maxHeight
+                if (forced != null) {
+                    if (boxW / boxH > forced) boxW = boxH * forced else boxH = boxW / forced
+                }
+                val resizeMode = when {
+                    forced != null -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    ui.aspect == AspectMode.Smart -> smartMode(ui.videoAr, ui.surfaceW, ui.surfaceH)
+                    else -> ui.aspect.resizeMode
+                }
+                AndroidView(
+                    modifier = Modifier.size(boxW, boxH),
+                    factory = { c ->
+                        PlayerView(c).apply {
+                            useController = false
+                            this.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                            this.player = player
+                            view = this
+                        }
+                    },
+                    update = {
+                        it.player = player
+                        it.useController = false
+                        it.resizeMode = resizeMode
+                        view = it
+                    }
+                )
             }
-        )
+        }
 
-        if (digits.isNotEmpty() && !vm.inPip) Text(digits, fontSize = 44.sp, color = Accent, modifier = Modifier.align(Alignment.TopEnd).padding(32.dp))
+        // External subtitles are drawn by our own renderer, below the controls.
+        key(ui.settingsRev) { ExternalSubtitleOverlay(ui, store, Modifier.fillMaxSize()) }
 
-        if (showSkip && !vm.inPip) {
+        if (ui.locked && !vm.inPip) {
+            Box(Modifier.fillMaxSize().clickable { ui.lockHint = true; ui.ping++ })
+            Row(
+                Modifier.align(Alignment.Center).background(Color(0xCC000000), RoundedCornerShape(20.dp))
+                    .clickable { actions.toggleLock() }.padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("🔒 ${if (ui.lockHint) "اضغط لفتح القفل" else "الشاشة مقفولة"}", color = Color.White, fontSize = 15.sp)
+                PlayerRoundButton("🔓", size = 34) { actions.toggleLock() }
+            }
+        }
+
+        if (!vm.inPip && ui.digits.isNotEmpty()) {
+            Text(
+                ui.digits, fontSize = 44.sp, fontWeight = FontWeight.Bold, color = Accent,
+                modifier = Modifier.align(Alignment.TopEnd).padding(32.dp)
+            )
+        }
+
+        if (showSkip && !vm.inPip && !ui.locked) {
             Box(
-                Modifier.align(Alignment.BottomEnd).padding(36.dp)
-                    .background(Color(0xCC000000)).clickable { player.seekTo(introEnd) }.padding(horizontal = 18.dp, vertical = 12.dp)
+                Modifier.align(Alignment.BottomEnd).padding(horizontal = 24.dp, vertical = 150.dp)
+                    .background(Color(0xCC000000), RoundedCornerShape(12.dp))
+                    .clickable { player.seekTo(introEnd); hud("⏭ تم تخطي المقدمة") }
+                    .padding(horizontal = 18.dp, vertical = 12.dp)
             ) { Text("⏭ تخطي المقدمة  (OK)", color = Accent, fontSize = 15.sp) }
         }
 
-        nextEp?.let { e ->
-            Column(Modifier.align(Alignment.BottomEnd).padding(32.dp).background(Color(0xDD000000)).padding(16.dp)) {
-                Text("الحلقة التالية خلال 5 ثوانٍ: حلقة ${e.num}", color = Color.White, fontSize = 14.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    MBtn("تشغيل الآن") { vm.playNext() }
-                    MBtn("إلغاء", filled = false) { nextEp = null }
-                }
-            }
-        }
-
-        if (hud.isNotEmpty() && !vm.inPip) {
+        GestureHud(feedback, Modifier.align(Alignment.Center))
+        if (ui.hudText.isNotEmpty() && !feedback.active && !vm.inPip) {
             Text(
-                hud, fontSize = 22.sp, color = Color.White,
-                modifier = Modifier.align(Alignment.Center).background(Color(0xAA000000)).padding(horizontal = 18.dp, vertical = 10.dp)
+                ui.hudText, fontSize = 20.sp, color = Color.White, fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.Center).background(Color(0xBB000000), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 18.dp, vertical = 10.dp)
             )
         }
-        if (stats && !vm.inPip) {
+
+        if (ui.status == "جارٍ التحميل..." && !vm.inPip && ui.error == null) {
+            androidx.compose.material3.CircularProgressIndicator(
+                Modifier.align(Alignment.Center).size(46.dp), color = Accent, strokeWidth = 3.dp
+            )
+        } else if (ui.status.isNotEmpty() && !vm.inPip && ui.error == null) {
             Text(
-                statsTxt, fontSize = 12.sp, color = Accent,
-                modifier = Modifier.align(Alignment.TopStart).padding(16.dp).background(Color(0xAA000000)).padding(8.dp)
-            )
-        }
-        if (panel && live && !vm.inPip) ChannelPanel(vm, ch, { panel = false }, Modifier.align(Alignment.CenterStart))
-
-        // Always-visible options (tap the screen to show): aspect ratio + full options menu.
-        if (!vm.inPip && overlay && live) {
-            val dev = LocalDevice.current
-            Row(
-                Modifier.align(Alignment.TopEnd)
-                    .padding(horizontal = if (dev.tv) 48.dp else 12.dp, vertical = if (dev.tv) 27.dp else 8.dp)
-                    .widthIn(max = (dev.widthDp - 24).dp)
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (live) {
-                    prevCh?.let { p -> MBtn("↩ ${p.name.take(12)}", filled = false) { vm.switchTo(p) } }
-                    MBtn("☰ القنوات", filled = false) { panel = true }
-                    MBtn("⏪ 30", filled = false) { rewindLive(vm, player, ch.url, 30); ping++ }
-                    if (player.isCurrentMediaItemLive && player.currentLiveOffset > 8000L)
-                        MBtn("🔴 مباشر") { player.seekToDefaultPosition(); ping++ }
-                }
-                MBtn("📊", filled = false) { stats = !stats }
-                MBtn("⛶ ${ratios[ratio].first}", filled = false) { setRatio((ratio + 1) % ratios.size); ping++ }
-                MBtn("⚙ خيارات") {
-                    playerMenu(vm, player, view, ch, ratio, speed, { setRatio(it) }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost })
-                }
-            }
-        }
-
-        if (!vm.inPip && vod && overlay && nextEp == null && !locked) {
-            val epTitle = vm.detail?.let { d -> if (seriesKey != null) d.name + " — " + ch.name else ch.name } ?: ch.name
-            VodControls(
-                title = epTitle, pos = pos, dur = vDur, playing = playing, ctlMode = ctlMode,
-                hasNext = seriesKey != null && vm.nextEpisodeOf(ch) != null,
-                ratioLabel = ratios[ratio].first, speed = speed,
-                onToggle = { player.playWhenReady = !player.playWhenReady; playing = player.playWhenReady; ping++ },
-                onSeekBy = { dlt ->
-                    val max = if (player.duration > 0) player.duration - 1000 else Long.MAX_VALUE
-                    val t = (player.currentPosition + dlt).coerceIn(0L, maxOf(0L, max)); player.seekTo(t); pos = t; ping++
-                },
-                onSeekTo = { t -> player.seekTo(t); pos = t; ping++ },
-                onNext = { vm.playNext() },
-                onAspect = { setRatio((ratio + 1) % ratios.size); ping++ },
-                onOptions = { playerMenu(vm, player, view, ch, ratio, speed, { setRatio(it) }, { speed = it }, { enterPip(ctx) }, seriesKey, boost, { boost = !boost }) },
-                onStats = { stats = !stats; ping++ },
-                onTouch = { ping++ },
-                onAudio = { audioMenu(vm, player) },
-                onSubs = { subtitleMenu(vm, player) },
-                onSpeed = { speedMenu(vm, player, speed) { speed = it } },
-                onLock = if (LocalDevice.current.touch) ({ locked = true; overlay = false }) else null,
-                modifier = Modifier.align(Alignment.BottomCenter)
+                ui.status, color = Color.White, fontSize = 14.sp,
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 90.dp)
+                    .background(Color(0xAA000000), RoundedCornerShape(8.dp)).padding(12.dp)
             )
         }
 
-        // Touch devices: an on-screen back button (TV uses the remote's Back key).
-        if (!vm.inPip && vod && overlay && !locked && LocalDevice.current.touch) {
-            IconBtn(Ic.Close, onClick = { vm.stop() }, tint = Color.White, modifier = Modifier.align(Alignment.TopStart).padding(12.dp))
-        }
-        if (locked && overlay && !vm.inPip) {
-            MBtn("🔓 اضغط لفتح القفل", modifier = Modifier.align(Alignment.Center)) { locked = false; ping++ }
-        }
-        if (status == "جارٍ التحميل..." && !vm.inPip) {
-            androidx.compose.material3.CircularProgressIndicator(Modifier.align(Alignment.Center).size(46.dp), color = Accent, strokeWidth = 3.dp)
+        if (ui.stats && !vm.inPip) {
+            Text(
+                ui.infoText, fontSize = 11.sp, color = Accent,
+                modifier = Modifier.align(Alignment.TopStart).padding(12.dp)
+                    .background(Color(0xAA000000), RoundedCornerShape(8.dp)).padding(8.dp)
+            )
         }
 
-        if (!vm.inPip && ((overlay && live) || status.isNotEmpty())) {
+        // Top bar
+        if (ui.overlay && !ui.locked && !vm.inPip && ui.sheet == null) {
             Row(
-                Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color(0xCC000000))
-                    .padding(horizontal = if (LocalDevice.current.tv) 48.dp else 20.dp, vertical = if (LocalDevice.current.tv) 27.dp else 14.dp),
+                Modifier.align(Alignment.TopCenter).fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(Color(0xCC000000), Color.Transparent)))
+                    .padding(
+                        horizontal = if (dev.tv) 48.dp else 12.dp,
+                        vertical = if (dev.tv) 22.dp else 8.dp
+                    ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                AsyncImage(model = ch.logo, contentDescription = null, modifier = Modifier.size(56.dp))
-                Spacer(Modifier.width(16.dp))
-                Column {
-                    Text((if (ch.url in vm.favs) "★ " else "") + ch.name, fontSize = 24.sp, color = Color.White)
-                    val (now, next) = vm.nowNext(ch)
-                    Text(now?.title ?: ch.group, fontSize = 14.sp, color = Accent)
-                    if (now != null) {
-                        val pct = ((System.currentTimeMillis() - now.start).toFloat() / (now.stop - now.start).coerceAtLeast(1)).coerceIn(0f, 1f)
-                        Box(Modifier.padding(vertical = 6.dp).width(320.dp).height(4.dp).background(Color(0x33FFFFFF))) {
-                            Box(Modifier.fillMaxHeight().fillMaxWidth(pct).background(Accent))
+                PlayerRoundButton("✕", size = 42) { vm.stop() }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    val name = if (seriesKey != null) (vm.detail?.name ?: ch.name) + " — " + ch.name else ch.name
+                    Text(name, fontSize = if (dev.tv) 20.sp else 16.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+                    Text(
+                        if (live) ch.group else (player.videoFormat?.let { "${it.width}×${it.height}" } ?: fmtTime(ui.duration)),
+                        fontSize = 12.sp, color = Accent, maxLines = 1
+                    )
+                }
+                if (live) {
+                    Text("🔴 مباشر", fontSize = 12.sp, color = Color(0xFFFF8A8F),
+                        modifier = Modifier.background(Color(0x66000000), RoundedCornerShape(8.dp)).padding(8.dp))
+                    Spacer(Modifier.width(8.dp))
+                }
+                PlayerRoundButton("📊", size = 40, active = ui.stats) { ui.stats = !ui.stats }
+                Spacer(Modifier.width(6.dp))
+                if (dev.touch) {
+                    PlayerRoundButton("🔒", size = 40) { actions.toggleLock() }
+                    Spacer(Modifier.width(6.dp))
+                }
+                PlayerRoundButton("⛶", size = 40) { actions.enterPip() }
+                Spacer(Modifier.width(6.dp))
+                PlayerRoundButton("⚙", size = 40) { openSheet(PlayerTab.Playback) }
+            }
+        }
+
+        // Bottom control bar
+        if (ui.overlay && !ui.locked && !vm.inPip && ui.sheet == null && ui.error == null && ui.resumeAt <= 0L) {
+            Column(
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xEE000000))))
+                    .padding(horizontal = if (dev.tv) 48.dp else 12.dp, vertical = if (dev.tv) 20.dp else 10.dp)
+            ) {
+                if (live) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AsyncImage(model = ch.logo, contentDescription = null, modifier = Modifier.size(44.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text((if (ch.url in vm.favs) "★ " else "") + ch.name, fontSize = 17.sp, color = Color.White, maxLines = 1)
+                            val (now, next) = vm.nowNext(ch)
+                            Text(now?.title ?: ch.group, fontSize = 12.sp, color = Accent, maxLines = 1)
+                            if (now != null) {
+                                val pct = ((System.currentTimeMillis() - now.start).toFloat() / (now.stop - now.start).coerceAtLeast(1)).coerceIn(0f, 1f)
+                                Box(Modifier.padding(vertical = 4.dp).fillMaxWidth().height(3.dp).background(Color(0x33FFFFFF))) {
+                                    Box(Modifier.fillMaxHeight().fillMaxWidth(pct).background(Accent))
+                                }
+                                Text(
+                                    "${hm(now.start)} - ${hm(now.stop)}" + (next?.let { " · التالي: ${it.title}" } ?: ""),
+                                    fontSize = 11.sp, color = Color(0xFFB8C2CF), maxLines = 1
+                                )
+                            }
                         }
-                        Text("${hm(now.start)} - ${hm(now.stop)}", fontSize = 12.sp, color = Color(0xFFB8C2CF))
-                        next?.let { Text("التالي: ${it.title} (${hm(it.start)})", fontSize = 12.sp, color = Color(0xFFB8C2CF)) }
                     }
+                    Spacer(Modifier.height(8.dp))
                 }
-                Spacer(Modifier.weight(1f))
-                if (status.isNotEmpty()) Text(status, color = Color.White)
+
+                if (ui.duration > 0) {
+                    PlayerTimeline(
+                        ui = ui,
+                        seekInterval = ui.seekInterval,
+                        thumbnails = thumbnails,
+                        onSeekBy = actions.seekBy,
+                        onSeekTo = actions.seekTo,
+                        onInteract = actions.interact
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (live) {
+                        PlayerButton("☰ القنوات") { actions.openChannels() }
+                        PlayerButton("⏪ 30") { rewindLive(vm, player, chRef.value.url, 30); ui.ping++ }
+                        if (player.isCurrentMediaItemLive && player.currentLiveOffset > 8_000L) {
+                            PlayerButton("🔴 مباشر") { player.seekToDefaultPosition(); ui.ping++ }
+                        }
+                    } else {
+                        PlayerButton("⏮", enabled = vm.hasPreviousEpisode(chRef.value)) { actions.prevEpisode() }
+                    }
+                    PlayerButton("⏪ ${ui.seekInterval}") { actions.seekBy(-ui.seekInterval * 1_000L) }
+                    PlayerRoundButton(
+                        if (ui.playing) "⏸" else "▶", size = 54, focusRequester = playFocus
+                    ) { actions.togglePlay() }
+                    PlayerButton("${ui.seekInterval} ⏩") { actions.seekBy(ui.seekInterval * 1_000L) }
+                    if (!live) {
+                        PlayerButton("⏭", enabled = vm.hasNextEpisode(chRef.value)) { actions.nextEpisode() }
+                    }
+                    PlayerButton(if (am.isStreamMute(AudioManager.STREAM_MUSIC)) "🔇" else "🔊") { actions.toggleMute() }
+                    PlayerButton("💬 ترجمة", active = ui.subOn) { openSheet(PlayerTab.Subtitles) }
+                    PlayerButton("🎧 صوت", active = store.audioBoost) { openSheet(PlayerTab.Audio) }
+                    PlayerButton(if (ui.speed == 1f) "⏱ السرعة" else "⏱ ${ui.speed}x", active = ui.speed != 1f) { openSheet(PlayerTab.Playback) }
+                    PlayerButton("⛶ ${ui.aspect.label.substringBefore(' ')}") { openSheet(PlayerTab.Display) }
+                    PlayerButton("🔁", active = ui.loop) { actions.setLoop(!ui.loop) }
+                    if (dev.touch) PlayerButton("🔒 قفل") { actions.toggleLock() }
+                    PlayerButton("⚙ خيارات") { openSheet(PlayerTab.Playback) }
+                    PlayerButton("📊") { ui.stats = !ui.stats }
+                }
+            }
+        }
+
+        if (ui.panel && live && !vm.inPip) {
+            ChannelPanel(vm, chRef.value, { ui.panel = false; runCatching { rootFocus.requestFocus() } }, Modifier.align(Alignment.CenterStart))
+        }
+
+        ui.nextEp?.let { ep ->
+            Column(
+                Modifier.align(Alignment.BottomEnd).padding(24.dp)
+                    .background(Color(0xEE101522), RoundedCornerShape(16.dp))
+                    .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(16.dp)).padding(16.dp),
+                horizontalAlignment = Alignment.End
+            ) {
+                Text(
+                    if (store.autoNext && !ui.sleepEnd) "الحلقة التالية خلال 5 ثوانٍ: ${ep.num}"
+                    else "الحلقة التالية: ${ep.num}",
+                    color = Color.White, fontSize = 14.sp)
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MBtn("تشغيل الآن") { ui.nextEp = null; vm.playNext() }
+                    MBtn("إلغاء", filled = false) { ui.nextEp = null }
+                }
+            }
+        }
+
+        if (ui.ended && !vm.inPip) {
+            Column(
+                Modifier.align(Alignment.Center).background(Color(0xEE101522), RoundedCornerShape(18.dp))
+                    .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(18.dp)).padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("انتهى المحتوى", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(14.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MBtn("إعادة") { actions.restart() }
+                    if (vm.hasNextEpisode(chRef.value)) MBtn("الحلقة التالية") { vm.playNext() }
+                    MBtn("خروج", filled = false) { vm.stop() }
+                }
+            }
+        }
+
+        if (ui.resumeAt > 0 && !vm.inPip) {
+            ResumePrompt(
+                position = ui.resumeAt,
+                onResume = {
+                    val target = ui.resumeAt
+                    ui.resumeAt = -1L
+                    player.seekTo(target)
+                    player.playWhenReady = true
+                },
+                onRestart = {
+                    ui.resumeAt = -1L
+                    player.seekTo(0L)
+                    player.playWhenReady = true
+                }
+            )
+        }
+
+        ui.error?.let { err ->
+            PlayerErrorCard(
+                message = err,
+                detail = ui.errorDetail,
+                onRetry = actions.retry,
+                onExternal = actions.openExternal,
+                onExit = { vm.stop() }
+            )
+        }
+
+        if (ui.showJump && !vm.inPip) {
+            TimeJumpDialog(
+                current = ui.position,
+                duration = ui.duration,
+                onJump = actions.jumpTo,
+                onDismiss = { ui.showJump = false }
+            )
+        }
+
+        ui.sheet?.let { tab ->
+            key(ui.sheetRev) {
+                PlayerSheet(
+                    ui = ui,
+                    store = store,
+                    vm = vm,
+                    actions = actions,
+                    player = player,
+                    ch = chRef.value,
+                    live = live,
+                    introEnd = introEnd,
+                    canSaveIntro = seriesKey != null,
+                    onClose = { ui.sheet = null; ui.sheetRev++; runCatching { rootFocus.requestFocus() } },
+                    onSaveIntro = {
+                        seriesKey?.let { k ->
+                            store.setIntroEnd(k, player.currentPosition)
+                            vm.say("سيظهر زر تخطي المقدمة في حلقات هذا المسلسل")
+                        }
+                    },
+                    onClearIntro = { seriesKey?.let { vm.store.setIntroEnd(it, 0L); vm.say("تم مسح المقدمة") } },
+                    onRewindLive = { sec -> rewindLive(vm, player, chRef.value.url, sec) },
+                    onLiveEdge = { player.seekToDefaultPosition(); player.playWhenReady = true; ui.ping++ },
+                    onAlternatives = {
+                        val alts = vm.alternativesOf(chRef.value)
+                        if (alts.isEmpty()) vm.say("لا توجد مصادر بديلة لهذه القناة")
+                        else vm.menu = com.nabd.tv.MenuRequest(
+                            "مصادر بديلة",
+                            alts.map { a -> (a.name + " · " + vm.health.state(a.url).name) to { vm.useAlternative(a) } }
+                        )
+                    }
+                )
             }
         }
     }
-}
-
-@OptIn(UnstableApi::class)
-private fun tracksOf(player: ExoPlayer, type: Int) = player.currentTracks.groups.filter { it.type == type && it.length > 0 }
-
-/** Audio tracks picker (used by the quick "الصوت" button and the full options menu). */
-@OptIn(UnstableApi::class)
-private fun audioMenu(vm: AppViewModel, player: ExoPlayer) {
-    val g = tracksOf(player, C.TRACK_TYPE_AUDIO)
-    if (g.isEmpty()) { vm.say("لا توجد مسارات صوت متعددة"); return }
-    vm.menu = MenuRequest("الصوت",
-        g.flatMap { grp ->
-            (0 until grp.length).map { i ->
-                val f = grp.getTrackFormat(i)
-                val name = listOfNotNull(f.label, f.language, f.channelCount.takeIf { it > 0 }?.let { "${it}ch" }).joinToString(" · ").ifEmpty { "مسار ${i + 1}" }
-                (if (grp.isTrackSelected(i)) "● " else "") + name to {
-                    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                        .setOverrideForType(TrackSelectionOverride(grp.mediaTrackGroup, i)).build()
-                }
-            }
-        })
-}
-
-/** Subtitle tracks picker with an "off" entry. */
-@OptIn(UnstableApi::class)
-private fun subtitleMenu(vm: AppViewModel, player: ExoPlayer) {
-    val g = tracksOf(player, C.TRACK_TYPE_TEXT)
-    if (g.isEmpty()) { vm.say("لا توجد ترجمة لهذا المحتوى"); return }
-    vm.menu = MenuRequest("الترجمة",
-        listOf("إيقاف الترجمة" to {
-            player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
-        }) + g.flatMap { grp ->
-            (0 until grp.length).map { i ->
-                val f = grp.getTrackFormat(i)
-                val name = listOfNotNull(f.label, f.language).joinToString(" · ").ifEmpty { "ترجمة ${i + 1}" }
-                (if (grp.isTrackSelected(i)) "● " else "") + name to {
-                    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                        .setOverrideForType(TrackSelectionOverride(grp.mediaTrackGroup, i)).build()
-                }
-            }
-        })
-}
-
-/** Direct speed picker (0.5x – 2x) instead of cycling through values. */
-@OptIn(UnstableApi::class)
-private fun speedMenu(vm: AppViewModel, player: ExoPlayer, speed: Float, setSpeed: (Float) -> Unit) {
-    vm.menu = MenuRequest("سرعة التشغيل", listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f).map { v ->
-        (if (v == speed) "● " else "") + (if (v == 1f) "عادية (1x)" else "${v}x") to { player.setPlaybackSpeed(v); setSpeed(v) }
-    })
-}
-
-/** Player options: audio track, subtitles, aspect ratio, speed, alternative sources. */
-@OptIn(UnstableApi::class)
-private fun playerMenu(
-    vm: AppViewModel, player: ExoPlayer, view: PlayerView?, ch: Channel,
-    ratio: Int, speed: Float, setRatio: (Int) -> Unit, setSpeed: (Float) -> Unit,
-    onPip: () -> Unit, seriesKey: String?, boost: Boolean, onBoost: () -> Unit
-) {
-    val items = ArrayList<Pair<String, () -> Unit>>()
-    fun tracks(type: Int) = player.currentTracks.groups.filter { it.type == type && it.length > 0 }
-
-    items += "الصوت" to { audioMenu(vm, player) }
-    items += "الترجمة" to { subtitleMenu(vm, player) }
-    items += "جودة الفيديو" to {
-        val opts = tracks(C.TRACK_TYPE_VIDEO)
-            .flatMap { grp -> (0 until grp.length).map { i -> Triple(grp, i, grp.getTrackFormat(i)) } }
-            .filter { it.third.height > 0 }
-            .sortedByDescending { it.third.height }
-        if (opts.size < 2) vm.say("هذا البث لا يوفّر أكثر من جودة") else vm.menu = MenuRequest("جودة الفيديو",
-            listOf("تلقائي" to {
-                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                    .clearOverridesOfType(C.TRACK_TYPE_VIDEO).build()
-            }) + opts.map { (grp, i, f) ->
-                val kb = f.bitrate.takeIf { it > 0 }?.let { " · ${it / 1000} kbps" } ?: ""
-                (if (grp.isTrackSelected(i)) "● " else "") + "${f.height}p$kb" to {
-                    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                        .setOverrideForType(TrackSelectionOverride(grp.mediaTrackGroup, i)).build()
-                }
-            })
-    }
-    items += "نافذة عائمة (PiP)" to onPip
-    items += (if (boost) "تعزيز الصوت: مفعّل" else "تعزيز الصوت: متوقف") to onBoost
-    items += (if (vm.sleepAt > 0) "مؤقت النوم: يعمل (إلغاء)" else "مؤقت النوم") to {
-        if (vm.sleepAt > 0) { vm.sleepAt = 0; vm.say("تم إلغاء المؤقت") }
-        else vm.menu = MenuRequest("إيقاف بعد", listOf(15, 30, 60, 90).map { m ->
-            "$m دقيقة" to { vm.sleepAt = System.currentTimeMillis() + m * 60_000L; vm.say("سيتوقف التشغيل بعد $m دقيقة") }
-        })
-    }
-    if (seriesKey != null) {
-        items += "حفظ نهاية المقدمة هنا" to {
-            vm.store.setIntroEnd(seriesKey, player.currentPosition); vm.say("سيظهر زر تخطي المقدمة في حلقات هذا المسلسل")
-        }
-        if (vm.store.introEnd(seriesKey) > 0) items += "مسح المقدمة المحفوظة" to { vm.store.setIntroEnd(seriesKey, 0L) }
-    }
-    items += "نسبة العرض: ${ratios[ratio].first}" to { setRatio((ratio + 1) % ratios.size) }
-    if (vm.playMode != PlayMode.Live) items += "السرعة: ${speed}x" to { speedMenu(vm, player, speed, setSpeed) }
-    items += "حجم الترجمة +" to { vm.store.subSize = (vm.store.subSize + 0.01f).coerceAtMost(0.12f); view?.subtitleView?.setFractionalTextSize(vm.store.subSize) }
-    items += "حجم الترجمة −" to { vm.store.subSize = (vm.store.subSize - 0.01f).coerceAtLeast(0.03f); view?.subtitleView?.setFractionalTextSize(vm.store.subSize) }
-    if (vm.playMode == PlayMode.Live) {
-        val alts = vm.alternativesOf(ch)
-        if (alts.isNotEmpty()) items += "مصادر بديلة (${alts.size})" to {
-            vm.menu = MenuRequest("مصادر بديلة", alts.map { a -> (a.name + " · " + vm.health.state(a.url).name) to { vm.useAlternative(a) } })
-        }
-    }
-    if (vm.playMode == PlayMode.Live) {
-        items += "رجوع 30 ثانية (تأخير البث)" to { rewindLive(vm, player, ch.url, 30) }
-        items += "رجوع دقيقتين" to { rewindLive(vm, player, ch.url, 120) }
-        items += "العودة للبث المباشر" to { player.seekToDefaultPosition(); player.playWhenReady = true }
-    }
-    items += "تشغيل بالصوت فقط (خلفية)" to {
-        val a = view?.context?.findActivity()
-        if (a == null) vm.say("غير متاح الآن") else a.moveTaskToBack(true)
-    }
-    items += "فتح في مشغّل خارجي (VLC / MX)" to {
-        val ctx = view?.context
-        if (ctx == null) vm.say("غير متاح الآن") else try {
-            val i = android.content.Intent(android.content.Intent.ACTION_VIEW)
-                .setDataAndType(android.net.Uri.parse(ch.url), "video/*")
-            ctx.startActivity(android.content.Intent.createChooser(i, "فتح بواسطة").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
-        } catch (e: Exception) { vm.say("لا يوجد مشغّل مناسب على الجهاز") }
-    }
-    vm.menu = MenuRequest(ch.name, items)
-}
-
-
-/** Enters Picture-in-Picture if the device supports it. */
-fun enterPip(ctx: android.content.Context) {
-    var c = ctx
-    while (c is android.content.ContextWrapper && c !is android.app.Activity) c = c.baseContext
-    (c as? MainActivity)?.enterPip()
 }

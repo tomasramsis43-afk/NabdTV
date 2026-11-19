@@ -83,6 +83,136 @@ class Store(private val ctx: Context) {
     var subBackground: Boolean
         get() = p.getBoolean("subBg", true)
         set(v) = p.edit().putBoolean("subBg", v).apply()
+
+    /* ---------- professional player settings ---------- */
+
+    /** Forward / rewind step used by the buttons, remote and double-tap. One of 5, 10, 15, 30, 60. */
+    var seekInterval: Int
+        get() = p.getInt("pl_seek", 10).let { if (it in listOf(5, 10, 15, 30, 60)) it else 10 }
+        set(v) = p.edit().putInt("pl_seek", if (v in listOf(5, 10, 15, 30, 60)) v else 10).apply()
+
+    /** Playback speed applied when a title starts. */
+    var defaultSpeed: Float
+        get() = p.getFloat("pl_speed", 1f).coerceIn(0.25f, 4f)
+        set(v) = p.edit().putFloat("pl_speed", v.coerceIn(0.25f, 4f)).apply()
+
+    /** Default video scaling mode (see [AspectMode]). */
+    var defaultAspect: String
+        get() = p.getString("pl_aspect", AspectMode.Fit.name) ?: AspectMode.Fit.name
+        set(v) = p.edit().putString("pl_aspect", v).apply()
+
+    var autoNext: Boolean
+        get() = p.getBoolean("pl_autoNext", true)
+        set(v) = p.edit().putBoolean("pl_autoNext", v).apply()
+
+    var loopByDefault: Boolean
+        get() = p.getBoolean("pl_loop", false)
+        set(v) = p.edit().putBoolean("pl_loop", v).apply()
+
+    /** Ask before resuming, always resume, or never resume. */
+    var resumeMode: String
+        get() = p.getString("pl_resume", ResumeMode.Always.name) ?: ResumeMode.Always.name
+        set(v) = p.edit().putString("pl_resume", v).apply()
+
+    /** Save the current position so the title can be resumed later. */
+    var rememberPosition: Boolean
+        get() = p.getBoolean("pl_remember", true)
+        set(v) = p.edit().putBoolean("pl_remember", v).apply()
+
+    var subEnabled: Boolean
+        get() = p.getBoolean("pl_subOn", true)
+        set(v) = p.edit().putBoolean("pl_subOn", v).apply()
+    var subOutline: Boolean
+        get() = p.getBoolean("pl_subOutline", true)
+        set(v) = p.edit().putBoolean("pl_subOutline", v).apply()
+    /** Distance from the bottom of the screen, as a fraction (0.04 = low, 0.32 = high). */
+    var subPosition: Float
+        get() = p.getFloat("pl_subPos", 0.08f).coerceIn(0.02f, 0.45f)
+        set(v) = p.edit().putFloat("pl_subPos", v.coerceIn(0.02f, 0.45f)).apply()
+    /** Subtitle timing offset in milliseconds (positive = subtitles appear later). */
+    var subDelayMs: Int
+        get() = p.getInt("pl_subDelay", 0).coerceIn(-10_000, 10_000)
+        set(v) = p.edit().putInt("pl_subDelay", v.coerceIn(-10_000, 10_000)).apply()
+    /** Character set used for external subtitle files ("auto" detects it). */
+    var subEncoding: String
+        get() = p.getString("pl_subEnc", "auto") ?: "auto"
+        set(v) = p.edit().putString("pl_subEnc", v).apply()
+
+    var audioBoost: Boolean
+        get() = p.getBoolean("pl_boost", false)
+        set(v) = p.edit().putBoolean("pl_boost", v).apply()
+
+    /* Buffering & decoding are device-level, so they live in the global preferences. */
+    var bufferProfile: String
+        get() = g.getString("pl_buffer", BufferProfile.Balanced.name) ?: BufferProfile.Balanced.name
+        set(v) = g.edit().putString("pl_buffer", v).apply()
+    var decoderMode: String
+        get() = g.getString("pl_decoder", DecoderMode.Auto.name) ?: DecoderMode.Auto.name
+        set(v) = g.edit().putString("pl_decoder", v).apply()
+    /** Audio/video sync correction in milliseconds (applied by the player's audio pipeline). */
+    var audioDelayMs: Int
+        get() = g.getInt("pl_audioDelay", 0).coerceIn(-2000, 2000)
+        set(v) = g.edit().putInt("pl_audioDelay", v.coerceIn(-2000, 2000)).apply()
+
+    /* Touch gestures (phones / tablets). */
+    var gesturesEnabled: Boolean
+        get() = p.getBoolean("pl_gestures", true)
+        set(v) = p.edit().putBoolean("pl_gestures", v).apply()
+    var gestureSeek: Boolean
+        get() = p.getBoolean("pl_gSeek", true)
+        set(v) = p.edit().putBoolean("pl_gSeek", v).apply()
+    var gestureBrightness: Boolean
+        get() = p.getBoolean("pl_gBright", true)
+        set(v) = p.edit().putBoolean("pl_gBright", v).apply()
+    var gestureVolume: Boolean
+        get() = p.getBoolean("pl_gVolume", true)
+        set(v) = p.edit().putBoolean("pl_gVolume", v).apply()
+    var gestureDoubleTap: Boolean
+        get() = p.getBoolean("pl_gDouble", true)
+        set(v) = p.edit().putBoolean("pl_gDouble", v).apply()
+    var gesturePinch: Boolean
+        get() = p.getBoolean("pl_gPinch", true)
+        set(v) = p.edit().putBoolean("pl_gPinch", v).apply()
+    var gesturePan: Boolean
+        get() = p.getBoolean("pl_gPan", true)
+        set(v) = p.edit().putBoolean("pl_gPan", v).apply()
+    /** 0.6 = calm, 1.0 = normal, 1.6 = very responsive. */
+    var gestureSensitivity: Float
+        get() = p.getFloat("pl_gSens", 1f).coerceIn(0.6f, 1.6f)
+        set(v) = p.edit().putFloat("pl_gSens", v.coerceIn(0.6f, 1.6f)).apply()
+
+    /** Screen orientation while the player is open (phones/tablets). */
+    var playerOrientation: String
+        get() = p.getString("pl_orient", OrientationPref.Auto.name) ?: OrientationPref.Auto.name
+        set(v) = p.edit().putString("pl_orient", v).apply()
+
+    /** What Up/Down does on a TV remote while the controls are hidden. */
+    var tvUpDown: String
+        get() = g.getString("pl_tvUpDown", UpDownAction.Volume.name) ?: UpDownAction.Volume.name
+        set(v) = g.edit().putString("pl_tvUpDown", v).apply()
+
+    /* ---------- external subtitle remembered per title ---------- */
+    private fun subKey(mediaKey: String) = "pl_extSub_" + mediaKey.hashCode()
+
+    fun externalSubtitle(mediaKey: String): ExternalSubtitle? {
+        val k = subKey(mediaKey)
+        val path = p.getString(k, null) ?: return null
+        if (!java.io.File(path).exists()) { clearExternalSubtitle(mediaKey); return null }
+        return ExternalSubtitle(path, p.getString("${k}_name", "ترجمة خارجية") ?: "ترجمة خارجية", p.getString("${k}_enc", "auto") ?: "auto")
+    }
+
+    fun setExternalSubtitle(mediaKey: String, sub: ExternalSubtitle) {
+        val k = subKey(mediaKey)
+        p.edit().putString(k, sub.path).putString("${k}_name", sub.name).putString("${k}_enc", sub.encoding).apply()
+    }
+
+    fun clearExternalSubtitle(mediaKey: String) {
+        val k = subKey(mediaKey)
+        val path = p.getString(k, null)
+        p.edit().remove(k).remove("${k}_name").remove("${k}_enc").apply()
+        if (!path.isNullOrBlank()) runCatching { java.io.File(path).delete() }
+    }
+
     var catchupOffsetHours: Int
         get() = g.getInt("catchupOffset", 0)
         set(v) = g.edit().putInt("catchupOffset", v).apply()

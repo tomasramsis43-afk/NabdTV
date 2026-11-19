@@ -591,10 +591,37 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return if (i >= 0) episodes.getOrNull(i + 1) else null
     }
 
+    /** Episode before the current one, if any. */
+    fun previousEpisodeOf(c: Channel): Episode? {
+        val i = episodes.indexOfFirst { it.url == c.url }
+        return if (i > 0) episodes.getOrNull(i - 1) else null
+    }
+
+    fun hasNextEpisode(c: Channel): Boolean = nextEpisodeOf(c) != null
+    fun hasPreviousEpisode(c: Channel): Boolean = previousEpisodeOf(c) != null
+
     fun playNext() {
         val c = current ?: return
         val d = detail ?: return
         nextEpisodeOf(c)?.let { playEpisode(d, it) }
+    }
+
+    fun playPrevious() {
+        val c = current ?: return
+        val d = detail ?: return
+        previousEpisodeOf(c)?.let { playEpisode(d, it) }
+    }
+
+    /** Next/previous item for the player's transport row: channels in live, episodes in a series. */
+    fun playNeighbor(delta: Int) {
+        if (playMode == PlayMode.Live) zap(delta)
+        else if (delta > 0) playNext() else playPrevious()
+    }
+
+    fun hasNeighbor(delta: Int): Boolean {
+        if (playMode == PlayMode.Live) return zapEnabled
+        val c = current ?: return false
+        return if (delta > 0) hasNextEpisode(c) else hasPreviousEpisode(c)
     }
 
     fun playCatchup(c: Channel, p: Prog) {

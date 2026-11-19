@@ -138,6 +138,67 @@ fun SettingsScreen(vm: AppViewModel) {
             Toggle("خلفية للترجمة", s.subBackground) { upd { s.subBackground = it } }
         }
 
+        Section("المشغّل") {
+            Row2("السرعة الافتراضية", if (s.defaultSpeed == 1f) "عادية" else "${s.defaultSpeed}x") {
+                vm.menu = MenuRequest("سرعة التشغيل", PLAYER_SPEEDS.map { v ->
+                    (if (v == 1f) "عادية (1x)" else "${v}x") to { upd { s.defaultSpeed = v } }
+                })
+            }
+            Row2("نسبة العرض الافتراضية", AspectMode.of(s.defaultAspect).label) {
+                vm.menu = MenuRequest("نسبة العرض", AspectMode.entries.map { a -> a.label to { upd { s.defaultAspect = a.name } } })
+            }
+            Row2("خطوة التقديم والإرجاع", "${s.seekInterval} ثانية") {
+                vm.menu = MenuRequest("خطوة البحث", SEEK_INTERVALS.map { v -> "$v ثانية" to { upd { s.seekInterval = v } } })
+            }
+            Row2("استئناف المشاهدة", ResumeMode.of(s.resumeMode).label) {
+                vm.menu = MenuRequest("استئناف المشاهدة", ResumeMode.entries.map { m -> m.label to { upd { s.resumeMode = m.name } } })
+            }
+            Toggle("حفظ موضع المشاهدة", s.rememberPosition) { upd { s.rememberPosition = it } }
+            Toggle("تشغيل الحلقة التالية تلقائياً", s.autoNext) { upd { s.autoNext = it } }
+            Toggle("تكرار المحتوى افتراضياً", s.loopByDefault) { upd { s.loopByDefault = it } }
+
+            Row2("مخزن المؤقت", BufferProfile.of(s.bufferProfile).label) {
+                vm.menu = MenuRequest("مخزن المؤقت", BufferProfile.entries.map { p ->
+                    "${p.label} — ${p.detail}" to { upd { s.bufferProfile = p.name } }
+                })
+            }
+            Row2("تفضيل فك الترميز", DecoderMode.of(s.decoderMode).label) {
+                vm.menu = MenuRequest("فك الترميز", DecoderMode.entries.map { m -> m.label to { upd { s.decoderMode = m.name } } })
+            }
+            Row2("تزامن الصوت", "${s.audioDelayMs} ms") {
+                vm.menu = MenuRequest("تأخير الصوت", listOf(-500, -300, -200, -100, -50, 0, 50, 100, 200, 300, 500).map { v ->
+                    (if (v == 0) "بدون تأخير" else if (v > 0) "تأخير $v ms" else "تقديم ${-v} ms") to { upd { s.audioDelayMs = v } }
+                })
+            }
+            Row2("تأخير الترجمة الخارجية", "${s.subDelayMs} ms") {
+                vm.menu = MenuRequest("تأخير الترجمة", listOf(-1000, -500, -250, -100, -50, 0, 50, 100, 250, 500, 1000).map { v ->
+                    (if (v == 0) "بدون تأخير" else if (v > 0) "تأخير $v ms" else "تقديم ${-v} ms") to { upd { s.subDelayMs = v } }
+                })
+            }
+            Row2("ترميز ملف الترجمة", if (s.subEncoding == "auto") "تلقائي" else s.subEncoding) {
+                vm.menu = MenuRequest("ترميز الترجمة", SubtitleParser.ENCODINGS.map { e ->
+                    (if (e == "auto") "تلقائي (كشف BOM/UTF-8/عربي)" else e) to { upd { s.subEncoding = e } }
+                })
+            }
+            Row2("حجم الترجمة", "${(s.subSize * 100).toInt()}%") {
+                vm.menu = MenuRequest("حجم الترجمة", (5..14).map { v -> "$v%" to { upd { s.subSize = v / 100f } } })
+            }
+            Row2("موضع الترجمة", "${(s.subPosition * 100).toInt()}% من الأسفل") {
+                vm.menu = MenuRequest("موضع الترجمة", listOf(4, 8, 12, 18, 24, 32).map { v -> "$v%" to { upd { s.subPosition = v / 100f } } })
+            }
+            Toggle("حدود وظل للترجمة", s.subOutline) { upd { s.subOutline = it } }
+            Toggle("إيماءات اللمس", s.gesturesEnabled) { upd { s.gesturesEnabled = it } }
+            Row2("حساسية الإيماءات", "${s.gestureSensitivity}×") {
+                vm.menu = MenuRequest("حساسية الإيماءات", listOf(0.6f, 0.8f, 1f, 1.3f, 1.6f).map { v -> "$v×" to { upd { s.gestureSensitivity = v } } })
+            }
+            Row2("اتجاه الشاشة في المشغّل", OrientationPref.of(s.playerOrientation).label) {
+                vm.menu = MenuRequest("اتجاه الشاشة", OrientationPref.entries.map { p -> p.label to { upd { s.playerOrientation = p.name } } })
+            }
+            Row2("زر أعلى/أسفل في ريموت التلفاز", UpDownAction.of(s.tvUpDown).label) {
+                vm.menu = MenuRequest("زر أعلى/أسفل", UpDownAction.entries.map { a -> a.label to { upd { s.tvUpDown = a.name } } })
+            }
+        }
+
         Section("معلومات الأفلام") {
             Row2("مفتاح TMDB (اختياري)", if (s.tmdbKey.isBlank()) "—" else "••••") {
                 vm.prompt = PromptRequest("مفتاح TMDB API", s.tmdbKey) { v -> upd { s.tmdbKey = v } }
