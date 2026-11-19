@@ -67,7 +67,7 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-dash:1.4.1")
     implementation("androidx.media3:media3-ui:1.4.1")
     // Software audio decoders (AC3 / E-AC3 / DTS / TrueHD / Opus ...) for devices whose hardware cannot decode them: movies would otherwise play silently.
-    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.4.1+1")
+    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.4.+")
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
