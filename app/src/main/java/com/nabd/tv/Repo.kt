@@ -243,12 +243,20 @@ class Repo(private val ctx: Context, val store: Store) {
 
     /* ───────────── VOD ───────────── */
 
+    /** Rating on a 10-point scale; falls back to the 5-point field (x2) when the provider only sends that. */
+    private fun ratingOf(o: JSONObject): String {
+        val r = str(o, "rating")
+        if (r.isNotBlank()) return r
+        val f = str(o, "rating_5based").toDoubleOrNull() ?: return ""
+        return if (f > 0) "%.1f".format(java.util.Locale.US, f * 2) else ""
+    }
+
     private fun buildM3u(arr: JSONArray, names: Map<String, String>, icon: String, url: (JSONObject) -> String?): String {
         val sb = StringBuilder("#EXTM3U\n")
         for (i in 0 until arr.length()) {
             val s = arr.getJSONObject(i)
             val u = url(s) ?: continue
-            val rating = str(s, "rating").ifBlank { str(s, "rating_5based") }
+            val rating = ratingOf(s)
             sb.append("#EXTINF:-1 tvg-logo=\"").append(a(str(s, icon)))
                 .append("\" tn-rating=\"").append(a(rating))
                 .append("\" group-title=\"").append(a(names[str(s, "category_id")] ?: "Other"))

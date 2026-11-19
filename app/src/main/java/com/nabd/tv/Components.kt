@@ -240,6 +240,17 @@ fun PosterCard(vm: AppViewModel, ch: Channel, modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f).background(Surf)
             )
             if (locked) Text("🔒", modifier = Modifier.align(Alignment.TopEnd).padding(6.dp))
+            ratingBadge(ch)?.let { r ->
+                Row(
+                    Modifier.align(Alignment.TopStart).padding(6.dp).clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xCC0E1235)).padding(horizontal = 7.dp, vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("★", fontSize = 11.sp, color = Color(0xFFFFC857))
+                    Spacer(Modifier.width(3.dp))
+                    Text(r, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
             if (progress > 0.02f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) {
                 Box(Modifier.fillMaxHeight().fillMaxWidth(progress).background(Accent))
             }
@@ -269,4 +280,11 @@ fun GlassDialog(title: String, onDismiss: () -> Unit, content: @Composable Colum
             content()
         }
     }
+}
+
+/** "7.5" for a valid 0–10 rating, null when missing or zero (no badge then). */
+fun ratingBadge(c: Channel): String? {
+    val v = c.rating?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: return null
+    if (v <= 0.0 || v > 10.0) return null
+    return "%.1f".format(java.util.Locale.US, v)
 }
