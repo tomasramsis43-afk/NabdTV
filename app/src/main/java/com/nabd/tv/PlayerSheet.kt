@@ -176,7 +176,7 @@ fun PlayerSheet(
                 horizontalArrangement = Arrangement.spacedBy(7.dp)
             ) {
                 val hasEpisodes = !live && vm.episodes.any { it.url == ch.url }
-                PlayerTab.entries.filter { it != PlayerTab.Episodes || hasEpisodes }.forEach { t ->
+                PlayerTab.entries.filter { (it != PlayerTab.Episodes || hasEpisodes) && (it != PlayerTab.Gestures || LocalDevice.current.touch) }.forEach { t ->
                     PlayerButton(
                         t.label,
                         active = t == tab,
@@ -266,11 +266,6 @@ fun PlayerSheet(
                             SheetRow("الانتقال إلى وقت محدد", fmtTime(ui.position)) { ui.showJump = true; onClose() }
                             SheetRow("إعادة من البداية") { actions.restart(); onClose() }
                             SheetRow("تكرار المحتوى", if (ui.loop) "مفعّل" else "متوقف") { actions.setLoop(!ui.loop) }
-                            SheetRow("بداية المقطع (A)", if (ui.abStart >= 0) fmtTime(ui.abStart) else "—") { actions.setPointA() }
-                            SheetRow("نهاية المقطع (B)", if (ui.abEnd > ui.abStart) fmtTime(ui.abEnd) else "—", enabled = ui.abStart >= 0) { actions.setPointB() }
-                            SheetRow("إلغاء المقطع A–B", enabled = ui.abStart >= 0) { actions.clearAb() }
-                            SheetRow("الحلقة السابقة", enabled = !live && vm.hasPreviousEpisode(ch)) { actions.prevEpisode() }
-                            SheetRow("الحلقة التالية", enabled = !live && vm.hasNextEpisode(ch)) { actions.nextEpisode() }
 
                             SheetSection("سلوك التشغيل")
                             SheetRow("تشغيل الحلقة التالية تلقائياً", if (store.autoNext) "مفعّل" else "متوقف") {
@@ -282,9 +277,6 @@ fun PlayerSheet(
                                         store.resumeMode = m.name; actions.changed()
                                     }
                                 })
-                            }
-                            SheetRow("حفظ موضع المشاهدة", if (store.rememberPosition) "مفعّل" else "متوقف") {
-                                store.rememberPosition = !store.rememberPosition; actions.changed()
                             }
                             val sleepLabel = when {
                                 ui.sleepEnd -> "بعد انتهاء المحتوى"
@@ -302,12 +294,15 @@ fun PlayerSheet(
 
                             if (live) {
                                 SheetSection("البث المباشر")
-                                SheetRow("رجوع 30 ثانية") { onRewindLive(30); onClose() }
-                                SheetRow("رجوع دقيقتين") { onRewindLive(120); onClose() }
                                 SheetRow("العودة إلى البث المباشر") { onLiveEdge(); onClose() }
                                 SheetRow("قائمة القنوات") { actions.openChannels(); onClose() }
                                 SheetRow("المفضلة", if (ch.url in vm.favs) "★ مضافة" else "إضافة") { vm.toggleFav(ch) }
                                 SheetRow("مصادر بديلة", "${vm.alternativesOf(ch).size}") { onAlternatives(); onClose() }
+                                if (!LocalDevice.current.touch) SheetRow("زر أعلى/أسفل", UpDownAction.of(store.tvUpDown).label) {
+                                    openChoice("زر أعلى/أسفل", UpDownAction.entries.map { a ->
+                                        SheetOption(a.label, a.name == store.tvUpDown) { store.tvUpDown = a.name; actions.changed() }
+                                    })
+                                }
                             } else if (canSaveIntro) {
                                 SheetSection("المسلسل")
                                 SheetRow("حفظ نهاية المقدمة هنا", if (introEnd > 0) fmtTime(introEnd) else "—") { onSaveIntro() }
@@ -318,21 +313,6 @@ fun PlayerSheet(
                         PlayerTab.Audio -> {
                             SheetSection("الصوت")
                             SheetRow("تعزيز الصوت (+8 dB)", if (store.audioBoost) "مفعّل" else "متوقف") { actions.toggleAudioBoost() }
-                            SheetRow("تأخير/تقديم الصوت", "${store.audioDelayMs} ms", detail = "يطبّق على سلسلة PCM في المحرك — مفيد لمطابقة الشفاه") {
-                                openChoice("ضبط تزامن الصوت", listOf(-500, -300, -200, -100, -50, 0, 50, 100, 200, 300, 500).map { v ->
-                                    SheetOption(
-                                        when {
-                                            v < 0 -> "تقديم ${-v} ms"
-                                            v > 0 -> "تأخير $v ms"
-                                            else -> "بدون تأخير"
-                                        },
-                                        v == store.audioDelayMs
-                                    ) { actions.setAudioDelay(v) }
-                                })
-                            }
-                            SheetRow("تقديم 50 ms") { actions.setAudioDelay(store.audioDelayMs - 50) }
-                            SheetRow("تأخير 50 ms") { actions.setAudioDelay(store.audioDelayMs + 50) }
-                            SheetRow("إعادة ضبط التزامن", enabled = store.audioDelayMs != 0) { actions.setAudioDelay(0) }
                             SheetRow("مسار الصوت", "${ui.audioTracks.size} مسار", detail = ui.audioTracks.firstOrNull()?.label.orEmpty()) {
                                 val items = listOf(SheetOption("تلقائي (حسب اللغة المفضلة)") { actions.clearAudioOverride() }) +
                                     ui.audioTracks.mapIndexed { i, t ->
@@ -340,14 +320,6 @@ fun PlayerSheet(
                                     }
                                 if (items.size == 1) vm.say("لا توجد مسارات صوت متعددة في هذا البث") else openChoice("مسار الصوت", items)
                             }
-                            SheetRow("الاستماع بالصوت فقط", detail = "يُبقي التشغيل في الخلفية عبر إشعار المشغّل") {
-                                ctx.findActivity()?.moveTaskToBack(true) ?: vm.say("غير متاح الآن")
-                            }
-
-                            SheetSection("قيود الجهاز")
-                            SheetInfo("تمرير الصوت الخام (Passthrough / Dolby Direct) غير مفعّل: يعتمد على نوع جهاز الإخراج ومخرج الصوت في Android، ولا يوفّر Media3 تبديلاً موثوقاً به لكل الأجهزة. الصوت يُفكّ ويعالَج داخل التطبيق.")
-                            SheetRow("تمرير الصوت الخام", "غير مدعوم", enabled = false) { }
-                            SheetInfo("تحسينات الصورة (التباين، التشبع، الـ HDR الاصطناعي) تحتاج معالج فيديو خاص بالجهاز ولا تتوفر في هذا المحرك.")
                         }
 
                         PlayerTab.Subtitles -> {
@@ -357,7 +329,6 @@ fun PlayerSheet(
                             SheetRow("بحث عن ترجمة على الإنترنت", "OpenSubtitles", enabled = !live) { searchOnlineSubtitles() }
                             SheetRow("إزالة الترجمة الخارجية", enabled = ui.extSub != null) { actions.removeSubtitle() }
                             ui.extError?.let { SheetInfo("خطأ: $it", danger = true) }
-                            ui.extSub?.let { SheetInfo("الترميز المكتشف: ${ui.extCharset} · ${ui.extCues.size} سطر") }
                             SheetRow("مسار الترجمة المدمج", "${ui.textTracks.size} مسار") {
                                 if (ui.extSub != null) actions.removeSubtitle()
                                 val items = listOf(SheetOption("إيقاف الترجمة") { actions.setSubtitlesEnabled(false) }) +
@@ -367,8 +338,6 @@ fun PlayerSheet(
                                 if (items.size == 1) vm.say("لا توجد ترجمة مدمجة في هذا البث") else openChoice("الترجمة المدمجة", items)
                             }
 
-                            SheetSection("توقيت الترجمة")
-                            SheetInfo("تأخير الترجمة يعمل على ملفات الترجمة الخارجية التي يقرأها التطبيق. الترجمة المدمجة في البث تتبع توقيت Media3 ولا يمكن إزاحتها.")
                             SheetRow("تأخير الترجمة", "${store.subDelayMs} ms", enabled = ui.extSub != null) {
                                 openChoice("تأخير الترجمة", listOf(-1000, -500, -250, -100, -50, 0, 50, 100, 250, 500, 1000).map { v ->
                                     SheetOption(
@@ -381,8 +350,6 @@ fun PlayerSheet(
                                     ) { actions.setSubtitleDelay(v) }
                                 })
                             }
-                            SheetRow("تقديم 50 ms", enabled = ui.extSub != null) { actions.setSubtitleDelay(store.subDelayMs - 50) }
-                            SheetRow("تأخير 50 ms", enabled = ui.extSub != null) { actions.setSubtitleDelay(store.subDelayMs + 50) }
                             SheetRow("ترميز الملف", if (store.subEncoding == "auto") "تلقائي" else store.subEncoding, enabled = ui.extSub != null) {
                                 openChoice("ترميز الترجمة", SubtitleParser.ENCODINGS.map { e ->
                                     SheetOption(if (e == "auto") "تلقائي (كشف BOM/UTF-8/عربي)" else e, e == store.subEncoding) {
@@ -411,12 +378,6 @@ fun PlayerSheet(
                                     SheetOption(name, argb == store.subColor) { store.subColor = argb; actions.changed() }
                                 })
                             }
-                            SheetRow("حدود وظل النص", if (store.subOutline) "مفعّل" else "متوقف") {
-                                store.subOutline = !store.subOutline; actions.changed()
-                            }
-                            SheetRow("خلفية شفافة للنص", if (store.subBackground) "مفعّل" else "متوقف") {
-                                store.subBackground = !store.subBackground; actions.changed()
-                            }
                         }
 
                         PlayerTab.Display -> {
@@ -433,21 +394,16 @@ fun PlayerSheet(
                                     }
                                 })
                             }
-                            SheetRow("تكبير +25%") { actions.zoomBy(0.25f) }
-                            SheetRow("تصغير −25%", enabled = ui.zoom > 1f) { actions.zoomBy(-0.25f) }
-                            SheetRow("تدوير الصورة", "${ui.rotation}°") { actions.rotate() }
                             SheetRow("إعادة ضبط الصورة") { actions.resetTransform() }
                             SheetRow("اتجاه الشاشة", OrientationPref.of(store.playerOrientation).label) {
                                 openChoice("اتجاه الشاشة", OrientationPref.entries.map { p ->
                                     SheetOption(p.label, p.name == store.playerOrientation) { setOrientation(p) }
                                 })
                             }
-                            SheetInfo("الوضع الذكي يملأ الشاشة فقط عندما يكون القصّ بسيطاً، وإلا يُبقي الصورة كاملة بدون قصّ.")
                         }
 
                         PlayerTab.Gestures -> {
                             SheetSection("إيماءات اللمس (هاتف/تابلت)")
-                            SheetInfo("اللمس لا يؤثر على تحكم التلفاز بالريموت. كل إيماءة يمكن إيقافها بشكل مستقل.")
                             SheetRow("تفعيل الإيماءات", if (store.gesturesEnabled) "مفعّل" else "متوقف") {
                                 store.gesturesEnabled = !store.gesturesEnabled; actions.changed()
                             }
@@ -463,28 +419,6 @@ fun PlayerSheet(
                             SheetRow("نقرة مزدوجة للبحث/التشغيل", onOff(store.gestureDoubleTap)) {
                                 store.gestureDoubleTap = !store.gestureDoubleTap; actions.changed()
                             }
-                            SheetRow("قرص بإصبعين للتكبير", onOff(store.gesturePinch)) {
-                                store.gesturePinch = !store.gesturePinch; actions.changed()
-                            }
-                            SheetRow("تحريك الصورة بعد التكبير", onOff(store.gesturePan)) {
-                                store.gesturePan = !store.gesturePan; actions.changed()
-                            }
-                            SheetRow("حساسية الإيماءات", "${store.gestureSensitivity.toInt()}×") {
-                                openChoice("حساسية الإيماءات", listOf(0.6f, 0.8f, 1f, 1.3f, 1.6f).map { v ->
-                                    SheetOption("$v×", v == store.gestureSensitivity) {
-                                        store.gestureSensitivity = v; actions.changed()
-                                    }
-                                })
-                            }
-                            SheetSection("ريموت التلفاز")
-                            SheetRow("زر أعلى/أسفل", UpDownAction.of(store.tvUpDown).label) {
-                                openChoice("زر أعلى/أسفل", UpDownAction.entries.map { a ->
-                                    SheetOption(a.label, a.name == store.tvUpDown) {
-                                        store.tvUpDown = a.name; actions.changed()
-                                    }
-                                })
-                            }
-                            SheetInfo("أزرار Media (تشغيل/إيقاف/تقديم/التالية) مدعومة دائماً، وأرقام الريموت تنتقل مباشرة إلى الق رقمها في البث المباشر.")
                         }
 
                         PlayerTab.Info -> {
@@ -496,12 +430,6 @@ fun PlayerSheet(
                             }
                             Spacer(Modifier.height(6.dp))
                             SheetRow("إظهار لوحة الإحصاءات فوق الفيديو", if (ui.stats) "مفعّل" else "متوقف") { ui.stats = !ui.stats }
-                            SheetRow("نسخ معلومات التشغيل") {
-                                val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                cm.setPrimaryClip(ClipData.newPlainText("nabd-player-info", ui.infoText))
-                                vm.say("تم نسخ المعلومات")
-                            }
-
                             SheetSection("الأداء (يُعاد بناء المحرك عند التغيير)")
                             SheetRow("مخزن المؤقت", BufferProfile.of(store.bufferProfile).label, detail = BufferProfile.of(store.bufferProfile).detail) {
                                 openChoice("مخزن المؤقت", BufferProfile.entries.map { p ->
@@ -521,17 +449,8 @@ fun PlayerSheet(
                                     }
                                 })
                             }
-                            SheetRow("إعادة بناء المحرك") { actions.recreatePlayer(); onClose() }
                             SheetRow("إعادة المحاولة") { actions.retry(); onClose() }
 
-                            SheetSection("دعم الجهاز")
-                            SheetRow("ترميز الفيديو الحالي", player.videoFormat?.codecs ?: "—", enabled = false) { }
-                            SheetRow("H.264 (AVC)", if (deviceSupportsMime("video/avc")) "مدعوم" else "غير مدعوم", enabled = false) { }
-                            SheetRow("H.265 (HEVC)", if (deviceSupportsMime("video/hevc")) "مدعوم" else "غير مدعوم", enabled = false) { }
-                            SheetRow("AV1", if (deviceSupportsMime("video/av01")) "مدعوم" else "غير مدعوم", enabled = false) { }
-                            SheetRow("حالة المصدر", if (live) vm.health.state(ch.url).name else "محتوى عند الطلب", enabled = false) { }
-                            SheetInfo("محرك التشغيل: Media3 ExoPlayer 1.4.1 · ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} · Android ${android.os.Build.VERSION.RELEASE}")
-                            SheetRow("مصادر بديلة", "${vm.alternativesOf(ch).size}", enabled = live) { onAlternatives(); onClose() }
                             SheetRow("نافذة عائمة (PiP)") { actions.enterPip(); onClose() }
                             SheetRow("فتح في مشغّل خارجي") { actions.openExternal(); onClose() }
                         }
