@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
@@ -150,78 +151,7 @@ private fun Content(vm: AppViewModel, d: Device, modifier: Modifier) {
     }
 }
 
-/* ───────── Home: stats, hero, shelves ───────── */
-
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun StatCard(label: String, value: String, ic: Ic, modifier: Modifier) {
-    val shape = RoundedCornerShape(Radius.card)
-    Row(
-        modifier.softShadow(shape, 6.dp).glass(shape).padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(Modifier.size(40.dp).clip(CircleShape).background(Accent.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
-            NIcon(ic, Accent, 22.dp)
-        }
-        Column {
-            Text(value, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Ink, maxLines = 1)
-            Text(label, fontSize = 12.sp, color = TextSecondary, maxLines = 1)
-        }
-    }
-}
-
-/** Ring gauge for the share of tested links that work (real data from the link checker). */
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun HealthRing(good: Int, total: Int, modifier: Modifier) {
-    val shape = RoundedCornerShape(Radius.card)
-    val frac = if (total == 0) 0f else good.toFloat() / total
-    val track = Hairline
-    val color = if (frac >= 0.8f) Ok else if (frac >= 0.5f) Warn else Danger
-    Row(
-        modifier.softShadow(shape, 6.dp).glass(shape).padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-            Canvas(Modifier.fillMaxSize()) {
-                val w = 6.dp.toPx()
-                val inset = w / 2
-                val sz = Size(size.width - w, size.height - w)
-                drawArc(track, 0f, 360f, false, Offset(inset, inset), sz, style = Stroke(w))
-                if (total > 0) drawArc(color, -90f, 360f * frac, false, Offset(inset, inset), sz, style = Stroke(w, cap = StrokeCap.Round))
-            }
-            Text(if (total == 0) "—" else "${(frac * 100).toInt()}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ink)
-        }
-        Column {
-            Text(if (total == 0) "—" else "$good/$total", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Ink, maxLines = 1)
-            Text("روابط سليمة", fontSize = 12.sp, color = TextSecondary, maxLines = 1)
-        }
-    }
-}
-
-@Composable
-private fun StatsRow(vm: AppViewModel, d: Device) {
-    val recCount = vm.recordings.count { it.status == RecStatus.Done || it.status == RecStatus.Scheduled || it.status == RecStatus.Recording }
-    val (good, total) = vm.healthSummary
-    fun n(x: Int) = if (x == 0) "—" else "%,d".format(x)
-    val cards = ArrayList<@Composable (Modifier) -> Unit>()
-    cards += { m -> StatCard("قناة", n(vm.liveList.size), Ic.Live, m) }
-    if (vm.hasXtream) {
-        cards += { m -> StatCard("فيلم", n(vm.movieList.size), Ic.Movies, m) }
-        cards += { m -> StatCard("مسلسل", n(vm.seriesList.size), Ic.Series, m) }
-    }
-    cards += { m -> StatCard("تسجيل", n(recCount), Ic.Rec, m) }
-    cards += { m -> HealthRing(good, total, m) }
-    val perRow = if (d.widthDp >= 900) cards.size else if (d.widthDp >= 560) 3 else 2
-    Column(verticalArrangement = Arrangement.spacedBy(d.gap)) {
-        cards.chunked(perRow).forEach { rowCards ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(d.gap)) {
-                rowCards.forEach { c -> c(Modifier.weight(1f)) }
-                repeat(perRow - rowCards.size) { Spacer(Modifier.weight(1f)) }
-            }
-        }
-    }
-}
+/* ───────── Home ───────── */
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -232,25 +162,29 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
         Text("لا يوجد محتوى بعد. حدّث القائمة أو افتح الإعدادات.", color = TextSecondary, modifier = Modifier.padding(16.dp))
         return
     }
-    SideEffect { vm.firstKey = if (vm.hero != null) "hero" else shelves.firstOrNull()?.items?.firstOrNull()?.let { it.url + it.id } }
-    LazyColumn(
-        state = vm.listState("home"),
-        verticalArrangement = Arrangement.spacedBy(d.gap + 6.dp),
-        contentPadding = PaddingValues(bottom = 24.dp, top = 4.dp)
-    ) {
-        item { StatsRow(vm, d) }
-        vm.hero?.let { h -> item { Hero(vm, d, h) } }
-        items(shelves, key = { it.title }) { s ->
-            Column {
-                Text(s.title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.padding(bottom = 8.dp, start = 4.dp))
-                LazyRow(
-                    state = vm.listState("row:" + s.title),
-                    horizontalArrangement = Arrangement.spacedBy(d.gap),
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
-                ) {
-                    items(s.items) { c ->
-                        if (kindOf(c) == Kind.Live) LiveCard(vm, c, Modifier.width(d.shelfLive))
-                        else PosterCard(vm, c, Modifier.width(d.shelfPoster))
+    val showHero = !d.portrait
+    SideEffect { vm.firstKey = shelves.firstOrNull()?.items?.firstOrNull()?.let { shelves.first().title + "|" + it.url + it.id } }
+    val focus = vm.homeFocus ?: shelves.first().items.first()
+    LaunchedEffect(focus.url, showHero) { if (showHero) { kotlinx.coroutines.delay(350); vm.loadHomeInfo(focus) } }
+    Column(Modifier.fillMaxSize()) {
+        if (showHero) HomeHero(focus, vm.homeInfo?.takeIf { vm.homeInfo != null }, d)
+        LazyColumn(
+            state = vm.listState("home"), modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(d.gap + 4.dp),
+            contentPadding = PaddingValues(bottom = 24.dp, top = 6.dp)
+        ) {
+            items(shelves, key = { it.title }) { s ->
+                Column {
+                    Row(Modifier.padding(bottom = 6.dp, start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(s.title, fontSize = if (d.tv) 18.sp else 17.sp, fontWeight = FontWeight.Bold, color = Ink)
+                        Text("  ›", fontSize = 20.sp, color = TextSecondary)
+                    }
+                    LazyRow(
+                        state = vm.listState("row:" + s.title),
+                        horizontalArrangement = Arrangement.spacedBy(d.gap),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                    ) {
+                        itemsIndexed(s.items) { i, c -> HomeCard(vm, d, s, c, i + 1) }
                     }
                 }
             }
@@ -260,41 +194,68 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun Hero(vm: AppViewModel, d: Device, c: Channel) {
-    val shape = RoundedCornerShape(28.dp)
-    val play = remember { FocusRequester() }
-    DisposableEffect(Unit) {
-        vm.cardFocus["hero"] = play
-        onDispose { if (vm.cardFocus["hero"] === play) vm.cardFocus.remove("hero") }
-    }
-    val isLive = kindOf(c) == Kind.Live
-    Box(
-        Modifier.fillMaxWidth().height(if (d.tv) 220.dp else if (d.portrait) 190.dp else 200.dp)
-            .softShadow(shape, 14.dp).clip(shape).background(Brush.linearGradient(listOf(Navy, Accent.copy(alpha = 0.75f))))
+private fun HomeCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel, rank: Int) {
+    val key = s.title + "|" + ch.url + ch.id
+    val fr = rememberCardFocus(vm, key)
+    val landscape = s.ranked || s.title == "استكمال المشاهدة"
+    val progress = if (s.title == "استكمال المشاهدة") vm.history.firstOrNull { it.url == ch.url }?.progress ?: 0f else 0f
+    val w = if (landscape) (if (d.tv) 250.dp else 190.dp) else d.shelfPoster
+    Focusable(
+        onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) },
+        onFocused = { vm.lastFocusKey = key; vm.homeFocus = ch }, focusRequester = fr,
+        modifier = Modifier.width(w)
     ) {
-        if (!isLive) AsyncImage(model = c.logo, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-        else AsyncImage(
-            model = c.logo, contentDescription = null, contentScale = ContentScale.Fit,
-            modifier = Modifier.align(Alignment.CenterEnd).padding(24.dp).size(if (d.tv) 120.dp else 84.dp).alpha(0.9f)
-        )
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xEE0E1235), Color(0x330E1235)))))
-        Column(Modifier.align(Alignment.CenterStart).padding(if (d.tv) 28.dp else 18.dp).fillMaxWidth(if (d.portrait) 0.85f else 0.6f)) {
-            Text(c.name, fontSize = if (d.tv) 28.sp else 22.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            val now = vm.nowNext(c).first
-            Text(now?.title ?: Classifier.genre(c).label, fontSize = 14.sp, color = Color(0xFFC9CBFF), maxLines = 1)
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                MBtn("▶ تشغيل", modifier = Modifier.focusRequester(play).onFocusChanged { if (it.isFocused) vm.lastFocusKey = "hero" }) { vm.open(c) }
-                if (d.portrait && d.touch) {
-                    IconBtn(Ic.Star, { vm.toggleFav(c) }, tint = if (c.url in vm.favs) Warn else Ink)
-                    IconBtn(Ic.Dice, { vm.tonight() })
-                } else {
-                    MBtn(if (c.url in vm.favs) "★ في المفضلة" else "☆ مفضلة", filled = false) { vm.toggleFav(c) }
-                    MBtn("🎲 ماذا أشاهد؟", filled = false) { vm.tonight() }
+        Box {
+            AsyncImage(
+                model = ch.logo, contentDescription = null, contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxWidth().aspectRatio(if (landscape) 16f / 9f else 2f / 3f).background(Surf)
+            )
+            if (s.ranked && d.tv) {
+                Text("$rank", fontSize = 64.sp, fontWeight = FontWeight.Black, color = Color.White.copy(alpha = 0.92f),
+                    modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp))
+            }
+            if (!s.ranked) ratingBadge(ch)?.let { r ->
+                Row(
+                    Modifier.align(Alignment.TopStart).padding(6.dp).clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xCC0E1235)).padding(horizontal = 7.dp, vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("★", fontSize = 11.sp, color = Color(0xFFFFC857)); Spacer(Modifier.width(3.dp))
+                    Text(r, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
+            }
+            if (progress > 0.02f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) {
+                Box(Modifier.fillMaxHeight().fillMaxWidth(progress).background(Accent))
+            }
+        }
+        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (s.ranked && !d.tv) Text("$rank", fontSize = 30.sp, fontWeight = FontWeight.Black, color = Ink, modifier = Modifier.padding(end = 8.dp))
+            Column {
+                Text(ch.name, maxLines = if (s.ranked) 1 else 2, overflow = TextOverflow.Ellipsis, fontSize = 12.sp, color = Ink)
+                if (s.ranked) ratingBadge(ch)?.let { Text("$it/10", fontSize = 11.sp, color = TextSecondary) }
             }
         }
     }
+}
+
+/** Big preview of the focused title (TV / tablet / landscape), like a streaming-app home. */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun HomeHero(c: Channel, info: VodInfo?, d: Device) {
+    Box(Modifier.fillMaxWidth().height(if (d.tv) 230.dp else 190.dp).clip(RoundedCornerShape(Radius.card)).background(Surf)) {
+        AsyncImage(model = info?.backdrop ?: c.logo, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xF00E1235), Color(0x550E1235)))))
+        Column(Modifier.align(Alignment.CenterStart).padding(22.dp).fillMaxWidth(0.55f)) {
+            Text(c.name, fontSize = if (d.tv) 28.sp else 22.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            val chips = listOfNotNull(ratingBadge(c)?.let { "★ $it" }, info?.year?.takeIf { it.isNotBlank() }, info?.genre?.takeIf { it.isNotBlank() }).joinToString("   ·   ")
+            if (chips.isNotEmpty()) Text(chips, fontSize = 13.sp, color = Color(0xFFC9CBFF), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            info?.plot?.takeIf { it.isNotBlank() }?.let {
+                Spacer(Modifier.height(6.dp))
+                Text(it, fontSize = 12.sp, color = Color(0xFFE0E2FF), maxLines = 3, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+    Spacer(Modifier.height(8.dp))
 }
 
 /** Pulsing placeholders while the first list loads. */

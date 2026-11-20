@@ -38,17 +38,12 @@ fun DetailScreen(vm: AppViewModel) {
     val d = LocalDevice.current
     val narrow = d.widthDp < 600
     Box(Modifier.fillMaxSize().appBackground()) {
-        info?.backdrop?.let {
-            AsyncImage(model = it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().alpha(0.22f))
-        }
-        val poster: @Composable (Modifier) -> Unit = { m ->
-            AsyncImage(
-                model = c.logo, contentDescription = null, contentScale = ContentScale.Crop,
-                modifier = m.aspectRatio(2f / 3f).softShadow(RoundedCornerShape(Radius.small), 8.dp).clip(RoundedCornerShape(Radius.small)).background(Surf)
-            )
+        Box(Modifier.fillMaxWidth().fillMaxHeight(0.52f)) {
+            AsyncImage(model = info?.backdrop ?: c.logo, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0x550E1235), Color(0xF00E1235)))))
         }
         val details: @Composable ColumnScope.() -> Unit = {
-            Text(c.name, fontSize = if (narrow) 20.sp else 26.sp, fontWeight = FontWeight.Bold, color = Ink, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(c.name, fontSize = if (narrow) 20.sp else 26.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
             val meta = listOfNotNull(
                 info?.year?.takeIf { it.isNotBlank() }, info?.genre?.takeIf { it.isNotBlank() },
                 info?.duration?.takeIf { it.isNotBlank() }, info?.rating?.takeIf { it.isNotBlank() }?.let { "★ $it" }
@@ -56,9 +51,9 @@ fun DetailScreen(vm: AppViewModel) {
             if (meta.isNotEmpty()) Text(meta, fontSize = 13.sp, color = Accent)
             if (info != null && info.plot.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
-                Text(info.plot, fontSize = 13.sp, color = TextSecondary, maxLines = if (narrow) 3 else 4, overflow = TextOverflow.Ellipsis)
+                Text(info.plot, fontSize = 13.sp, color = Color(0xFFE0E2FF), maxLines = if (narrow) 2 else 3, overflow = TextOverflow.Ellipsis)
             }
-            if (info != null && info.cast.isNotBlank()) Text("بطولة: ${info.cast}", fontSize = 12.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (info != null && info.cast.isNotBlank()) Text("بطولة: ${info.cast}", fontSize = 12.sp, color = Color(0xFFC9CBFF), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         val actions: @Composable () -> Unit = {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -67,35 +62,18 @@ fun DetailScreen(vm: AppViewModel) {
                     MBtn(if (h != null && !h.finished && h.position > 10_000) "▶ استكمال (${h.position / 60000} د)" else "▶ تشغيل", modifier = Modifier.focusRequester(playFocus)) { vm.play(c) }
                 }
                 MBtn(if (c.url in vm.favs) "★ في المفضلة" else "☆ مفضلة", filled = false) { vm.toggleFav(c) }
-                if (narrow) MBtn("رجوع", filled = false) { vm.closeDetail() }
+                MBtn("رجوع", filled = false) { vm.closeDetail() }
             }
         }
-        if (narrow) {
-            Column(Modifier.fillMaxSize().padding(d.pad)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    poster(Modifier.width(if (d.portrait) 104.dp else 120.dp))
-                    Column(Modifier.weight(1f), content = details)
-                }
+        Column(Modifier.fillMaxSize().padding(if (narrow) d.pad else 24.dp)) {
+            Column(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.Bottom) {
+                Column(Modifier.fillMaxWidth(if (narrow) 1f else 0.65f), content = details)
                 Spacer(Modifier.height(10.dp))
                 actions()
-                Spacer(Modifier.height(10.dp))
-                if (isSeries) Episodes(vm, c)
+                Spacer(Modifier.height(12.dp))
             }
-        } else {
-            Row(Modifier.fillMaxSize().padding(24.dp)) {
-                Column(Modifier.width(190.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    poster(Modifier.fillMaxWidth())
-                    Spacer(Modifier.height(10.dp))
-                    MBtn("رجوع", filled = false) { vm.closeDetail() }
-                }
-                Spacer(Modifier.width(24.dp))
-                Column(Modifier.weight(1f)) {
-                    details()
-                    Spacer(Modifier.height(10.dp))
-                    actions()
-                    Spacer(Modifier.height(12.dp))
-                    if (isSeries) Episodes(vm, c)
-                }
+            Column(Modifier.fillMaxWidth().weight(1f)) {
+                if (isSeries) Episodes(vm, c)
             }
         }
     }

@@ -216,27 +216,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val out = ArrayList<Shelf>()
         val cont = history.filter { it.kind != Kind.Live && !it.finished && it.progress > 0.02f && parental.visible(histChannel(it)) }
             .take(20).map { histChannel(it) }
-        if (cont.isNotEmpty()) out += Shelf("متابعة المشاهدة", cont)
-        if (recs.isNotEmpty()) out += Shelf("مقترح لك", recs)
-        because?.let { (n, l) -> out += Shelf("لأنك شاهدت $n", l) }
-        val favLive = liveList.filter { it.url in favs }.take(30)
-        if (favLive.isNotEmpty()) out += Shelf("قنواتك المفضلة", favLive)
-        val onAir = liveList.filter { nowNext(it).first != null }.take(30)
-        if (onAir.isNotEmpty()) out += Shelf("على الهواء الآن", onAir)
-        val recentLive = history.filter { it.kind == Kind.Live }.take(20).map { histChannel(it) }.filter { parental.visible(it) }
-        if (recentLive.isNotEmpty()) out += Shelf("شاهدت مؤخراً", recentLive)
-        val newMovies = movieList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30)
-        if (newMovies.isNotEmpty()) out += Shelf("🆕 أفلام أُضيفت حديثاً", newMovies)
-        val newSeries = seriesList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30)
-        if (newSeries.isNotEmpty()) out += Shelf("🆕 مسلسلات أُضيفت حديثاً", newSeries)
-        if (movieList.isNotEmpty()) out += Shelf("أفلام", movieList.take(30))
-        if (seriesList.isNotEmpty()) out += Shelf("مسلسلات", seriesList.take(30))
+        if (cont.isNotEmpty()) out += Shelf("استكمال المشاهدة", cont)
+        fun top(l: List<Channel>) = l.filter { (it.rating?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: 0.0) > 0.0 }
+            .sortedByDescending { it.rating!!.trim().replace(',', '.').toDouble() }.take(10)
+        val topM = top(movieList)
+        if (topM.isNotEmpty()) out += Shelf("الأفلام الأعلى تقييماً", topM, ranked = true)
+        val topS = top(seriesList)
+        if (topS.isNotEmpty()) out += Shelf("المسلسلات الأعلى تقييماً", topS, ranked = true)
+        val newMovies = movieList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { movieList.take(30) }
+        if (newMovies.isNotEmpty()) out += Shelf("أحدث الأفلام", newMovies)
+        val newSeries = seriesList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { seriesList.take(30) }
+        if (newSeries.isNotEmpty()) out += Shelf("أحدث المسلسلات", newSeries)
         out
     }
 
-    val hero: Channel? get() = shelves.firstOrNull { it.title == "مقترح لك" }?.items?.firstOrNull()
-        ?: shelves.firstOrNull { it.title == "متابعة المشاهدة" }?.items?.firstOrNull()
-        ?: movieList.firstOrNull() ?: liveList.firstOrNull()
+    /** Item currently focused on Home; drives the big preview on TV/tablet. */
+    var homeFocus by mutableStateOf<Channel?>(null)
+    var homeInfo by mutableStateOf<VodInfo?>(null); private set
+    private var homeInfoUrl: String? = null
+    suspend fun loadHomeInfo(c: Channel) {
+        if (homeInfoUrl == c.url) return
+        homeInfoUrl = c.url; homeInfo = null
+        val k = kindOf(c)
+        if (k != Kind.Live) homeInfo = runCatching { repo.vodInfo(c, k) }.getOrNull()
+    }
 
     private fun refreshRecs() {
         viewModelScope.launch {
