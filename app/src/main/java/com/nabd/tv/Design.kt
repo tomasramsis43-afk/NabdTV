@@ -1,8 +1,7 @@
-package com.nabd.tv
+﻿package com.nabd.tv
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,7 +19,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
@@ -29,96 +27,129 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * One visual identity for TV and phone: soft lavender canvas, frosted-glass cards, a navy pill for navigation,
- * sans headings with one serif accent word, rounded-2xl shapes and indigo-tinted shadows.
- * Light is the default; a dark variant uses the same tokens.
+ * Nabd TV design system v3 — a calm, cinematic dark surface built for 10-foot viewing.
+ *
+ * Rules kept across every screen:
+ *  • near-black canvas, neutral graphite surfaces; no blue wash, no glowing boxes
+ *  • one solid primary accent, one warm secondary accent (ratings / highlights)
+ *  • depth from gradients, shadows and rounded artwork — not from borders
+ *  • artwork-driven colours are injected only where a title is presented (see DynamicPalette.kt)
+ *  • spacing scale: 4 / 8 / 12 / 16 / 24 / 32
  */
 object Ui {
-    var dark by mutableStateOf(false)
+    var dark by mutableStateOf(true)
 }
 
-val Accent: Color get() = if (Ui.dark) Color(0xFF8C8FFF) else Color(0xFF5456E8)
-val OnAccent: Color get() = if (Ui.dark) Color(0xFF0B0D1F) else Color.White
-val Bg: Color get() = if (Ui.dark) Color(0xFF0B0D1F) else Color(0xFFF1F2FD)
-val Surf: Color get() = if (Ui.dark) Color(0xFF14183A) else Color.White
-val Ink: Color get() = if (Ui.dark) Color.White else Color(0xFF14173A)
-val TextSecondary: Color get() = if (Ui.dark) Color(0xFFA6ABCB) else Color(0xFF6B7094)
-val Danger: Color get() = if (Ui.dark) Color(0xFFFF7A7F) else Color(0xFFE5484D)
-val Ok: Color get() = if (Ui.dark) Color(0xFF3DDC9A) else Color(0xFF1FB37A)
-val Warn: Color get() = if (Ui.dark) Color(0xFFFFC857) else Color(0xFFF5A524)
-val GlassFill: Color get() = if (Ui.dark) Color(0x14FFFFFF) else Color(0xA8FFFFFF)
-val GlassFocus: Color get() = if (Ui.dark) Color(0x2EFFFFFF) else Color(0xF2FFFFFF)
-val GlassBorder: Color get() = if (Ui.dark) Color(0x24FFFFFF) else Color(0xE6FFFFFF)
-val Hairline: Color get() = if (Ui.dark) Color(0x2EFFFFFF) else Color(0x1F14173A)
-val Navy: Color get() = if (Ui.dark) Color(0xFF1B2060) else Color(0xFF161A4A)
-val NavyDeep: Color get() = if (Ui.dark) Color(0xFF12164A) else Color(0xFF0E1235)
+/* ── core palette ─────────────────────────────────────────────────────────── */
+
+val Accent: Color get() = if (Ui.dark) Color(0xFF8A93FF) else Color(0xFF4A55D6)
+/** Solid variant for filled buttons/chips: white text keeps AA contrast on it. */
+val AccentFill: Color get() = if (Ui.dark) Color(0xFF5C63E8) else Color(0xFF4A55D6)
+val Accent2: Color get() = if (Ui.dark) Color(0xFFE5B567) else Color(0xFF9A6B12)
+val OnAccent: Color get() = Color.White
+
+val Bg: Color get() = if (Ui.dark) Color(0xFF08090D) else Color(0xFFF5F6FA)
+val BgElevated: Color get() = if (Ui.dark) Color(0xFF0C0E13) else Color(0xFFFFFFFF)
+val Surf: Color get() = if (Ui.dark) Color(0xFF14161D) else Color.White
+val SurfHigh: Color get() = if (Ui.dark) Color(0xFF1B1E27) else Color(0xFFEDEFF5)
+val Ink: Color get() = if (Ui.dark) Color(0xFFF3F5FA) else Color(0xFF14161D)
+val TextSecondary: Color get() = if (Ui.dark) Color(0xFF98A0B3) else Color(0xFF646B7C)
+val TextMuted: Color get() = if (Ui.dark) Color(0xFF6B7385) else Color(0xFF8B92A4)
+
+val Danger: Color get() = if (Ui.dark) Color(0xFFFF7B7B) else Color(0xFFD93B3B)
+val Ok: Color get() = if (Ui.dark) Color(0xFF4BD6A2) else Color(0xFF12855D)
+val Warn: Color get() = if (Ui.dark) Color(0xFFFFC65C) else Color(0xFF9A6B12)
+
+val GlassFill: Color get() = if (Ui.dark) Color(0x0DFFFFFF) else Color(0xCCFFFFFF)
+val GlassFocus: Color get() = if (Ui.dark) Color(0x1AFFFFFF) else Color(0xFFFFFFFF)
+val GlassBorder: Color get() = if (Ui.dark) Color(0x1FFFFFFF) else Color(0xFFE3E6EF)
+val Hairline: Color get() = if (Ui.dark) Color(0x14FFFFFF) else Color(0xFFE6E8F0)
+val Navy: Color get() = if (Ui.dark) Color(0xFF101218) else Color(0xFF22252F)
+val NavyDeep: Color get() = if (Ui.dark) Color(0xFF0A0B10) else Color(0xFF15171E)
+
+/** Neutral scrim used over artwork so text always stays readable. */
+val Scrim: Color get() = if (Ui.dark) Color(0xFF05060A) else Color(0xFF0B0D12)
 
 object Radius {
-    val card = 22.dp
-    val small = 16.dp
+    val card = 20.dp
+    val small = 14.dp
     val pill = 40.dp
+    val poster = 12.dp
+    val hero = 26.dp
+}
+
+object Space {
+    val xs = 4.dp
+    val s = 8.dp
+    val m = 12.dp
+    val l = 16.dp
+    val xl = 24.dp
+    val xxl = 32.dp
 }
 
 val SerifFont: FontFamily = FontFamily.Serif
 
-/** Page background: lavender wash with a soft glow in the corner (same on every screen size). */
+/* ── surfaces ─────────────────────────────────────────────────────────────── */
+
+/** Page background: deep neutral canvas with one very soft accent glow in the corner. */
 fun Modifier.appBackground(): Modifier = this.drawBehind {
     drawRect(
         Brush.linearGradient(
-            if (Ui.dark) listOf(Color(0xFF0B0D1F), Color(0xFF11143A), Color(0xFF0B0D1F))
-            else listOf(Color(0xFFF8F8FF), Color(0xFFEAECFC), Color(0xFFDFE2F8)),
+            if (Ui.dark) listOf(Color(0xFF07080C), Color(0xFF0B0D13), Color(0xFF07080C))
+            else listOf(Color(0xFFFAFAFD), Color(0xFFF1F2F8), Color(0xFFF7F7FC)),
             start = Offset.Zero, end = Offset(size.width, size.height)
         )
     )
     drawCircle(
         Brush.radialGradient(
-            listOf(Accent.copy(alpha = if (Ui.dark) 0.20f else 0.16f), Color.Transparent),
-            center = Offset(size.width * 0.85f, size.height * 0.05f), radius = size.minDimension * 0.9f
+            listOf(Accent.copy(alpha = if (Ui.dark) 0.10f else 0.10f), Color.Transparent),
+            center = Offset(size.width * 0.88f, -size.height * 0.05f), radius = size.minDimension * 1.05f
         ),
-        radius = size.minDimension * 0.9f, center = Offset(size.width * 0.85f, size.height * 0.05f)
+        radius = size.minDimension * 1.05f, center = Offset(size.width * 0.88f, -size.height * 0.05f)
     )
 }
 
-/** Indigo-tinted soft shadow (colored shadows apply on Android 9+; older versions get a neutral one). */
-fun Modifier.softShadow(shape: Shape, elevation: Dp = 10.dp): Modifier =
-    this.shadow(elevation, shape, clip = false, ambientColor = Accent.copy(alpha = 0.12f), spotColor = Accent.copy(alpha = 0.30f))
+/** Soft, slightly coloured shadow used to lift focused cards off the canvas. */
+fun Modifier.softShadow(shape: Shape, elevation: Dp = 10.dp, tint: Color = Accent): Modifier =
+    this.shadow(elevation, shape, clip = false, ambientColor = tint.copy(alpha = 0.10f), spotColor = tint.copy(alpha = 0.28f))
 
-/** Frosted glass surface: translucent fill, white edge, optional focus/selected emphasis. */
+/** Frosted surface: translucent fill + hairline edge. Used for rails, sheets and secondary cards. */
 fun Modifier.glass(
     shape: Shape = RoundedCornerShape(Radius.card),
     focused: Boolean = false,
-    selected: Boolean = false
+    selected: Boolean = false,
+    tint: Color = Accent
 ): Modifier = this
     .clip(shape)
     .background(
         when {
-            focused -> Brush.verticalGradient(listOf(GlassFocus, GlassFocus))
-            selected -> Brush.verticalGradient(listOf(Accent.copy(alpha = 0.20f), Accent.copy(alpha = 0.10f)))
-            else -> Brush.verticalGradient(listOf(GlassFill, GlassFill.copy(alpha = GlassFill.alpha * 0.8f)))
+            focused -> Brush.verticalGradient(listOf(tint.copy(alpha = 0.16f), tint.copy(alpha = 0.08f)))
+            selected -> Brush.verticalGradient(listOf(tint.copy(alpha = 0.18f), tint.copy(alpha = 0.07f)))
+            else -> Brush.verticalGradient(listOf(GlassFill, GlassFill.copy(alpha = GlassFill.alpha * 0.6f)))
         }
     )
     .border(
-        if (focused) 3.dp else 1.dp,
-        if (focused) Accent else if (selected) Accent.copy(alpha = 0.55f) else GlassBorder,
+        if (focused) 2.dp else 1.dp,
+        when {
+            focused -> tint.copy(alpha = 0.9f)
+            selected -> tint.copy(alpha = 0.55f)
+            else -> GlassBorder
+        },
         shape
     )
 
-/** Heading with one accent word in a serif face (italic for Latin text; bold upright for Arabic, where italics read badly). */
+/**
+ * Section heading. The accent word keeps the brand voice without heavy decoration:
+ * same sans family, accent colour, slightly tighter tracking.
+ */
 @Composable
 fun AccentTitle(text: String, accent: String, size: TextUnit = 26.sp, modifier: Modifier = Modifier) {
-    val latin = accent.none { it in '؀'..'ۿ' }
     Text(
         buildAnnotatedString {
             append(text)
-            append(" ")
-            withStyle(
-                SpanStyle(
-                    fontFamily = SerifFont, color = Accent,
-                    fontStyle = if (latin) FontStyle.Italic else FontStyle.Normal,
-                    fontWeight = if (latin) FontWeight.Normal else FontWeight.Bold
-                )
-            ) { append(accent) }
+            if (accent.isNotBlank()) append(" ")
+            withStyle(SpanStyle(color = Accent, fontWeight = FontWeight.Bold)) { append(accent) }
         },
-        fontSize = size, fontWeight = FontWeight.Bold, color = Ink, maxLines = 2, modifier = modifier
+        fontSize = size, fontWeight = FontWeight.SemiBold, color = Ink, maxLines = 2, modifier = modifier
     )
 }

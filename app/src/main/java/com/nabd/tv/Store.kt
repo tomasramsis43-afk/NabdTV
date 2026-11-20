@@ -1,4 +1,4 @@
-package com.nabd.tv
+﻿package com.nabd.tv
 
 import android.content.Context
 import org.json.JSONArray
@@ -60,7 +60,7 @@ class Store(private val ctx: Context) {
         get() = p.getString("startSection", "Home") ?: "Home"
         set(v) = p.edit().putString("startSection", v).apply()
     var darkMode: Boolean
-        get() = g.getBoolean("darkMode", false)
+        get() = g.getBoolean("darkMode", true)
         set(v) = g.edit().putBoolean("darkMode", v).apply()
     var hideDead: Boolean
         get() = g.getBoolean("hideDead", true)

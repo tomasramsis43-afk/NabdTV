@@ -1,4 +1,4 @@
-package com.nabd.tv
+﻿package com.nabd.tv
 
 import android.app.UiModeManager
 import android.content.Context
@@ -14,9 +14,6 @@ import androidx.compose.ui.unit.dp
 
 enum class FormFactor { Tv, Tablet, Phone }
 
-/** How the main navigation is laid out. */
-enum class NavMode { RailFull, RailCompact, Bottom }
-
 fun isTelevision(ctx: Context): Boolean {
     val pm = ctx.packageManager
     val ui = ctx.getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager
@@ -25,32 +22,60 @@ fun isTelevision(ctx: Context): Boolean {
         !pm.hasSystemFeature("android.hardware.touchscreen")
 }
 
-/** What we are running on right now. Recomputed on rotation / resize, so layouts never keep stale assumptions. */
+/**
+ * What we are running on right now. Recomputed on rotation / resize, so layouts never keep stale assumptions.
+ *
+ * The sizes below are the density contract of the whole app: posters are deliberately compact
+ * (more titles per row), while focus rings and controls stay big enough for a 10-foot UI.
+ */
 @Immutable
 data class Device(val form: FormFactor, val widthDp: Int, val heightDp: Int) {
     val tv get() = form == FormFactor.Tv
     val touch get() = !tv
     val portrait get() = heightDp > widthDp
-
-    val nav: NavMode
-        get() = when {
-            tv -> NavMode.RailFull
-            portrait -> NavMode.Bottom
-            heightDp >= 600 -> NavMode.RailFull      // tablet, landscape
-            else -> NavMode.RailCompact              // phone, landscape: icons only
-        }
+    val narrow get() = widthDp < 600
 
     /** Wide enough for side-by-side panes (category list + grid, channels + programmes). */
     val twoPane get() = widthDp >= 720
 
     val pad: Dp get() = if (tv) 32.dp else if (form == FormFactor.Tablet) 24.dp else 14.dp
-    val gap: Dp get() = if (tv) 14.dp else 10.dp
-    val liveMin: Dp get() = if (tv) 164.dp else if (widthDp >= 600) 150.dp else 128.dp
-    val posterMin: Dp get() = if (tv) 132.dp else if (widthDp >= 600) 128.dp else 104.dp
-    val shelfLive: Dp get() = if (tv) 168.dp else 140.dp
-    val shelfPoster: Dp get() = if (tv) 132.dp else 108.dp
+    val gap: Dp get() = if (tv) 12.dp else 8.dp
+
+    /** Minimum width of a poster cell in a grid. Smaller = more titles per row. */
+    val posterMin: Dp get() = when {
+        tv -> 106.dp
+        widthDp >= 900 -> 104.dp
+        widthDp >= 600 -> 98.dp
+        else -> 86.dp
+    }
+    val liveMin: Dp get() = if (tv) 150.dp else if (widthDp >= 600) 138.dp else 116.dp
+
+    /** Width of a poster in the horizontal home shelves. */
+    val shelfPoster: Dp get() = if (tv) 104.dp else if (widthDp >= 600) 98.dp else 90.dp
+    val shelfLive: Dp get() = if (tv) 140.dp else 124.dp
+
     val sideList: Dp get() = if (tv) 220.dp else 190.dp
-    val control: Dp get() = if (tv) 44.dp else 48.dp     // minimum touch / focus target height
+    val control: Dp get() = if (tv) 44.dp else 46.dp
+
+    /**
+     * Height of the cinematic hero frame on the home screen. It is derived from the real screen height,
+     * not a fixed value: a 540 dp tall TV still keeps a full shelf visible under the hero.
+     */
+    val heroHeight: Dp get() = when {
+        tv -> (heightDp * 0.42f).dp.coerceIn(210.dp, 330.dp)
+        widthDp >= 900 -> (heightDp * 0.40f).dp.coerceIn(220.dp, 320.dp)
+        widthDp >= 600 -> (heightDp * 0.38f).dp.coerceIn(210.dp, 300.dp)
+        portrait -> (heightDp * 0.32f).dp.coerceIn(200.dp, 280.dp)
+        else -> (heightDp * 0.46f).dp.coerceIn(160.dp, 240.dp)
+    }
+
+    /** Columns for dashboard-style screens (settings). */
+    val dashboardColumns: Int get() = when {
+        tv -> 4
+        widthDp >= 900 -> 4
+        widthDp >= 600 -> 3
+        else -> 2
+    }
 }
 
 val LocalDevice = staticCompositionLocalOf { Device(FormFactor.Phone, 360, 800) }

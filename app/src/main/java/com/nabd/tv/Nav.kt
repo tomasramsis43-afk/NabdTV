@@ -1,28 +1,24 @@
-package com.nabd.tv
+﻿package com.nabd.tv
 
 import android.content.Intent
 import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.foundation.focusGroup
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -41,90 +37,19 @@ fun tabIcon(t: Tab): Ic = when (t) {
 
 fun visibleTabs(vm: AppViewModel): List<Tab> = Tab.entries.filter { (it != Tab.Movies && it != Tab.Series) || vm.hasXtream }
 
-/** Same navy pill and highlight logic everywhere; only its position and size change per device. */
+/**
+ * The whole main navigation is one horizontal app bar: brand, section names, search and account actions.
+ * Sections are plain text with a soft focus wash and an animated underline for the selected one —
+ * no rails, no boxes around each item.
+ */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun NavItem(ic: Ic, label: String, selected: Boolean, showLabel: Boolean, modifier: Modifier = Modifier, focusRequester: FocusRequester? = null, onClick: () -> Unit) {
-    var focused by remember { mutableStateOf(false) }
-    val sc by animateFloatAsState(if (focused) 1.1f else 1f, tween(140), label = "navZoom")
-    val shape = RoundedCornerShape(22.dp)
-    val tint = if (selected || focused) Color.White else Color.White.copy(alpha = 0.62f)
-    Column(
-        modifier.then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier).scale(sc).onFocusChanged { focused = it.isFocused }.clip(shape)
-            .background(if (selected) Color.White.copy(alpha = 0.22f) else if (focused) Color.White.copy(alpha = 0.12f) else Color.Transparent)
-            .border(if (focused) 2.dp else 0.dp, if (focused) Color.White else Color.Transparent, shape)
-            .clickable(onClick = onClick).padding(vertical = 9.dp, horizontal = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        NIcon(ic, tint, 24.dp)
-        if (showLabel) Text(label, fontSize = 10.sp, color = tint, maxLines = 1, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
-    }
-}
-
-private fun navBrush() = Brush.verticalGradient(listOf(Navy, NavyDeep))
-
-/** Vertical pill (TV, tablet, landscape phone). */
-@OptIn(ExperimentalTvMaterial3Api::class, ExperimentalComposeUiApi::class)
-@Composable
-fun NavRail(vm: AppViewModel, d: Device) {
-    val compact = d.nav == NavMode.RailCompact
-    val shape = RoundedCornerShape(if (compact) 28.dp else 36.dp)
-    val reqs = remember { Tab.entries.associateWith { FocusRequester() } }
-    Column(
-        Modifier
-            .focusProperties {
-                // Coming back from the page lands on the current section; leaving the rail goes to the remembered card.
-                enter = { reqs[vm.tab] ?: FocusRequester.Default }
-                exit = { dir ->
-                    if (dir == FocusDirection.Left || dir == FocusDirection.Right) vm.contentEntry() ?: FocusRequester.Default
-                    else FocusRequester.Default
-                }
-            }
-            .focusGroup()
-            .padding(start = if (compact) 8.dp else 14.dp, end = if (compact) 4.dp else 6.dp, top = 12.dp, bottom = 12.dp)
-            .fillMaxHeight().width(if (compact) 54.dp else 84.dp)
-            .softShadow(shape, 16.dp).clip(shape).background(navBrush()).padding(vertical = 10.dp, horizontal = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Box(Modifier.size(if (compact) 32.dp else 40.dp).clip(CircleShape).background(Accent), contentAlignment = Alignment.Center) {
-                Text("N", color = OnAccent, fontWeight = FontWeight.Bold, fontSize = if (compact) 15.sp else 18.sp)
-            }
-            Spacer(Modifier.height(8.dp))
-            visibleTabs(vm).forEach { t ->
-                NavItem(tabIcon(t), t.label, vm.tab == t, showLabel = !compact, modifier = Modifier.fillMaxWidth(), focusRequester = reqs[t]) { vm.selectTab(t) }
-            }
-        }
-        Spacer(Modifier.height(6.dp))
-        if (vm.profileList.size > 1) NavItem(Ic.User, vm.profile.name, false, !compact, Modifier.fillMaxWidth()) { vm.openProfiles() }
-        NavItem(Ic.Settings, "الإعدادات", false, !compact, Modifier.fillMaxWidth()) { vm.openSettings() }
-    }
-}
-
-/** Floating pill at the bottom (phone, portrait). Only the selected item shows its label. */
-@Composable
-fun BottomBar(vm: AppViewModel) {
-    val shape = RoundedCornerShape(32.dp)
-    Row(
-        Modifier.padding(horizontal = 14.dp, vertical = 10.dp).fillMaxWidth()
-            .softShadow(shape, 16.dp).clip(shape).background(navBrush()).padding(horizontal = 8.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically
-    ) {
-        visibleTabs(vm).forEach { t ->
-            NavItem(tabIcon(t), t.label, vm.tab == t, showLabel = vm.tab == t, modifier = Modifier.weight(1f)) { vm.selectTab(t) }
-        }
-    }
-}
-
-/** Page header: serif-accent title on one side, actions on the other. Search collapses to an icon on narrow screens. */
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-fun Header(vm: AppViewModel, d: Device, title: String, accent: String) {
+fun AppBar(vm: AppViewModel, d: Device) {
     var searchOpen by remember { mutableStateOf(false) }
-    val narrow = d.widthDp < 600 || (d.touch && d.portrait)
+    val wide = d.widthDp >= 780
+    val tabs = visibleTabs(vm)
+    val reqs = remember { Tab.entries.associateWith { FocusRequester() } }
+
     val voice = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
         val said = r.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
         if (!said.isNullOrBlank()) { vm.query = said; searchOpen = true }
@@ -139,21 +64,137 @@ fun Header(vm: AppViewModel, d: Device, title: String, accent: String) {
             )
         }.onFailure { vm.say("البحث الصوتي غير مدعوم على هذا الجهاز") }
     }
-    Column {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AccentTitle(title, accent, size = if (d.tv) 30.sp else if (narrow) 22.sp else 26.sp, modifier = Modifier.weight(1f))
-            if (narrow) {
-                IconBtn(Ic.Search, { searchOpen = !searchOpen })
-            } else {
+
+    Column(Modifier.fillMaxWidth().padding(horizontal = d.pad, vertical = if (d.tv) 8.dp else 6.dp)) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = d.control),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(if (wide) 16.dp else 8.dp)
+        ) {
+            BrandMark(d, compact = !wide)
+            if (wide) {
+                SectionBar(vm, d, tabs, reqs, Modifier.weight(1f))
                 SearchField(vm.query, { vm.query = it })
+                IconBtn(Ic.Mic, { startVoice() })
+                IconBtn(Ic.Refresh, { vm.refresh() })
+            } else {
+                Spacer(Modifier.weight(1f))
+                IconBtn(Ic.Mic, { startVoice() }, size = 40.dp)
+                IconBtn(if (searchOpen) Ic.Close else Ic.Search, { searchOpen = !searchOpen }, size = 40.dp)
+                IconBtn(Ic.Refresh, { vm.refresh() }, size = 40.dp)
             }
-            MBtn("🎤", filled = false) { startVoice() }
-            IconBtn(Ic.Refresh, { vm.refresh() })
-            if (narrow) IconBtn(Ic.Settings, { vm.openSettings() })
+            if (vm.profileList.size > 1) {
+                IconBtn(Ic.User, { vm.openProfiles() }, size = if (wide) null else 40.dp)
+            }
+            IconBtn(Ic.Settings, { vm.openSettings() }, size = if (wide) null else 40.dp)
         }
-        if (narrow && (searchOpen || vm.query.isNotEmpty())) {
+        if (!wide) {
+            SectionBar(vm, d, tabs, reqs, Modifier.fillMaxWidth().padding(top = 6.dp))
+        }
+        if (!wide && (searchOpen || vm.query.isNotEmpty())) {
             Spacer(Modifier.height(8.dp))
             SearchField(vm.query, { vm.query = it }, fillWidth = true)
         }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun BrandMark(d: Device, compact: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+        Box(
+            Modifier.size(if (d.tv) 36.dp else 32.dp).clip(RoundedCornerShape(11.dp))
+                .background(Brush.linearGradient(listOf(Accent, Accent2))),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("N", color = Color(0xFF0A0B10), fontWeight = FontWeight.Black, fontSize = if (d.tv) 19.sp else 17.sp)
+        }
+        if (!compact || d.tv) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text("Nabd", fontSize = if (d.tv) 20.sp else 18.sp, fontWeight = FontWeight.Bold, color = Ink)
+                Text("TV", fontSize = if (d.tv) 12.sp else 11.sp, fontWeight = FontWeight.Bold, color = Accent,
+                    modifier = Modifier.padding(start = 3.dp, bottom = 3.dp))
+            }
+        }
+    }
+}
+
+/**
+ * Horizontal section names. Scrolling on narrow screens; the focused item gets a faint rounded wash,
+ * the selected one an accent underline that animates in. D-pad focus is grouped so the bar behaves
+ * like a single row and Down leaves it straight into the content.
+ */
+@OptIn(ExperimentalTvMaterial3Api::class, ExperimentalComposeUiApi::class)
+@Composable
+private fun SectionBar(
+    vm: AppViewModel,
+    d: Device,
+    tabs: List<Tab>,
+    reqs: Map<Tab, FocusRequester>,
+    modifier: Modifier = Modifier
+) {
+    androidx.compose.foundation.lazy.LazyRow(
+        modifier = modifier
+            .focusProperties {
+                enter = { reqs[vm.tab] ?: FocusRequester.Default }
+                exit = { dir ->
+                    if (dir == FocusDirection.Down) vm.contentEntry() ?: FocusRequester.Default
+                    else FocusRequester.Default
+                }
+            }
+            .focusGroup(),
+        horizontalArrangement = Arrangement.spacedBy(if (d.tv) 4.dp else 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        items(tabs.size) { i ->
+            val t = tabs[i]
+            SectionItem(
+                label = t.label,
+                selected = vm.tab == t,
+                tv = d.tv,
+                focusRequester = reqs.getValue(t),
+                onClick = { vm.selectTab(t) }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun SectionItem(
+    label: String,
+    selected: Boolean,
+    tv: Boolean,
+    focusRequester: FocusRequester,
+    onClick: () -> Unit
+) {
+    var focused by remember { mutableStateOf(false) }
+    val underline by animateDpAsState(if (selected) 22.dp else 0.dp, tween(220), label = "tabLine")
+    Column(
+        Modifier
+            .focusRequester(focusRequester)
+            .onFocusChanged { focused = it.isFocused }
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (focused) Accent.copy(alpha = 0.10f) else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = if (tv) 15.dp else 11.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            label,
+            fontSize = if (tv) 15.sp else 13.5.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = when {
+                selected -> Ink
+                focused -> Ink
+                else -> TextSecondary
+            },
+            maxLines = 1
+        )
+        Spacer(Modifier.height(4.dp))
+        Box(
+            Modifier.width(underline).height(3.dp).clip(CircleShape)
+                .background(if (selected) Accent else Accent.copy(alpha = 0.55f))
+        )
     }
 }

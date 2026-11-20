@@ -1,4 +1,4 @@
-build/
+﻿build/
 .gradle/
 *.iml
 local.properties
@@ -8,3 +8,4 @@ local.properties
 *.jks
 *.keystore
 *.p12
+.kotlin/

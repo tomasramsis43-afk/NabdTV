@@ -1,4 +1,4 @@
-package com.nabd.tv
+﻿package com.nabd.tv
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -136,9 +136,9 @@ fun SetupScreen(vm: AppViewModel) {
             /* brand */
             Box(
                 Modifier.size(64.dp).softShadow(RoundedCornerShape(20.dp), 14.dp).clip(RoundedCornerShape(20.dp))
-                    .background(Brush.linearGradient(listOf(Accent, Navy))),
+                    .background(Brush.linearGradient(listOf(Accent, Accent2))),
                 contentAlignment = Alignment.Center
-            ) { NIcon(Ic.Play, Color.White, 30.dp) }
+            ) { NIcon(Ic.Play, Color(0xFF0A0B10), 30.dp) }
             Spacer(Modifier.height(14.dp))
             AccentTitle("Nabd", "TV", size = 34.sp)
             Spacer(Modifier.height(4.dp))
@@ -153,7 +153,7 @@ fun SetupScreen(vm: AppViewModel) {
                 Modifier.fillMaxWidth().softShadow(cardShape, 22.dp).clip(cardShape)
                     .background(
                         Brush.verticalGradient(
-                            if (Ui.dark) listOf(Color(0xF01B2060), Color(0xF00E1235)) else listOf(Color(0xFAFFFFFF), Color(0xFAF1F2FD))
+                            if (Ui.dark) listOf(Color(0xF2171A23), Color(0xF20D0F15)) else listOf(Color(0xFAFFFFFF), Color(0xFAF1F2FD))
                         )
                     )
                     .border(1.dp, GlassBorder, cardShape)

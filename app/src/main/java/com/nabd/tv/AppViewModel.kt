@@ -1,4 +1,4 @@
-package com.nabd.tv
+﻿package com.nabd.tv
 
 import android.app.Application
 import android.net.Uri
@@ -55,7 +55,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** User's light/dark choice. Video screens are always dark so controls and overlays stay readable. */
     var darkPref by mutableStateOf(store.darkMode); private set
-    private fun syncTheme() { Ui.dark = darkPref || screenState == Screen.Player || screenState == Screen.MultiView }
+    private fun syncTheme() { Ui.dark = darkPref || screenState == Screen.Player || screenState == Screen.MultiView || screenState == Screen.Detail }
     fun setDark(on: Boolean) { store.darkMode = on; darkPref = on; syncTheme() }
 
     /* Remembered UI position, so coming back from the player / details lands exactly where you were. */
