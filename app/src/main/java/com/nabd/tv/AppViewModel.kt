@@ -112,7 +112,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun ok(c: Channel, live: Boolean, hidden: Set<String>): Boolean =
         parental.visible(c) && c.url !in hidden && !(live && store.hideDead && health.isDead(c.url))
 
-    val liveList by derivedStateOf { rev; val h = store.hiddenChannels; all.filter { ok(it, true, h) } }
+    val liveList by derivedStateOf {
+        rev
+        val h = store.hiddenChannels
+        val l = all.filter { ok(it, true, h) }
+        if (store.mergeDuplicates) dedupeSources(l) else l
+    }
+
+    /** Keeps one entry per channel name (quality tags ignored), preferring the healthiest source. Others stay available as alternatives. */
+    private fun dedupeSources(l: List<Channel>): List<Channel> {
+        fun rank(c: Channel) = when (health.state(c.url)) { Health.Ok -> 0; Health.Unknown -> 1; Health.Slow -> 2; Health.Dead -> 3 }
+        val best = HashMap<String, Channel>()
+        for (c in l) {
+            val k = Classifier.normalize(c.name)
+            if (k.isBlank()) continue
+            val b = best[k]
+            if (b == null || rank(c) < rank(b)) best[k] = c
+        }
+        return l.filter { val k = Classifier.normalize(it.name); k.isBlank() || best[k]?.url == it.url }
+    }
     val movieList by derivedStateOf { rev; val h = store.hiddenChannels; movies.filter { ok(it, false, h) } }
     val seriesList by derivedStateOf { rev; val h = store.hiddenChannels; series.filter { ok(it, false, h) } }
 

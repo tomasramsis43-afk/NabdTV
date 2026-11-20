@@ -148,6 +148,11 @@ class Store(private val ctx: Context) {
         get() = p.getString("pl_afr", "seamless") ?: "seamless"
         set(v) = p.edit().putString("pl_afr", v).apply()
 
+    /** Shows one entry per channel when the list holds several sources of it (HD / FHD / SD); the healthiest source is kept. */
+    var mergeDuplicates: Boolean
+        get() = p.getBoolean("mergeDup", false)
+        set(v) = p.edit().putBoolean("mergeDup", v).apply()
+
     var audioBoost: Boolean
         get() = p.getBoolean("pl_boost", false)
         set(v) = p.edit().putBoolean("pl_boost", v).apply()
