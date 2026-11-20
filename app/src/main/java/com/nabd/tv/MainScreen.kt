@@ -231,84 +231,58 @@ private fun HomeHero(
     val kind = kindOf(c)
     val typeLabel = when (kind) { Kind.Movie -> "فيلم"; Kind.Series -> "مسلسل"; Kind.Live -> "بث مباشر" }
     val primaryLabel = when (kind) { Kind.Series -> "الحلقات"; Kind.Movie -> "تشغيل"; Kind.Live -> "مشاهدة" }
-    val art = info?.backdrop ?: c.logo
-    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val imageWeight = if (d.narrow) 0.55f else 0.70f
-    val textWeight = 1f - imageWeight
 
-    Row(
-        modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+    Column(
+        modifier,
+        verticalArrangement = Arrangement.Center
     ) {
-        // Image side: artwork fills its column and fades into the background (merged, no frame).
-        Box(Modifier.weight(imageWeight).fillMaxHeight()) {
-            if (kind == Kind.Live) {
-                Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(SurfHigh, NavyDeep))))
-                AsyncImage(model = c.logo, contentDescription = c.name, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(16.dp))
-            } else {
-                Crossfade(art, animationSpec = tween(520), label = "heroArt") { img ->
-                    AsyncImage(model = img, contentDescription = null, contentScale = ContentScale.Crop, alignment = Alignment.Center, modifier = Modifier.fillMaxSize())
-                }
-            }
-            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(if (rtl) listOf(Color.Transparent, Bg.copy(alpha = 0.85f)) else listOf(Bg.copy(alpha = 0.85f), Color.Transparent))))
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.0f to Bg.copy(alpha = 0.55f), 0.18f to Color.Transparent, 0.82f to Color.Transparent, 1f to Bg.copy(alpha = 0.55f))))
-            Box(Modifier.fillMaxSize().drawBehind {
-                drawCircle(Brush.radialGradient(listOf(palette.glow, Color.Transparent), center = Offset(size.width * 0.5f, size.height * 0.5f), radius = size.width * 0.8f), radius = size.width * 0.8f, center = Offset(size.width * 0.5f, size.height * 0.5f))
-            })
-        }
-        // Text side: name + data + actions, never overlapping the image.
-        Column(
-            Modifier.weight(textWeight).fillMaxHeight().padding(start = if (d.tv) 24.dp else 16.dp, end = if (d.tv) 24.dp else 16.dp, top = if (d.tv) 20.dp else 12.dp, bottom = if (d.tv) 20.dp else 12.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    typeLabel,
-                    fontSize = 10.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp,
-                    color = readableOnArt(palette.accent),
-                    modifier = Modifier.clip(RoundedCornerShape(6.dp))
-                        .background(palette.primary.copy(alpha = 0.26f))
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
-                )
-                if (c.hasCatchup) MetaChip("إعادة", fg = Color(0xFFE7E9F2), bg = Color(0x26FFFFFF))
-                if (c.url in vm.favs) Text("★ في المفضلة", fontSize = 11.sp, color = Accent2)
-            }
-            Spacer(Modifier.height(if (d.tv) 12.dp else 8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                c.name,
-                fontSize = if (d.tv) 34.sp else if (d.widthDp >= 600) 28.sp else 22.sp,
-                lineHeight = if (d.tv) 40.sp else 32.sp,
-                fontWeight = FontWeight.ExtraBold, color = Color.White,
-                maxLines = 2, overflow = TextOverflow.Ellipsis
+                typeLabel,
+                fontSize = 10.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp,
+                color = readableOnArt(palette.accent),
+                modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                    .background(palette.primary.copy(alpha = 0.26f))
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
             )
-            Spacer(Modifier.height(8.dp))
+            if (c.hasCatchup) MetaChip("إعادة", fg = Color(0xFFE7E9F2), bg = Color(0x26FFFFFF))
+            if (c.url in vm.favs) Text("★ في المفضلة", fontSize = 11.sp, color = Accent2)
+        }
+        Spacer(Modifier.height(if (d.tv) 12.dp else 8.dp))
+        Text(
+            c.name,
+            fontSize = if (d.tv) 40.sp else if (d.widthDp >= 600) 32.sp else 26.sp,
+            lineHeight = if (d.tv) 46.sp else 36.sp,
+            fontWeight = FontWeight.ExtraBold, color = Color.White,
+            maxLines = 2, overflow = TextOverflow.Ellipsis
+        )
+        Spacer(Modifier.height(8.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-                (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let {
-                    MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D))
-                }
-                info?.year?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
-                info?.duration?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
-                info?.genre?.takeIf { it.isNotBlank() }?.split(',')?.map { it.trim() }
-                    ?.filter { it.isNotEmpty() }?.take(if (d.tv) 2 else 1)?.forEach { MetaChip(it) }
+        Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+            (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let {
+                MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D))
             }
+            info?.year?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
+            info?.duration?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
+            info?.genre?.takeIf { it.isNotBlank() }?.split(',', '/')?.map { it.trim() }
+                ?.filter { it.isNotEmpty() }?.take(if (d.tv) 2 else 1)?.forEach { MetaChip(it) }
+        }
 
-            info?.plot?.takeIf { it.isNotBlank() }?.let {
-                Spacer(Modifier.height(if (d.tv) 10.dp else 7.dp))
-                Text(
-                    it, fontSize = if (d.tv) 14.sp else 12.5.sp, lineHeight = if (d.tv) 21.sp else 18.sp,
-                    color = Color(0xFFD9DCE8), maxLines = if (d.narrow) 2 else 3, overflow = TextOverflow.Ellipsis
-                )
-            }
+        info?.plot?.takeIf { it.isNotBlank() }?.let {
+            Spacer(Modifier.height(if (d.tv) 10.dp else 7.dp))
+            Text(
+                it, fontSize = if (d.tv) 14.sp else 12.5.sp, lineHeight = if (d.tv) 21.sp else 18.sp,
+                color = Color(0xFFD9DCE8), maxLines = if (d.narrow) 2 else 3, overflow = TextOverflow.Ellipsis
+            )
+        }
 
-            Spacer(Modifier.height(if (d.tv) 16.dp else 11.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(if (d.tv) 12.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
-                MBtn(primaryLabel, tint = buttonTone(palette.primary)) {
-                    if (kind == Kind.Series) vm.openDetail(c) else vm.play(c)
-                }
-                if (kind != Kind.Live) MBtn("التفاصيل", filled = false, tint = palette.accent) { vm.openDetail(c) }
-                HeroFav(vm, c, palette, d)
+        Spacer(Modifier.height(if (d.tv) 16.dp else 11.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(if (d.tv) 12.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
+            MBtn(primaryLabel, tint = buttonTone(palette.primary)) {
+                if (kind == Kind.Series) vm.openDetail(c) else vm.play(c)
             }
+            if (kind != Kind.Live) MBtn("التفاصيل", filled = false, tint = palette.accent) { vm.openDetail(c) }
+            HeroFav(vm, c, palette, d)
         }
     }
 }
