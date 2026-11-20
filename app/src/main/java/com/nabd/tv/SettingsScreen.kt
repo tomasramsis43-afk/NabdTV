@@ -139,6 +139,13 @@ fun SettingsScreen(vm: AppViewModel) {
         }
 
         Section("المشغّل") {
+            Row2("مطابقة معدل تحديث الشاشة", when (s.afrMode) { "off" -> "إيقاف"; "switch" -> "تبديل وضع الشاشة"; else -> "تلقائي" }) {
+                vm.menu = MenuRequest("مطابقة معدل التحديث", listOf(
+                    "إيقاف" to "off",
+                    "تلقائي (افتراضي)" to "seamless",
+                    "تبديل وضع الشاشة (للتلفاز)" to "switch"
+                ).map { (label, v) -> label to { upd { s.afrMode = v } } })
+            }
             Row2("السرعة الافتراضية", if (s.defaultSpeed == 1f) "عادية" else "${s.defaultSpeed}x") {
                 vm.menu = MenuRequest("سرعة التشغيل", PLAYER_SPEEDS.map { v ->
                     (if (v == 1f) "عادية (1x)" else "${v}x") to { upd { s.defaultSpeed = v } }

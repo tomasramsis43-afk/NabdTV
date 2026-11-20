@@ -180,8 +180,46 @@ fun buildPlayer(ctx: Context, store: Store, live: Boolean): ExoPlayer {
         .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, !subOn)
         .build()
     runCatching { p.setPlaybackSpeed(store.defaultSpeed) }
+    runCatching {
+        p.setVideoChangeFrameRateStrategy(
+            if (store.afrMode == "off") C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_OFF else C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_ONLY_IF_SEAMLESS
+        )
+    }
     return p
 }
+
+/**
+ * Frame-rate matching for TVs whose system "match content frame rate" is off: picks the display mode (same resolution)
+ * whose refresh rate is a clean multiple of the video's frame rate (23.976 fps → 24/48 Hz, 25 → 50, 29.97 → 59.94 …).
+ */
+@UnstableApi
+fun matchDisplayRefreshRate(act: android.app.Activity, player: ExoPlayer) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+    val fps = player.videoFormat?.frameRate?.takeIf { it > 0f } ?: return
+    val display = (if (Build.VERSION.SDK_INT >= 30) act.display else legacyDisplay(act)) ?: return
+    val cur = display.mode
+    val best = display.supportedModes
+        .filter { it.physicalWidth == cur.physicalWidth && it.physicalHeight == cur.physicalHeight }
+        .mapNotNull { m ->
+            val ratio = m.refreshRate / fps
+            val n = Math.round(ratio)
+            if (n >= 1 && abs(ratio - n) < 0.02f) Triple(m, n, abs(ratio - n)) else null
+        }
+        .minWithOrNull(compareBy<Triple<android.view.Display.Mode, Int, Float>>({ it.second }, { it.third }))
+        ?.first ?: return
+    if (best.modeId == cur.modeId) return
+    val w = act.window
+    w.attributes = w.attributes.also { it.preferredDisplayModeId = best.modeId }
+}
+
+/** Gives the display mode back to the system (called when the player closes). */
+fun resetDisplayMode(act: android.app.Activity) {
+    val w = act.window
+    if (w.attributes.preferredDisplayModeId != 0) w.attributes = w.attributes.also { it.preferredDisplayModeId = 0 }
+}
+
+@Suppress("DEPRECATION")
+private fun legacyDisplay(act: android.app.Activity): android.view.Display? = act.windowManager.defaultDisplay
 
 /** Content-type hints for URLs that do not carry a useful file extension. */
 fun mediaItemFor(url: String): MediaItem {

@@ -491,6 +491,7 @@ fun PlayerScreen(vm: AppViewModel) {
             override fun onTracksChanged(tracks: androidx.media3.common.Tracks) = refreshTracks()
 
             override fun onVideoSizeChanged(size: VideoSize) {
+                if (store.afrMode == "switch") act?.let { runCatching { matchDisplayRefreshRate(it, player) } }
                 ui.videoW = size.width
                 ui.videoH = size.height
                 ui.videoAr = if (size.height > 0) size.width * size.pixelWidthHeightRatio / size.height else 0f
@@ -655,6 +656,7 @@ fun PlayerScreen(vm: AppViewModel) {
             PlaybackService.stop(ctx)
             vm.health.flush()
             act?.window?.let { w -> val lp = w.attributes; lp.screenBrightness = -1f; w.attributes = lp }
+            act?.let { runCatching { resetDisplayMode(it) } }
         }
     }
 

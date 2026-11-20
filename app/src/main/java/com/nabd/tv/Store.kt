@@ -143,6 +143,11 @@ class Store(private val ctx: Context) {
         get() = g.getBoolean("pl_softAudio", false)
         set(v) = g.edit().putBoolean("pl_softAudio", v).apply()
 
+    /** Frame-rate matching: "off", "seamless" (system default behaviour) or "switch" (also changes the display mode on TVs). */
+    var afrMode: String
+        get() = p.getString("pl_afr", "seamless") ?: "seamless"
+        set(v) = p.edit().putString("pl_afr", v).apply()
+
     var audioBoost: Boolean
         get() = p.getBoolean("pl_boost", false)
         set(v) = p.edit().putBoolean("pl_boost", v).apply()
