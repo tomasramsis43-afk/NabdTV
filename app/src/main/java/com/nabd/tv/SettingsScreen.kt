@@ -119,6 +119,7 @@ fun SettingsScreen(vm: AppViewModel) {
 
         Section("الدليل والتحديث") {
             Toggle("تحديث تلقائي في الخلفية", s.autoRefresh) { upd { s.autoRefresh = it } }
+            Toggle("إشعار عند نزول حلقات جديدة للمسلسلات المفضلة", s.notifyNewEpisodes) { upd { s.notifyNewEpisodes = it } }
             Row2("إزاحة وقت الإعادة (ساعات)", "${s.catchupOffsetHours}") {
                 vm.menu = MenuRequest("إزاحة الوقت", (-3..3).map { h -> "$h" to { upd { s.catchupOffsetHours = h } } })
             }

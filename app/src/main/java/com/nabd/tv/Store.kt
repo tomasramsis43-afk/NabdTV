@@ -68,6 +68,13 @@ class Store(private val ctx: Context) {
     var autoRefresh: Boolean
         get() = g.getBoolean("autoRefresh", true)
         set(v) = g.edit().putBoolean("autoRefresh", v).apply()
+    /** Notify when a favourite series gets new episodes (checked by the background refresh). */
+    var notifyNewEpisodes: Boolean
+        get() = g.getBoolean("notifyEps", true)
+        set(v) = g.edit().putBoolean("notifyEps", v).apply()
+    fun knownEpisodeCount(seriesUrl: String): Int = g.getInt("epc_$seriesUrl", 0)
+    fun setKnownEpisodeCount(seriesUrl: String, n: Int) = g.edit().putInt("epc_$seriesUrl", n).apply()
+
     var prefSubLang: String
         get() = p.getString("subLang", "ar") ?: "ar"
         set(v) = p.edit().putString("subLang", v).apply()

@@ -25,6 +25,7 @@ class RefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
             // concurrency 1: never compete with the user's own stream for the account's connection limit
             if (favUrls.isNotEmpty()) HealthChecker(repo, store).check(favUrls, 1)
             Recorder.syncAuto(applicationContext, store, channels, epg)
+            runCatching { NewEpisodes.check(applicationContext, store, repo) }   // new-episode notifications for favourite series
             Result.success()
         } catch (e: Exception) {
             Result.retry()
