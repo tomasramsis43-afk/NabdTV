@@ -226,6 +226,23 @@ class Store(private val ctx: Context) {
     var catchupOffsetHours: Int
         get() = g.getInt("catchupOffset", 0)
         set(v) = g.edit().putInt("catchupOffset", v).apply()
+    /* Trakt.tv sync: the user's own Trakt API app + the tokens obtained by linking. Secrets are stored encrypted. */
+    var traktId: String
+        get() = g.getString("traktId", "") ?: ""
+        set(v) = g.edit().putString("traktId", v.trim()).apply()
+    var traktSecret: String
+        get() = Secret.dec(g.getString("traktSecret", "") ?: "")
+        set(v) = g.edit().putString("traktSecret", Secret.enc(v.trim())).apply()
+    var traktAccess: String
+        get() = Secret.dec(g.getString("traktAccess", "") ?: "")
+        set(v) = g.edit().putString("traktAccess", Secret.enc(v)).apply()
+    var traktRefresh: String
+        get() = Secret.dec(g.getString("traktRefresh", "") ?: "")
+        set(v) = g.edit().putString("traktRefresh", Secret.enc(v)).apply()
+    var traktExpiresAt: Long
+        get() = g.getLong("traktExpires", 0L)
+        set(v) = g.edit().putLong("traktExpires", v).apply()
+
     /* OpenSubtitles.com (online subtitle search): the user's own API key + account. */
     var osKey: String
         get() = g.getString("osKey", "") ?: ""

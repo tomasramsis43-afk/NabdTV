@@ -740,8 +740,46 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun saveProgress(c: Channel, pos: Long, dur: Long) {
         if (kindOf(c) == Kind.Live || playMode == PlayMode.Catchup) return
+        val wasFinished = store.historyOf(c.url)?.finished == true
         store.recordWatch(c, kindOf(c), pos, dur, false)
+        if (!wasFinished && store.historyOf(c.url)?.finished == true) traktMarkWatched(c)
         if (parental.visible(c)) store.historyOf(c.url)?.let { WatchNext.sync(ctx, it) }   // Android TV "Watch Next" row
+    }
+
+    /* ───────── Trakt ───────── */
+    private var traktJob: kotlinx.coroutines.Job? = null
+
+    /** Starts the device-code link: shows the code on screen and waits for approval on trakt.tv/activate. */
+    fun traktLink() {
+        traktJob?.cancel()
+        traktJob = viewModelScope.launch {
+            try {
+                val dc = Trakt.deviceCode(repo.http, store)
+                menu = MenuRequest("افتح ${dc.url} وأدخل الكود: ${dc.userCode}", listOf("إلغاء" to { traktJob?.cancel() }))
+                val ok = Trakt.awaitAuthorization(repo.http, store, dc)
+                menu = null
+                say(if (ok) "تم ربط حساب Trakt" else "لم يتم الربط (انتهت المهلة أو رُفض الطلب)")
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                menu = null; throw e
+            } catch (e: Exception) { menu = null; say(e.message ?: "تعذّر الاتصال بـ Trakt") }
+            bump()
+        }
+    }
+
+    fun traktUnlink() { Trakt.unlink(store); say("تم فك ربط Trakt"); bump() }
+
+    /** Called once when a movie / episode is finished: marks it watched on Trakt (silently ignored on failure). */
+    private fun traktMarkWatched(c: Channel) {
+        if (!Trakt.linked(store)) return
+        val now = System.currentTimeMillis()
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val ep = episodes.firstOrNull { it.url == c.url }
+                val show = detail?.name
+                if (ep != null && show != null) Trakt.markEpisode(repo.http, store, show, ep.season, ep.num, now)
+                else if (kindOf(c) == Kind.Movie) Trakt.markMovie(repo.http, store, c.name, now)
+            }
+        }
     }
 
     /* ───────── resume from the Android TV home screen ───────── */

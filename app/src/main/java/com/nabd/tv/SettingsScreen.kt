@@ -212,6 +212,17 @@ fun SettingsScreen(vm: AppViewModel) {
             }
         }
 
+        Section("مزامنة Trakt") {
+            Row2("Client ID", if (s.traktId.isBlank()) "—" else "••••") {
+                vm.prompt = PromptRequest("Trakt Client ID", s.traktId) { v -> upd { s.traktId = v } }
+            }
+            Row2("Client Secret", if (s.traktSecret.isBlank()) "—" else "••••") {
+                vm.prompt = PromptRequest("Trakt Client Secret", "") { v -> upd { s.traktSecret = v } }
+            }
+            if (Trakt.linked(s)) Row2("الحساب", "مربوط ✓ (اضغط لفك الربط)") { vm.traktUnlink() }
+            else Row2("ربط الحساب", "غير مربوط") { vm.traktLink() }
+        }
+
         Section("ترجمة من الإنترنت (OpenSubtitles)") {
             Row2("مفتاح API", if (s.osKey.isBlank()) "—" else "••••") {
                 vm.prompt = PromptRequest("مفتاح OpenSubtitles API", s.osKey) { v -> upd { s.osKey = v } }
