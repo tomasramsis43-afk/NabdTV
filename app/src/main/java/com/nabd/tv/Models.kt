@@ -80,4 +80,6 @@ data class Recording(
 data class Reminder(val id: String, val channelName: String, val title: String, val start: Long)
 
 /** A row of content on the home screen. */
-data class Shelf(val title: String, val items: List<Channel>, val ranked: Boolean = false)
+enum class ShelfStyle { Poster, Wide, Live }
+
+data class Shelf(val title: String, val items: List<Channel>, val ranked: Boolean = false, val style: ShelfStyle = ShelfStyle.Poster)

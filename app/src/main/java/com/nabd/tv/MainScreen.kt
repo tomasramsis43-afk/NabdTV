@@ -16,6 +16,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -165,7 +166,7 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
     val showHero = !d.portrait
     SideEffect { vm.firstKey = shelves.firstOrNull()?.items?.firstOrNull()?.let { shelves.first().title + "|" + it.url + it.id } }
     val focus = vm.homeFocus ?: shelves.first().items.first()
-    LaunchedEffect(focus.url, showHero) { if (showHero) { kotlinx.coroutines.delay(350); vm.loadHomeInfo(focus) } }
+    LaunchedEffect(focus.url) { kotlinx.coroutines.delay(350); vm.loadHomeInfo(focus) }
     val fade = if (Ui.dark) Color(0xFF0B0D1F) else Color(0xFFF1F2FD)
     Box(Modifier.fillMaxSize()) {
         if (showHero) {
@@ -182,21 +183,25 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
             if (showHero) HomeHero(focus, vm.homeInfo, d, Modifier.weight(0.82f))
             LazyColumn(
                 state = vm.listState("home"), modifier = Modifier.weight(if (showHero) 1.18f else 1f),
-                verticalArrangement = Arrangement.spacedBy(d.gap + 2.dp),
+                verticalArrangement = Arrangement.spacedBy(d.gap + 6.dp),
                 contentPadding = PaddingValues(bottom = 24.dp, top = 4.dp)
             ) {
+                if (!showHero) item(key = "featured") { FeaturedBanner(vm, focus, vm.homeInfo) }
                 items(shelves, key = { it.title }) { s ->
                     Column {
-                        Row(Modifier.padding(bottom = 4.dp, start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(s.title, fontSize = if (d.tv) 19.sp else 17.sp, fontWeight = FontWeight.Bold, color = Ink)
-                            Text("  ›", fontSize = 22.sp, color = Accent)
-                        }
+                        ShelfHeader(s, d)
                         LazyRow(
                             state = vm.listState("row:" + s.title),
                             horizontalArrangement = Arrangement.spacedBy(if (s.ranked) d.gap + 14.dp else d.gap),
                             contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
                         ) {
-                            itemsIndexed(s.items) { i, c -> HomeCard(vm, d, s, c, i + 1) }
+                            itemsIndexed(s.items) { i, c ->
+                                when (s.style) {
+                                    ShelfStyle.Wide -> WideCard(vm, d, s, c)
+                                    ShelfStyle.Live -> LiveShelfCard(vm, d, s, c)
+                                    ShelfStyle.Poster -> HomeCard(vm, d, s, c, i + 1)
+                                }
+                            }
                         }
                     }
                 }
@@ -207,11 +212,43 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+private fun ShelfHeader(s: Shelf, d: Device) {
+    Row(Modifier.padding(bottom = 4.dp, start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(4.dp).height(if (d.tv) 22.dp else 18.dp).clip(RoundedCornerShape(2.dp)).background(Accent))
+        Spacer(Modifier.width(8.dp))
+        Text(s.title, fontSize = if (d.tv) 21.sp else 18.sp, fontWeight = FontWeight.Bold, color = Ink)
+        Spacer(Modifier.width(8.dp))
+        Text("${s.items.size}", fontSize = 12.sp, color = TextSecondary)
+    }
+}
+
+/** Big banner at the top of the phone (portrait) home screen; TV and tablets use the backdrop hero instead. */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun FeaturedBanner(vm: AppViewModel, c: Channel, info: VodInfo?) {
+    Box(
+        Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(Radius.card))
+            .clickable { vm.open(c) }
+    ) {
+        AsyncImage(model = info?.backdrop ?: c.logo, contentDescription = null, contentScale = ContentScale.Crop, alignment = Alignment.TopCenter, modifier = Modifier.fillMaxSize())
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.35f to Color.Transparent, 1f to Color(0xE60E1235))))
+        Column(Modifier.align(Alignment.BottomStart).padding(14.dp)) {
+            Text(c.name, fontSize = 22.sp, fontWeight = FontWeight.Black, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                ratingBadge(c)?.let { HeroChip("★ $it", Color(0xFFFFC857), Color(0xFF0E1235)) }
+                info?.year?.takeIf { it.isNotBlank() }?.let { HeroChip(it) }
+                info?.genre?.takeIf { it.isNotBlank() }?.split(',', '،', '/')?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(2)?.forEach { HeroChip(it) }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
 private fun HomeCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel, rank: Int) {
     val key = s.title + "|" + ch.url + ch.id
     val fr = rememberCardFocus(vm, key)
-    val cont = s.title == "استكمال المشاهدة"
-    val progress = if (cont) vm.history.firstOrNull { it.url == ch.url }?.progress ?: 0f else 0f
     Row(verticalAlignment = Alignment.Bottom) {
         if (s.ranked) {
             Text(
@@ -225,7 +262,7 @@ private fun HomeCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel, rank: I
         Focusable(
             onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) },
             onFocused = { vm.lastFocusKey = key; vm.homeFocus = ch }, focusRequester = fr,
-            modifier = Modifier.width(if (d.tv) 128.dp else 108.dp)
+            modifier = Modifier.width(if (d.tv) 150.dp else 120.dp)
         ) {
             Box {
                 AsyncImage(
@@ -242,11 +279,67 @@ private fun HomeCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel, rank: I
                         Text(r, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
-                if (progress > 0.02f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) {
-                    Box(Modifier.fillMaxHeight().fillMaxWidth(progress).background(Accent))
+            }
+            Text(ch.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp, color = Ink, modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp))
+        }
+    }
+}
+
+/** Landscape card used for "continue watching": poster cropped to 16:9 with the title and a progress bar. */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun WideCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel) {
+    val key = s.title + "|" + ch.url + ch.id
+    val fr = rememberCardFocus(vm, key)
+    val progress = vm.history.firstOrNull { it.url == ch.url }?.progress ?: 0f
+    Focusable(
+        onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) },
+        onFocused = { vm.lastFocusKey = key; vm.homeFocus = ch }, focusRequester = fr,
+        modifier = Modifier.width(if (d.tv) 270.dp else 210.dp)
+    ) {
+        Box {
+            AsyncImage(
+                model = ch.logo, contentDescription = null, contentScale = ContentScale.Crop, alignment = Alignment.TopCenter,
+                modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(Surf)
+            )
+            Box(Modifier.matchParentSize().background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color(0xD90E1235))))
+            Text(
+                ch.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White,
+                modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
+            )
+            if (progress > 0.02f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) {
+                Box(Modifier.fillMaxHeight().fillMaxWidth(progress.coerceAtMost(1f)).background(Accent))
+            }
+        }
+    }
+}
+
+/** Live channel card for the home screen: logo, name and what is on now with a progress bar. */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun LiveShelfCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel) {
+    val key = s.title + "|" + ch.url + ch.id
+    val fr = rememberCardFocus(vm, key)
+    val (now, _) = vm.nowNext(ch)
+    val p = now?.let { ((System.currentTimeMillis() - it.start).toFloat() / (it.stop - it.start).coerceAtLeast(1L)).coerceIn(0f, 1f) } ?: 0f
+    Focusable(
+        onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) },
+        onFocused = { vm.lastFocusKey = key }, focusRequester = fr,
+        modifier = Modifier.width(if (d.tv) 190.dp else 150.dp)
+    ) {
+        Column(Modifier.fillMaxWidth().padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.fillMaxWidth().height(if (d.tv) 58.dp else 48.dp), contentAlignment = Alignment.Center) {
+                AsyncImage(model = ch.logo, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(ch.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Ink)
+            Text(now?.title ?: " ", maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp, color = Accent)
+            if (now != null) {
+                Spacer(Modifier.height(4.dp))
+                Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color(0x33808080))) {
+                    Box(Modifier.fillMaxHeight().fillMaxWidth(p).background(Accent))
                 }
             }
-            Text(ch.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp, color = Ink, modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp))
         }
     }
 }
