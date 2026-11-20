@@ -111,7 +111,7 @@ fun SettingsScreen(vm: AppViewModel) {
 
         Section("فحص الروابط") {
             Toggle("إخفاء الروابط الميتة تلقائياً", s.hideDead) { upd { s.hideDead = it; vm.clearHealth() } }
-            Toggle("دمج القنوات المكررة (HD / FHD / SD) في قناة واحدة", s.mergeDuplicates) { upd { s.mergeDuplicates = it } }
+            Toggle("دمج القنوات المكررة (HD / FHD / SD) في قناة واحدة", s.mergeDuplicates) { upd { s.mergeDuplicates = it; vm.listsChanged() } }
             Row2(vm.healthStatus?.let { "جارٍ الفحص $it" } ?: "فحص المفضلة الآن") { vm.checkHealth(true) }
             Row2("فحص التصنيف الحالي (حتى 150)") { vm.checkHealth(false) }
             Row2("مسح نتائج الفحص") { vm.clearHealth(); tick++ }

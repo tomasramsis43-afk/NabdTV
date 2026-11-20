@@ -82,6 +82,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     private fun bump() { rev++ }
 
+    /** Re-derives the lists after a setting that changes what they show. */
+    fun listsChanged() = bump()
+
     var inPip by mutableStateOf(false)
     var message by mutableStateOf<String?>(null)
     var pin by mutableStateOf<PinRequest?>(null)
