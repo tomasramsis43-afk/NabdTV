@@ -205,7 +205,6 @@ private fun HomeHero(
 ) {
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val kind = kindOf(c)
-    val shape = RoundedCornerShape(Radius.hero)
     val scrimColors = listOf(
         Scrim.copy(alpha = 0.97f), Scrim.copy(alpha = 0.86f), Scrim.copy(alpha = 0.42f), Color.Transparent
     )
@@ -214,7 +213,7 @@ private fun HomeHero(
     val primaryLabel = when (kind) { Kind.Series -> "الحلقات"; Kind.Movie -> "تشغيل"; Kind.Live -> "مشاهدة" }
 
     Box(
-        modifier.height(d.heroHeight).softShadow(shape, 22.dp, palette.primary).clip(shape).background(Surf)
+        modifier.height(d.heroHeight).fillMaxWidth()
     ) {
         if (kind == Kind.Live) {
             // A channel logo is square art: stretching it across a 21:9 frame looks broken, so live
@@ -236,7 +235,7 @@ private fun HomeHero(
         )
         Box(
             Modifier.fillMaxSize().background(
-                Brush.verticalGradient(0.55f to Color.Transparent, 1f to Bg.copy(alpha = 0.62f))
+                Brush.verticalGradient(0.55f to Color.Transparent, 1f to Bg.copy(alpha = 0.78f))
             )
         )
         // Artwork-coloured glow in the opposite corner — subtle, never over the text.
@@ -303,12 +302,12 @@ private fun HomeHero(
                 }
 
                 Spacer(Modifier.height(if (d.tv) 16.dp else 11.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(horizontalArrangement = Arrangement.spacedBy(if (d.tv) 12.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
                     MBtn(primaryLabel, tint = buttonTone(palette.primary)) {
                         if (kind == Kind.Series) vm.openDetail(c) else vm.play(c)
                     }
                     if (kind != Kind.Live) MBtn("التفاصيل", filled = false, tint = palette.accent) { vm.openDetail(c) }
-                    HeroFav(vm, c, palette)
+                    HeroFav(vm, c, palette, d)
                 }
             }
         }
@@ -343,20 +342,23 @@ private fun HeroPoster(vm: AppViewModel, c: Channel, d: Device, palette: Artwork
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun HeroFav(vm: AppViewModel, c: Channel, palette: ArtworkPalette) {
+private fun HeroFav(vm: AppViewModel, c: Channel, palette: ArtworkPalette, d: Device) {
     var focused by remember { mutableStateOf(false) }
     val fav = c.url in vm.favs
     val sc by animateFloatAsState(if (focused) 1.08f else 1f, tween(140), label = "favScale")
+    val size = if (d.tv) 52.dp else 46.dp
+    val iconSize = if (d.tv) 24.dp else 20.dp
     Box(
-        Modifier.size(LocalDevice.current.control).scale(sc)
+        Modifier.size(size).scale(sc)
             .onFocusChanged { focused = it.isFocused }
             .clip(CircleShape)
-            .background(if (focused) Color.White.copy(alpha = 0.92f) else Color(0x2BFFFFFF))
-            .border(1.dp, if (focused) Color.White else palette.accent.copy(alpha = 0.35f), CircleShape)
+            .background(if (fav) Accent2.copy(alpha = 0.26f) else Color(0x55000000))
+            .border(if (focused) 2.dp else 1.5.dp, if (focused) Color.White else if (fav) Accent2.copy(alpha = 0.85f) else Color(0xCCFFFFFF), CircleShape)
+            .then(if (focused) Modifier.softShadow(CircleShape, 12.dp, if (fav) Accent2 else Color.White) else Modifier)
             .clickable { vm.toggleFav(c) },
         contentAlignment = Alignment.Center
     ) {
-        NIcon(Ic.Star, if (fav) Accent2 else if (focused) Color(0xFF0A0B10) else Color.White, 20.dp)
+        NIcon(Ic.Star, if (fav) Accent2 else Color.White, iconSize)
     }
 }
 
@@ -367,13 +369,13 @@ private fun HomeCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel, rank: I
     Row(verticalAlignment = Alignment.Bottom) {
         if (s.ranked) {
             Text(
-                "$rank", fontSize = if (d.tv) 54.sp else 44.sp, fontWeight = FontWeight.Black,
+                "$rank", fontSize = if (d.tv) 46.sp else 36.sp, fontWeight = FontWeight.Black,
                 maxLines = 1, softWrap = false,
                 style = androidx.compose.ui.text.TextStyle(
                     color = Accent.copy(alpha = 0.85f),
-                    drawStyle = Stroke(width = 3.5f, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+                    drawStyle = Stroke(width = 2.5f, join = androidx.compose.ui.graphics.StrokeJoin.Round)
                 ),
-                modifier = Modifier.padding(end = 4.dp).offset(y = 2.dp)
+                modifier = Modifier.padding(end = 6.dp).offset(y = 0.dp)
             )
         }
         PosterCard(

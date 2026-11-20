@@ -253,6 +253,7 @@ fun PosterCard(
     var focused by remember { mutableStateOf(false) }
     val sc by animateFloatAsState(if (focused) 1.045f else 1f, tween(150), label = "posterZoom")
     val shape = RoundedCornerShape(Radius.poster)
+    val d = LocalDevice.current
 
     Column(modifier.fillMaxWidth()) {
         Box(
@@ -299,9 +300,10 @@ fun PosterCard(
         Text(
             ch.name,
             maxLines = 2, overflow = TextOverflow.Ellipsis,
-            fontSize = 12.sp, lineHeight = 15.sp, fontWeight = if (focused) FontWeight.SemiBold else FontWeight.Medium,
+            fontSize = if (d.tv) 13.sp else 12.sp, lineHeight = if (d.tv) 16.sp else 15.sp,
+            fontWeight = if (focused) FontWeight.SemiBold else FontWeight.Medium,
             color = Ink,
-            modifier = Modifier.padding(start = 2.dp, end = 2.dp, top = 6.dp).heightIn(min = 30.dp)
+            modifier = Modifier.padding(start = 2.dp, end = 2.dp, top = 6.dp, bottom = 2.dp).heightIn(min = if (d.tv) 34.dp else 30.dp)
         )
     }
 }
