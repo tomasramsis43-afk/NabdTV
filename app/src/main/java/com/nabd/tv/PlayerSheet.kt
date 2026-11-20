@@ -14,7 +14,9 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -25,9 +27,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,6 +42,10 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 private data class SheetChoice(val title: String, val options: List<SheetOption>)
+
+/** Lets a row report that it was clicked and take back focus when a choice list closes. */
+private class RowFocus(val key: String?, val requester: FocusRequester, val onClicked: (String) -> Unit)
+private val LocalRowFocus = compositionLocalOf<RowFocus?> { null }
 private data class SheetOption(
     val label: String,
     val selected: Boolean = false,
@@ -71,12 +79,23 @@ fun PlayerSheet(
     var tab by remember(ui.sheetRev) { mutableStateOf(ui.sheet ?: PlayerTab.Playback) }
     var choice by remember { mutableStateOf<SheetChoice?>(null) }
     val scope = rememberCoroutineScope()
-    val closeFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { closeFocus.requestFocus() } }
+    val tabFocus = remember { FocusRequester() }
+    val choiceFocus = remember { FocusRequester() }
+    val restoreFocus = remember { FocusRequester() }
+    var lastRow by remember { mutableStateOf<String?>(null) }
+    var firstRun by remember { mutableStateOf(true) }
 
-    BackHandler {
-        if (choice != null) choice = null else onClose()
+    // Focus is placed explicitly (retrying until it sticks): on open → the active tab; when a choice list opens →
+    // the selected option; when it closes → the row that opened it. Without this the D-pad had no focus after the
+    // list was swapped and could not move between cells.
+    LaunchedEffect(choice) {
+        if (firstRun) { firstRun = false; tabFocus.focusWhenReady() }
+        else if (choice != null) choiceFocus.focusWhenReady()
+        else if (lastRow != null) restoreFocus.focusWhenReady() else tabFocus.focusWhenReady()
     }
+
+    // One Back press closes the whole sheet (it used to need two or three: list → tab → sheet).
+    BackHandler { onClose() }
 
     fun openChoice(title: String, options: List<SheetOption>) {
         choice = SheetChoice(title, options)
@@ -124,7 +143,8 @@ fun PlayerSheet(
     }
 
     Box(
-        Modifier.fillMaxSize().background(Color(0xB3000000)).clickable { onClose() },
+        // pointerInput (not clickable): a clickable scrim is focusable and trapped the D-pad on a full-screen node.
+        Modifier.fillMaxSize().background(Color(0xB3000000)).pointerInput(Unit) { detectTapGestures { onClose() } },
         contentAlignment = Alignment.CenterEnd
     ) {
         Column(
@@ -134,11 +154,13 @@ fun PlayerSheet(
                 .widthIn(max = 560.dp)
                 .background(Color(0xF0101420), RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp))
                 .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp))
-                .clickable { }   // consume taps inside the sheet
+                .pointerInput(Unit) { detectTapGestures { } }   // taps inside never reach the scrim
+                .focusProperties { exit = { FocusRequester.Cancel } }   // remote focus cannot leave the sheet
+                .focusGroup()
                 .padding(horizontal = 18.dp, vertical = 16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                PlayerRoundButton("✕", size = 38, focusRequester = closeFocus) { onClose() }
+                PlayerRoundButton("✕", size = 38) { onClose() }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("إعدادات المشغّل", fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
@@ -157,10 +179,10 @@ fun PlayerSheet(
                     PlayerButton(
                         t.label,
                         active = t == tab,
+                        focusRequester = if (t == tab) tabFocus else null,
                         onClick = {
                             tab = t
                             ui.sheet = t
-                            ui.sheetRev++
                             choice = null
                         }
                     )
@@ -177,8 +199,13 @@ fun PlayerSheet(
                         Text(c.title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Accent, maxLines = 1)
                     }
                     Spacer(Modifier.height(10.dp))
-                    c.options.forEach { o ->
-                        SheetRow(o.label, if (o.selected) "●" else "", enabled = o.enabled) {
+                    val target = c.options.indexOfFirst { it.selected && it.enabled }.takeIf { it >= 0 }
+                        ?: c.options.indexOfFirst { it.enabled }.coerceAtLeast(0)
+                    c.options.forEachIndexed { i, o ->
+                        SheetRow(
+                            o.label, if (o.selected) "●" else "", enabled = o.enabled,
+                            focusRequester = if (i == target) choiceFocus else null, rememberClick = false
+                        ) {
                             o.action()
                             choice = null
                         }
@@ -186,6 +213,7 @@ fun PlayerSheet(
                     }
                 }
             } else {
+                CompositionLocalProvider(LocalRowFocus provides RowFocus(lastRow, restoreFocus) { lastRow = it }) {
                 Column(
                     Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(end = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(5.dp)
@@ -307,7 +335,7 @@ fun PlayerSheet(
                             SheetRow("مسار الصوت", "${ui.audioTracks.size} مسار", detail = ui.audioTracks.firstOrNull()?.label.orEmpty()) {
                                 val items = listOf(SheetOption("تلقائي (حسب اللغة المفضلة)") { actions.clearAudioOverride() }) +
                                     ui.audioTracks.mapIndexed { i, t ->
-                                        SheetOption((if (t.selected) "● " else "") + t.label, t.selected) { actions.setAudioTrack(t) }
+                                        SheetOption(t.label, t.selected) { actions.setAudioTrack(t) }
                                     }
                                 if (items.size == 1) vm.say("لا توجد مسارات صوت متعددة في هذا البث") else openChoice("مسار الصوت", items)
                             }
@@ -333,7 +361,7 @@ fun PlayerSheet(
                                 if (ui.extSub != null) actions.removeSubtitle()
                                 val items = listOf(SheetOption("إيقاف الترجمة") { actions.setSubtitlesEnabled(false) }) +
                                     ui.textTracks.mapIndexed { i, t ->
-                                        SheetOption((if (t.selected) "● " else "") + t.label, t.selected) { actions.selectSubtitle(i) }
+                                        SheetOption(t.label, t.selected) { actions.selectSubtitle(i) }
                                     }
                                 if (items.size == 1) vm.say("لا توجد ترجمة مدمجة في هذا البث") else openChoice("الترجمة المدمجة", items)
                             }
@@ -509,6 +537,7 @@ fun PlayerSheet(
                     }
                     Spacer(Modifier.height(24.dp))
                 }
+                }
             }
         }
     }
@@ -539,14 +568,19 @@ private fun SheetRow(
     detail: String? = null,
     enabled: Boolean = true,
     selected: Boolean = false,
+    focusRequester: FocusRequester? = null,
+    rememberClick: Boolean = true,
     onClick: () -> Unit
 ) {
     var focused by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(12.dp)
+    val rf = LocalRowFocus.current
+    val fr = focusRequester ?: if (rememberClick && rf != null && rf.key == label) rf.requester else null
     Row(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
+            .then(if (fr != null) Modifier.focusRequester(fr) else Modifier)
             .onFocusChanged { focused = it.isFocused }
             .clip(shape)
             .background(
@@ -557,7 +591,7 @@ private fun SheetRow(
                 }
             )
             .border(if (focused) 2.dp else 1.dp, if (focused) Color.White else Color(0x33FFFFFF), shape)
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable(enabled = enabled) { if (rememberClick) rf?.onClicked(label); onClick() }
             .padding(horizontal = 14.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

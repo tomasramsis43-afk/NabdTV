@@ -772,14 +772,12 @@ fun PlayerScreen(vm: AppViewModel) {
 
     BackHandler {
         when {
+            // One press closes ONE open layer; with nothing open it leaves. The resume prompt, the next-episode card,
+            // the end card and error card no longer swallow Back (Back used to restart the movie / replay / cancel).
             ui.sheet != null -> { ui.sheet = null; ui.sheetRev++; runCatching { rootFocus.requestFocus() } }
             ui.showJump -> ui.showJump = false
             ui.panel -> { ui.panel = false; runCatching { rootFocus.requestFocus() } }
-            ui.resumeAt > 0 -> { ui.resumeAt = -1L; player.seekTo(0L); player.playWhenReady = true }
-            ui.error != null -> vm.stop()
-            ui.nextEp != null -> ui.nextEp = null
-            ui.ended -> { ui.ended = false; actions.restart() }
-            ui.locked -> { ui.lockHint = true; hud("🔒 الشاشة مقفولة") }
+            ui.locked -> { ui.lockHint = true; hud("🔒 الشاشة مقفولة، اضغط 🔓 لفتح القفل") }
             else -> vm.stop()
         }
     }
@@ -791,7 +789,7 @@ fun PlayerScreen(vm: AppViewModel) {
     fun handleRemoteKey(ev: KeyEvent): Boolean {
         if (ev.type != KeyEventType.KeyDown) return false
         if (ev.key == Key.Back) return false
-        if (ui.sheet != null || ui.panel || ui.showJump || ui.resumeAt > 0 || ui.error != null) return false
+        if (ui.sheet != null || ui.panel || ui.showJump || ui.resumeAt > 0 || ui.error != null || ui.ended || ui.nextEp != null) return false
 
         when (ev.key) {
             Key.MediaPlayPause -> { actions.togglePlay(); return true }

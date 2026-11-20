@@ -156,7 +156,7 @@ fun ChannelPanel(vm: AppViewModel, current: Channel, onClose: () -> Unit, modifi
     val idx = list.indexOfFirst { it.url == current.url }.coerceAtLeast(0)
     val state = rememberLazyListState(initialFirstVisibleItemIndex = maxOf(0, idx - 2))
     val fr = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { fr.requestFocus() } }
+    LaunchedEffect(Unit) { fr.focusWhenReady() }
     val dev = LocalDevice.current
     Column(
         modifier.fillMaxWidth(0.5f).widthIn(max = 320.dp).fillMaxHeight().background(Color(0xEE0B0F14))

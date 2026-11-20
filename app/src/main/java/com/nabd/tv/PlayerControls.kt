@@ -170,6 +170,19 @@ class PlayerActions(
 /* Building blocks                                                     */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Moves remote focus to this element, retrying for a moment. A single requestFocus() right after composition is
+ * silently ignored when the target is not attached/laid out yet, which left the D-pad with no focus at all
+ * (so the arrows "did nothing" in the sheet and the dialogs).
+ */
+suspend fun FocusRequester.focusWhenReady(attempts: Int = 12, waitMs: Long = 60L) {
+    repeat(attempts) {
+        kotlinx.coroutines.delay(waitMs)
+        val ok = try { requestFocus(); true } catch (e: Exception) { false }
+        if (ok) { kotlinx.coroutines.delay(120); runCatching { requestFocus() }; return }   // confirm once the layout settled
+    }
+}
+
 /** Focusable pill used throughout the player. Focus is always visible (TV) and touch works normally. */
 @Composable
 fun PlayerButton(
@@ -440,7 +453,7 @@ fun GestureHud(feedback: GestureFeedback, modifier: Modifier = Modifier) {
 @Composable
 fun ResumePrompt(position: Long, onResume: () -> Unit, onRestart: () -> Unit) {
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    LaunchedEffect(Unit) { focus.focusWhenReady() }
     Box(Modifier.fillMaxSize().background(Color(0x99000000)), contentAlignment = Alignment.Center) {
         Column(
             Modifier.widthIn(max = 420.dp).background(Color(0xF0121622), RoundedCornerShape(20.dp))
@@ -468,7 +481,7 @@ fun PlayerErrorCard(
     onExit: () -> Unit
 ) {
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    LaunchedEffect(Unit) { focus.focusWhenReady() }
     Box(Modifier.fillMaxSize().background(Color(0xCC000000)), contentAlignment = Alignment.Center) {
         Column(
             Modifier.widthIn(max = 480.dp).background(Color(0xF0121622), RoundedCornerShape(20.dp))
@@ -499,7 +512,7 @@ fun TimeJumpDialog(current: Long, duration: Long, onJump: (Long) -> Unit, onDism
     var m by remember { mutableIntStateOf(((current / 60_000L) % 60).toInt()) }
     var sec by remember { mutableIntStateOf(((current / 1000L) % 60).toInt()) }
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    LaunchedEffect(Unit) { focus.focusWhenReady() }
     val total = ((h * 3600L + m * 60L + sec) * 1000L).coerceIn(0L, if (duration > 0) duration else Long.MAX_VALUE)
 
     fun shift(unit: Int, delta: Int) {
