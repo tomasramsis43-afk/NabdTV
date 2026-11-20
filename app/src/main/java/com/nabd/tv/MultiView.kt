@@ -22,6 +22,11 @@ import androidx.media3.ui.PlayerView
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 
+private val MULTI_AUDIO_ATTRS = androidx.media3.common.AudioAttributes.Builder()
+    .setUsage(androidx.media3.common.C.USAGE_MEDIA)
+    .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE)
+    .build()
+
 /** 2–4 live channels at once. Only the selected tile has sound; OK on a tile = give it the sound. */
 @OptIn(ExperimentalTvMaterial3Api::class, UnstableApi::class)
 @Composable
@@ -33,12 +38,18 @@ fun MultiViewScreen(vm: AppViewModel) {
         channels.map { c ->
             // Tiny buffers + no decoder extensions keep 4 simultaneous streams light on cheap TV boxes.
             buildPlayer(ctx, vm.store, true).apply {
+                // buildPlayer asks for audio focus; with several players each one would steal it from the others.
+                setAudioAttributes(MULTI_AUDIO_ATTRS, false)
                 setMediaItem(MediaItem.fromUri(c.url)); prepare(); playWhenReady = true; volume = 0f
             }
         }
     }
     var audio by remember { mutableIntStateOf(0) }
-    LaunchedEffect(audio, players) { players.forEachIndexed { i, p -> p.volume = if (i == audio) 1f else 0f } }
+    LaunchedEffect(audio, players) {
+        players.forEachIndexed { i, p -> if (i != audio) { p.volume = 0f; p.setAudioAttributes(MULTI_AUDIO_ATTRS, false) } }
+        // Only the tile that has the sound holds audio focus.
+        players.getOrNull(audio)?.let { it.volume = 1f; it.setAudioAttributes(MULTI_AUDIO_ATTRS, true) }
+    }
     DisposableEffect(players) { onDispose { players.forEach(ExoPlayer::release) } }
     BackHandler { vm.closeMulti() }
 
