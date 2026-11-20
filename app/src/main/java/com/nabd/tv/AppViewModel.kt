@@ -254,6 +254,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 group = GROUP_ALL
                 screen = Screen.Main
                 preloadVod()
+                pendingResume?.let { pendingResume = null; playResume(it) }
                 launch {
                     epg = repo.loadEpg(all, force)
                     Recorder.syncAuto(ctx, store, all, epg)
@@ -728,9 +729,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun saveProgress(c: Channel, pos: Long, dur: Long) {
         if (kindOf(c) == Kind.Live || playMode == PlayMode.Catchup) return
         store.recordWatch(c, kindOf(c), pos, dur, false)
+        if (parental.visible(c)) store.historyOf(c.url)?.let { WatchNext.sync(ctx, it) }   // Android TV "Watch Next" row
     }
 
-    fun clearHistory() { store.clearHistory(); history = emptyList(); recs = emptyList(); because = null; bump() }
+    /* ───────── resume from the Android TV home screen ───────── */
+    private var pendingResume: String? = null
+
+    /** Called when the user taps a "Watch Next" tile; waits for the channel list when the app is still starting. */
+    fun resumeFromWatchNext(url: String) {
+        if (all.isEmpty()) { pendingResume = url; return }
+        playResume(url)
+    }
+
+    private fun playResume(url: String) {
+        val h = store.historyOf(url) ?: return
+        play(histChannel(h))
+    }
+
+    fun clearHistory() { store.clearHistory(); WatchNext.clearAll(ctx); history = emptyList(); recs = emptyList(); because = null; bump() }
 
     /* ───────── recording / reminders ───────── */
     fun record(c: Channel, p: Prog) {

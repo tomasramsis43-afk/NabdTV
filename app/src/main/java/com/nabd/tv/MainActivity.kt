@@ -76,6 +76,13 @@ class MainActivity : ComponentActivity() {
         Recorder.ensureChannel(this)
         if (Build.VERSION.SDK_INT >= 33) runCatching { notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS) }
         setContent { AppTheme { App(vm) } }
+        if (savedInstanceState == null) WatchNext.urlFrom(intent)?.let { vm.resumeFromWatchNext(it) }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        WatchNext.urlFrom(intent)?.let { vm.resumeFromWatchNext(it) }
     }
 }
 
