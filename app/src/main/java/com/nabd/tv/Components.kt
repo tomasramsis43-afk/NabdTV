@@ -1,5 +1,6 @@
 package com.nabd.tv
 
+import androidx.compose.ui.zIndex
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -288,4 +289,32 @@ fun ratingBadge(c: Channel): String? {
     val v = c.rating?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: return null
     if (v <= 0.0 || v > 10.0) return null
     return "%.1f".format(java.util.Locale.US, v)
+}
+
+
+/**
+ * Borderless tile for posters and shelf cards: no frame or fill around the content, just a smooth zoom on focus.
+ * [content] receives the focus state so the artwork itself can draw the focus ring.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun FlatFocusable(
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    zoom: Float = 1.07f,
+    onFocused: (() -> Unit)? = null,
+    focusRequester: FocusRequester? = null,
+    content: @Composable ColumnScope.(Boolean) -> Unit
+) {
+    var focused by remember { mutableStateOf(false) }
+    val sc by animateFloatAsState(if (focused) zoom else 1f, tween(160), label = "flatZoom")
+    Column(
+        modifier
+            .zIndex(if (focused) 1f else 0f)
+            .scale(sc)
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocused?.invoke() }
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+    ) { content(focused) }
 }

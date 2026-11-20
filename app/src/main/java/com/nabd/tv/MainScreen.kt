@@ -16,6 +16,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -168,23 +169,24 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
     val focus = vm.homeFocus ?: shelves.first().items.first()
     LaunchedEffect(focus.url) { kotlinx.coroutines.delay(350); vm.loadHomeInfo(focus) }
     val fade = if (Ui.dark) Color(0xFF0B0D1F) else Color(0xFFF1F2FD)
+    val heroH = (d.heightDp * (if (d.tv) 0.33f else 0.36f)).dp
     Box(Modifier.fillMaxSize()) {
         if (showHero) {
             // Full-bleed backdrop of the focused title, fading into the page.
-            Box(Modifier.fillMaxWidth().fillMaxHeight(0.7f).align(Alignment.TopCenter)) {
+            Box(Modifier.fillMaxWidth().height(heroH + 170.dp).align(Alignment.TopCenter)) {
                 androidx.compose.animation.Crossfade(vm.homeInfo?.backdrop ?: focus.logo, animationSpec = tween(500), label = "bd") { img ->
                     AsyncImage(model = img, contentDescription = null, contentScale = ContentScale.Crop, alignment = Alignment.TopCenter, modifier = Modifier.fillMaxSize())
                 }
-                Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xF00E1235), Color(0x990E1235), Color(0x220E1235)))))
+                Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xE60E1235), Color(0x660E1235), Color(0x000E1235)))))
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to fade)))
             }
         }
         Column(Modifier.fillMaxSize()) {
-            if (showHero) HomeHero(focus, vm.homeInfo, d, Modifier.weight(0.82f))
+            if (showHero) HomeHero(focus, vm.homeInfo, d, Modifier.height(heroH))
             LazyColumn(
-                state = vm.listState("home"), modifier = Modifier.weight(if (showHero) 1.18f else 1f),
-                verticalArrangement = Arrangement.spacedBy(d.gap + 6.dp),
-                contentPadding = PaddingValues(bottom = 24.dp, top = 4.dp)
+                state = vm.listState("home"), modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(d.gap),
+                contentPadding = PaddingValues(bottom = 16.dp, top = 2.dp)
             ) {
                 if (!showHero) item(key = "featured") { FeaturedBanner(vm, focus, vm.homeInfo) }
                 items(shelves, key = { it.title }) { s ->
@@ -249,22 +251,23 @@ private fun FeaturedBanner(vm: AppViewModel, c: Channel, info: VodInfo?) {
 private fun HomeCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel, rank: Int) {
     val key = s.title + "|" + ch.url + ch.id
     val fr = rememberCardFocus(vm, key)
+    val shape = RoundedCornerShape(12.dp)
     Row(verticalAlignment = Alignment.Bottom) {
         if (s.ranked) {
             Text(
-                "$rank", fontSize = if (d.tv) 92.sp else 70.sp, fontWeight = FontWeight.Black, maxLines = 1, softWrap = false,
+                "$rank", fontSize = if (d.tv) 64.sp else 52.sp, fontWeight = FontWeight.Black, maxLines = 1, softWrap = false,
                 style = androidx.compose.ui.text.TextStyle(
-                    color = Accent, drawStyle = androidx.compose.ui.graphics.drawscope.Stroke(width = 5f, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+                    color = Accent, drawStyle = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f, join = androidx.compose.ui.graphics.StrokeJoin.Round)
                 ),
-                modifier = Modifier.padding(end = 2.dp).offset(y = 6.dp)
+                modifier = Modifier.offset(y = 4.dp)
             )
         }
-        Focusable(
+        FlatFocusable(
             onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) },
             onFocused = { vm.lastFocusKey = key; vm.homeFocus = ch }, focusRequester = fr,
-            modifier = Modifier.width(if (d.tv) 150.dp else 120.dp)
-        ) {
-            Box {
+            modifier = Modifier.width(if (d.tv) 138.dp else 118.dp)
+        ) { f ->
+            Box(Modifier.clip(shape).then(if (f) Modifier.border(3.dp, Accent, shape) else Modifier)) {
                 AsyncImage(
                     model = ch.logo, contentDescription = null, contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f).background(Surf)
@@ -272,15 +275,15 @@ private fun HomeCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel, rank: I
                 ratingBadge(ch)?.let { r ->
                     Row(
                         Modifier.align(Alignment.TopStart).padding(6.dp).clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xCC0E1235)).padding(horizontal = 7.dp, vertical = 3.dp),
+                            .background(Color(0xCC0E1235)).padding(horizontal = 6.dp, vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("★", fontSize = 11.sp, color = Color(0xFFFFC857)); Spacer(Modifier.width(3.dp))
-                        Text(r, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("★", fontSize = 10.sp, color = Color(0xFFFFC857)); Spacer(Modifier.width(3.dp))
+                        Text(r, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
             }
-            Text(ch.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp, color = Ink, modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp))
+            Text(ch.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp, color = if (f) Accent else Ink, modifier = Modifier.padding(top = 5.dp, start = 2.dp, end = 2.dp))
         }
     }
 }
@@ -292,12 +295,13 @@ private fun WideCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel) {
     val key = s.title + "|" + ch.url + ch.id
     val fr = rememberCardFocus(vm, key)
     val progress = vm.history.firstOrNull { it.url == ch.url }?.progress ?: 0f
-    Focusable(
+    val shape = RoundedCornerShape(12.dp)
+    FlatFocusable(
         onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) },
         onFocused = { vm.lastFocusKey = key; vm.homeFocus = ch }, focusRequester = fr,
-        modifier = Modifier.width(if (d.tv) 270.dp else 210.dp)
-    ) {
-        Box {
+        modifier = Modifier.width(if (d.tv) 240.dp else 200.dp)
+    ) { f ->
+        Box(Modifier.clip(shape).then(if (f) Modifier.border(3.dp, Accent, shape) else Modifier)) {
             AsyncImage(
                 model = ch.logo, contentDescription = null, contentScale = ContentScale.Crop, alignment = Alignment.TopCenter,
                 modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(Surf)
@@ -322,16 +326,23 @@ private fun LiveShelfCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel) {
     val fr = rememberCardFocus(vm, key)
     val (now, _) = vm.nowNext(ch)
     val p = now?.let { ((System.currentTimeMillis() - it.start).toFloat() / (it.stop - it.start).coerceAtLeast(1L)).coerceIn(0f, 1f) } ?: 0f
-    Focusable(
+    val shape = RoundedCornerShape(12.dp)
+    FlatFocusable(
         onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) },
         onFocused = { vm.lastFocusKey = key }, focusRequester = fr,
-        modifier = Modifier.width(if (d.tv) 190.dp else 150.dp)
-    ) {
-        Column(Modifier.fillMaxWidth().padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.fillMaxWidth().height(if (d.tv) 58.dp else 48.dp), contentAlignment = Alignment.Center) {
+        modifier = Modifier.width(if (d.tv) 170.dp else 140.dp)
+    ) { f ->
+        Column(
+            Modifier.fillMaxWidth().clip(shape)
+                .background(if (f) GlassFocus else Color.Transparent)
+                .then(if (f) Modifier.border(3.dp, Accent, shape) else Modifier)
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(Modifier.fillMaxWidth().height(if (d.tv) 52.dp else 44.dp), contentAlignment = Alignment.Center) {
                 AsyncImage(model = ch.logo, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
             }
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(4.dp))
             Text(ch.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Ink)
             Text(now?.title ?: " ", maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp, color = Accent)
             if (now != null) {
@@ -348,17 +359,26 @@ private fun LiveShelfCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel) {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun HomeHero(c: Channel, info: VodInfo?, d: Device, modifier: Modifier) {
-    Column(modifier.fillMaxWidth(0.55f).padding(start = 8.dp, top = 6.dp), verticalArrangement = Arrangement.Center) {
-        Text(c.name, fontSize = if (d.tv) 34.sp else 26.sp, fontWeight = FontWeight.Black, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    Column(modifier.fillMaxWidth(0.68f).padding(start = 8.dp, top = 4.dp), verticalArrangement = Arrangement.Center) {
+        Text(c.name, fontSize = if (d.tv) 36.sp else 28.sp, fontWeight = FontWeight.Black, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             ratingBadge(c)?.let { HeroChip("★ $it", Color(0xFFFFC857), Color(0xFF0E1235)) }
             info?.year?.takeIf { it.isNotBlank() }?.let { HeroChip(it) }
-            info?.genre?.takeIf { it.isNotBlank() }?.split(',', '،', '/')?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(2)?.forEach { HeroChip(it) }
+            info?.duration?.takeIf { it.isNotBlank() }?.let { HeroChip(it) }
+            info?.genre?.takeIf { it.isNotBlank() }?.split(',', '،', '/')?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(3)?.forEach { HeroChip(it) }
         }
         info?.plot?.takeIf { it.isNotBlank() }?.let {
             Spacer(Modifier.height(10.dp))
-            Text(it, fontSize = if (d.tv) 14.sp else 13.sp, lineHeight = 20.sp, color = Color(0xFFE0E2FF), maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(it, fontSize = if (d.tv) 15.sp else 13.sp, lineHeight = 21.sp, color = Color(0xFFE0E2FF), maxLines = 3, overflow = TextOverflow.Ellipsis)
+        }
+        val credits = listOfNotNull(
+            info?.director?.takeIf { it.isNotBlank() }?.let { "إخراج: $it" },
+            info?.cast?.takeIf { it.isNotBlank() }?.split(',', '،')?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(3)?.joinToString("، ")?.let { "بطولة: $it" }
+        ).joinToString("   •   ")
+        if (credits.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            Text(credits, fontSize = 12.sp, color = Color(0xFFC9CCFF), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
