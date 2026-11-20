@@ -15,9 +15,16 @@ class NabdApp : Application(), ImageLoaderFactory {
     }
 
     /** Posters/logos are cached on disk, so scrolling big lists stays smooth and works offline. */
-    override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)
+    override fun newImageLoader(): ImageLoader {
+        // Low-RAM TV boxes: smaller memory cache and 16-bit posters (half the memory per image).
+        val low = (getSystemService(ACTIVITY_SERVICE) as? android.app.ActivityManager)?.isLowRamDevice == true
+        return buildLoader(low)
+    }
+
+    private fun buildLoader(low: Boolean): ImageLoader = ImageLoader.Builder(this)
         .crossfade(180)
-        .memoryCache { MemoryCache.Builder(this).maxSizePercent(0.2).build() }
+        .allowRgb565(low)
+        .memoryCache { MemoryCache.Builder(this).maxSizePercent(if (low) 0.1 else 0.2).build() }
         .diskCache { DiskCache.Builder().directory(File(cacheDir, "img")).maxSizeBytes(250L * 1024 * 1024).build() }
         .respectCacheHeaders(false)
         .build()
