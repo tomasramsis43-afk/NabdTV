@@ -784,6 +784,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         store.recordWatch(c, kindOf(c), pos, dur, false)
         if (!wasFinished && store.historyOf(c.url)?.finished == true) traktMarkWatched(c)
         if (parental.visible(c)) store.historyOf(c.url)?.let { WatchNext.sync(ctx, it) }   // Android TV "Watch Next" row
+        NabdWidget.refresh(ctx)   // phone home-screen widget
     }
 
     /* ───────── Trakt ───────── */

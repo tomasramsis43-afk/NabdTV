@@ -21,6 +21,9 @@ object WatchNext {
             .setPackage(ctx.packageName)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 
+    /** Intent that resumes [url] (used by the Watch Next tiles and the home-screen widget). */
+    fun resumeIntent(ctx: Context, url: String): Intent = intentFor(ctx, url)
+
     /** The media url a Watch Next tile asked us to resume, or null for any other intent. */
     fun urlFrom(intent: Intent?): String? =
         intent?.data?.takeIf { it.scheme == SCHEME }?.getQueryParameter("u")

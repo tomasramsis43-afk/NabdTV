@@ -48,6 +48,13 @@
         <service android:name=".PlaybackService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
 
         <receiver android:name=".InstallResultReceiver" android:exported="false" />
+
+        <receiver android:name=".NabdWidget" android:exported="true" android:label="Nabd TV">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/nabd_widget_info" />
+        </receiver>
         <receiver android:name=".PackageReplacedReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
