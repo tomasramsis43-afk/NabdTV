@@ -319,6 +319,13 @@ class Store(private val ctx: Context) {
     fun introEnd(seriesKey: String): Long = p.getLong("intro_$seriesKey", 0L)
     fun setIntroEnd(seriesKey: String, ms: Long) = p.edit().putLong("intro_$seriesKey", ms).apply()
 
+    /* ---------- audio / subtitle language chosen per series (applied to its next episodes) ---------- */
+    fun seriesAudioLang(seriesKey: String): String = p.getString("sAud_$seriesKey", "") ?: ""
+    fun setSeriesAudioLang(seriesKey: String, lang: String) = p.edit().putString("sAud_$seriesKey", lang).apply()
+    /** "" = no choice made, "off" = subtitles switched off, otherwise a language code. */
+    fun seriesSubLang(seriesKey: String): String = p.getString("sSub_$seriesKey", "") ?: ""
+    fun setSeriesSubLang(seriesKey: String, lang: String) = p.edit().putString("sSub_$seriesKey", lang).apply()
+
     /* ---------- watch history ---------- */
     private var histCache: LinkedHashMap<String, HistoryEntry>? = null
 

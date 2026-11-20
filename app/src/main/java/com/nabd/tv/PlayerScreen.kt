@@ -266,6 +266,7 @@ fun PlayerScreen(vm: AppViewModel) {
                 ui.subOn = true
                 store.subEnabled = true
                 player.setSubtitlesEnabled(true)
+                seriesKey?.let { store.setSeriesSubLang(it, track.language) }   // remembered for the next episodes
                 ui.settingsRev++
             },
             setSubtitleEncoding = { enc ->
@@ -290,12 +291,22 @@ fun PlayerScreen(vm: AppViewModel) {
             setSubtitlesEnabled = { on ->
                 ui.subOn = on
                 store.subEnabled = on
+                seriesKey?.let { k -> if (!on) store.setSeriesSubLang(k, "off") else if (store.seriesSubLang(k) == "off") store.setSeriesSubLang(k, "") }
                 if (on && ui.extSub == null) player.setSubtitlesEnabled(true)
                 else if (!on) player.setSubtitlesEnabled(false)
                 ui.settingsRev++
             },
-            setAudioTrack = { track -> player.selectTrack(C.TRACK_TYPE_AUDIO, track); ui.tracksRev++; hud("🔊 ${track.label}") },
-            clearAudioOverride = { player.clearTrackOverride(C.TRACK_TYPE_AUDIO); hud("🔊 تلقائي") },
+            setAudioTrack = { track ->
+                player.selectTrack(C.TRACK_TYPE_AUDIO, track); ui.tracksRev++
+                val saved = seriesKey != null && track.language.isNotBlank()
+                if (saved) store.setSeriesAudioLang(seriesKey!!, track.language)   // remembered for the next episodes
+                hud("🔊 ${track.label}" + if (saved) " · محفوظ للمسلسل" else "")
+            },
+            clearAudioOverride = {
+                player.clearTrackOverride(C.TRACK_TYPE_AUDIO)
+                seriesKey?.let { store.setSeriesAudioLang(it, "") }
+                hud("🔊 تلقائي")
+            },
             setAudioDelay = { ms ->
                 store.audioDelayMs = ms.coerceIn(-2_000, 2_000)
                 AudioDelayBus.ms = store.audioDelayMs
@@ -367,9 +378,36 @@ fun PlayerScreen(vm: AppViewModel) {
         )
     }
 
+    val seriesRef = rememberUpdatedState(seriesKey)
+    val prefApplied = remember { arrayOf("", "") }   // media url the saved audio / subtitle choice was applied to
+
+    /** Re-applies the audio / subtitle language the user picked earlier for this series (once per episode). */
+    fun applySeriesTrackPrefs() {
+        val sk = seriesRef.value ?: return
+        val url = chRef.value.url
+        if (prefApplied[0] != url && ui.audioTracks.isNotEmpty()) {
+            prefApplied[0] = url
+            val al = store.seriesAudioLang(sk)
+            if (al.isNotBlank()) ui.audioTracks.firstOrNull { sameLang(it.language, al) }
+                ?.let { if (!it.selected) player.selectTrack(C.TRACK_TYPE_AUDIO, it) }
+            if (store.seriesSubLang(sk) == "off" && ui.extSub == null) { player.setSubtitlesEnabled(false); ui.subOn = false }
+        }
+        if (prefApplied[1] != url && ui.textTracks.isNotEmpty()) {
+            val sl = store.seriesSubLang(sk)
+            if (sl.isNotBlank() && sl != "off" && ui.extSub == null) {
+                prefApplied[1] = url
+                ui.textTracks.firstOrNull { sameLang(it.language, sl) }?.let {
+                    if (!it.selected) player.selectTrack(C.TRACK_TYPE_TEXT, it)
+                    player.setSubtitlesEnabled(true); ui.subOn = true
+                }
+            }
+        }
+    }
+
     fun refreshTracks() {
         ui.audioTracks = player.audioTracks()
         ui.textTracks = player.textTracks()
+        applySeriesTrackPrefs()
         ui.tracksRev++
         // Silent video: the file has audio but no track could be selected (codec the device cannot decode).
         val ag = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO && it.length > 0 }
@@ -1257,4 +1295,11 @@ fun PlayerScreen(vm: AppViewModel) {
             }
         }
     }
+}
+
+/** True when two language codes are the same language (handles "ar" vs "ara", "en" vs "eng"). */
+private fun sameLang(a: String, b: String): Boolean {
+    if (a.isBlank() || b.isBlank()) return false
+    fun n(x: String) = runCatching { java.util.Locale(x.substringBefore('-').lowercase()).isO3Language }.getOrDefault(x.lowercase())
+    return n(a) == n(b)
 }
