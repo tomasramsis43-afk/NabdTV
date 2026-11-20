@@ -44,11 +44,23 @@ object CrashLog {
                 val f = file(ctx)
                 val keep = if (f.exists()) f.readText().takeLast(6000) else ""
                 val stamp = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date())
-                f.writeText(keep + "\n=== $stamp [${t.name}] ===\n" + android.util.Log.getStackTraceString(e).take(3500))
+                val trace = android.util.Log.getStackTraceString(e).take(3500)
+                f.writeText(keep + "\n=== $stamp [${t.name}] ===\n" + trace)
+                // Show the error on screen from a separate process (not when the crash happened inside that process).
+                if (!isCrashProcess()) {
+                    ctx.startActivity(
+                        android.content.Intent(ctx, CrashActivity::class.java)
+                            .putExtra("trace", "[$stamp] " + trace)
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    )
+                    Thread.sleep(500)
+                }
             }
             old?.uncaughtException(t, e)
         }
     }
+
+    private fun isCrashProcess() = runCatching { android.app.Application.getProcessName().endsWith(":crash") }.getOrDefault(false)
 
     fun read(ctx: android.content.Context): String = runCatching { file(ctx).takeIf { it.exists() }?.readText() }.getOrNull().orEmpty()
     fun clear(ctx: android.content.Context) { runCatching { file(ctx).delete() } }

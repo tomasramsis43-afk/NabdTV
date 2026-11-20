@@ -45,6 +45,8 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".CrashActivity" android:exported="false" android:process=":crash" />
+
         <service android:name=".PlaybackService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
 
         <receiver android:name=".InstallResultReceiver" android:exported="false" />
