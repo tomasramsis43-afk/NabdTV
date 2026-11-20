@@ -153,59 +153,34 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
 
     val heroArt = vm.homeInfo?.backdrop ?: focus.logo
     val palette = rememberArtworkPalette(heroArt)
-    val kind = kindOf(focus)
-    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val scrimColors = listOf(Scrim.copy(alpha = 0.97f), Scrim.copy(alpha = 0.86f), Scrim.copy(alpha = 0.42f), Color.Transparent)
-
-    Box(Modifier.fillMaxSize()) {
-        // Full-screen merged backdrop: the artwork fills the screen and dissolves into the page.
-        if (kind == Kind.Live) {
-            Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(SurfHigh, NavyDeep))))
-        } else {
-            Crossfade(heroArt, animationSpec = tween(520), label = "heroArt") { img ->
-                AsyncImage(
-                    model = img, contentDescription = null, contentScale = ContentScale.Crop,
-                    alignment = Alignment.TopCenter, modifier = Modifier.fillMaxSize()
-                )
-            }
-        }
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(if (rtl) scrimColors.reversed() else scrimColors)))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.40f to Color.Transparent, 0.72f to Bg.copy(alpha = 0.88f), 1f to Bg)))
-        Box(Modifier.fillMaxSize().drawBehind {
-            drawCircle(
-                Brush.radialGradient(listOf(palette.glow, Color.Transparent), center = Offset(if (rtl) size.width * 0.15f else size.width * 0.85f, 0f), radius = size.width * 0.55f),
-                radius = size.width * 0.55f, center = Offset(if (rtl) size.width * 0.15f else size.width * 0.85f, 0f)
-            )
-        })
-
-        Column(Modifier.fillMaxSize()) {
-            HomeHero(vm, focus, vm.homeInfo, d, palette, Modifier.height(d.heroHeight).fillMaxWidth().padding(horizontal = if (d.tv) 30.dp else 18.dp, vertical = if (d.tv) 24.dp else 16.dp))
-            LazyColumn(
-                state = vm.listState("home"),
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(if (d.tv) 14.dp else 12.dp),
-                contentPadding = PaddingValues(start = 2.dp, end = 2.dp, top = 4.dp, bottom = 28.dp)
-            ) {
-                items(shelves, key = { it.title }) { s ->
-                    Column {
-                        Row(
-                            Modifier.fillMaxWidth().padding(start = 2.dp, end = 2.dp, bottom = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                s.title,
-                                fontSize = if (d.tv) 17.sp else 15.sp, fontWeight = FontWeight.Bold, color = Ink,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
-                            )
-                            Text("${s.items.size}", fontSize = 11.sp, color = TextMuted)
-                        }
-                        LazyRow(
-                            state = vm.listState("row:" + s.title),
-                            horizontalArrangement = Arrangement.spacedBy(if (s.ranked) d.gap + 16.dp else d.gap),
-                            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp)
-                        ) {
-                            itemsIndexed(s.items) { i, c -> HomeCard(vm, d, s, c, i + 1) }
-                        }
+    Column(Modifier.fillMaxSize()) {
+        HomeHero(vm, focus, vm.homeInfo, d, palette, Modifier.fillMaxWidth().height(d.heroHeight))
+        Spacer(Modifier.height(12.dp))
+        LazyColumn(
+            state = vm.listState("home"),
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(if (d.tv) 14.dp else 12.dp),
+            contentPadding = PaddingValues(bottom = 28.dp)
+        ) {
+            items(shelves, key = { it.title }) { s ->
+                Column {
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 2.dp, end = 2.dp, bottom = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            s.title,
+                            fontSize = if (d.tv) 17.sp else 15.sp, fontWeight = FontWeight.Bold, color = Ink,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
+                        )
+                        Text("${s.items.size}", fontSize = 11.sp, color = TextMuted)
+                    }
+                    LazyRow(
+                        state = vm.listState("row:" + s.title),
+                        horizontalArrangement = Arrangement.spacedBy(if (s.ranked) d.gap + 16.dp else d.gap),
+                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp)
+                    ) {
+                        itemsIndexed(s.items) { i, c -> HomeCard(vm, d, s, c, i + 1) }
                     }
                 }
             }
@@ -231,58 +206,82 @@ private fun HomeHero(
     val kind = kindOf(c)
     val typeLabel = when (kind) { Kind.Movie -> "فيلم"; Kind.Series -> "مسلسل"; Kind.Live -> "بث مباشر" }
     val primaryLabel = when (kind) { Kind.Series -> "الحلقات"; Kind.Movie -> "تشغيل"; Kind.Live -> "مشاهدة" }
+    val art = info?.backdrop ?: c.logo
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
 
-    Column(
-        modifier,
-        verticalArrangement = Arrangement.Center
+    Row(
+        modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                typeLabel,
-                fontSize = 10.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp,
-                color = readableOnArt(palette.accent),
-                modifier = Modifier.clip(RoundedCornerShape(6.dp))
-                    .background(palette.primary.copy(alpha = 0.26f))
-                    .padding(horizontal = 8.dp, vertical = 3.dp)
-            )
-            if (c.hasCatchup) MetaChip("إعادة", fg = Color(0xFFE7E9F2), bg = Color(0x26FFFFFF))
-            if (c.url in vm.favs) Text("★ في المفضلة", fontSize = 11.sp, color = Accent2)
-        }
-        Spacer(Modifier.height(if (d.tv) 12.dp else 8.dp))
-        Text(
-            c.name,
-            fontSize = if (d.tv) 40.sp else if (d.widthDp >= 600) 32.sp else 26.sp,
-            lineHeight = if (d.tv) 46.sp else 36.sp,
-            fontWeight = FontWeight.ExtraBold, color = Color.White,
-            maxLines = 2, overflow = TextOverflow.Ellipsis
-        )
-        Spacer(Modifier.height(8.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-            (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let {
-                MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D))
+        // Image side: artwork fills its column and fades into the background (merged, no frame).
+        Box(Modifier.weight(0.42f).fillMaxHeight()) {
+            if (kind == Kind.Live) {
+                Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(SurfHigh, NavyDeep))))
+                AsyncImage(model = c.logo, contentDescription = c.name, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(16.dp))
+            } else {
+                Crossfade(art, animationSpec = tween(520), label = "heroArt") { img ->
+                    AsyncImage(model = img, contentDescription = null, contentScale = ContentScale.Crop, alignment = Alignment.Center, modifier = Modifier.fillMaxSize())
+                }
             }
-            info?.year?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
-            info?.duration?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
-            info?.genre?.takeIf { it.isNotBlank() }?.split(',', '/')?.map { it.trim() }
-                ?.filter { it.isNotEmpty() }?.take(if (d.tv) 2 else 1)?.forEach { MetaChip(it) }
+            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(if (rtl) listOf(Color.Transparent, Bg.copy(alpha = 0.85f)) else listOf(Bg.copy(alpha = 0.85f), Color.Transparent))))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.0f to Bg.copy(alpha = 0.55f), 0.18f to Color.Transparent, 0.82f to Color.Transparent, 1f to Bg.copy(alpha = 0.55f))))
+            Box(Modifier.fillMaxSize().drawBehind {
+                drawCircle(Brush.radialGradient(listOf(palette.glow, Color.Transparent), center = Offset(size.width * 0.5f, size.height * 0.5f), radius = size.width * 0.8f), radius = size.width * 0.8f, center = Offset(size.width * 0.5f, size.height * 0.5f))
+            })
         }
-
-        info?.plot?.takeIf { it.isNotBlank() }?.let {
-            Spacer(Modifier.height(if (d.tv) 10.dp else 7.dp))
-            Text(
-                it, fontSize = if (d.tv) 14.sp else 12.5.sp, lineHeight = if (d.tv) 21.sp else 18.sp,
-                color = Color(0xFFD9DCE8), maxLines = if (d.narrow) 2 else 3, overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        Spacer(Modifier.height(if (d.tv) 16.dp else 11.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(if (d.tv) 12.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
-            MBtn(primaryLabel, tint = buttonTone(palette.primary)) {
-                if (kind == Kind.Series) vm.openDetail(c) else vm.play(c)
+        // Text side: name + data + actions, never overlapping the image.
+        Column(
+            Modifier.weight(0.58f).fillMaxHeight().padding(start = if (d.tv) 24.dp else 16.dp, end = if (d.tv) 24.dp else 16.dp, top = if (d.tv) 20.dp else 12.dp, bottom = if (d.tv) 20.dp else 12.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    typeLabel,
+                    fontSize = 10.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp,
+                    color = readableOnArt(palette.accent),
+                    modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                        .background(palette.primary.copy(alpha = 0.26f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+                if (c.hasCatchup) MetaChip("إعادة", fg = Color(0xFFE7E9F2), bg = Color(0x26FFFFFF))
+                if (c.url in vm.favs) Text("★ في المفضلة", fontSize = 11.sp, color = Accent2)
             }
-            if (kind != Kind.Live) MBtn("التفاصيل", filled = false, tint = palette.accent) { vm.openDetail(c) }
-            HeroFav(vm, c, palette, d)
+            Spacer(Modifier.height(if (d.tv) 12.dp else 8.dp))
+            Text(
+                c.name,
+                fontSize = if (d.tv) 34.sp else if (d.widthDp >= 600) 28.sp else 22.sp,
+                lineHeight = if (d.tv) 40.sp else 32.sp,
+                fontWeight = FontWeight.ExtraBold, color = Color.White,
+                maxLines = 2, overflow = TextOverflow.Ellipsis
+            )
+            Spacer(Modifier.height(8.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let {
+                    MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D))
+                }
+                info?.year?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
+                info?.duration?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
+                info?.genre?.takeIf { it.isNotBlank() }?.split(',')?.map { it.trim() }
+                    ?.filter { it.isNotEmpty() }?.take(if (d.tv) 2 else 1)?.forEach { MetaChip(it) }
+            }
+
+            info?.plot?.takeIf { it.isNotBlank() }?.let {
+                Spacer(Modifier.height(if (d.tv) 10.dp else 7.dp))
+                Text(
+                    it, fontSize = if (d.tv) 14.sp else 12.5.sp, lineHeight = if (d.tv) 21.sp else 18.sp,
+                    color = Color(0xFFD9DCE8), maxLines = if (d.narrow) 2 else 3, overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(Modifier.height(if (d.tv) 16.dp else 11.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(if (d.tv) 12.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                MBtn(primaryLabel, tint = buttonTone(palette.primary)) {
+                    if (kind == Kind.Series) vm.openDetail(c) else vm.play(c)
+                }
+                if (kind != Kind.Live) MBtn("التفاصيل", filled = false, tint = palette.accent) { vm.openDetail(c) }
+                HeroFav(vm, c, palette, d)
+            }
         }
     }
 }
