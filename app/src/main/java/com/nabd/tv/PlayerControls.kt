@@ -1,4 +1,4 @@
-@file:kotlin.OptIn(
+﻿@file:kotlin.OptIn(
     androidx.media3.common.util.UnstableApi::class,
     androidx.tv.material3.ExperimentalTvMaterial3Api::class
 )
@@ -208,7 +208,7 @@ fun PlayerButton(
             .background(
                 when {
                     !enabled -> Color(0x33101010)
-                    active -> Accent
+                    active -> AccentFill
                     focused -> Color(0xFF2A2F55)
                     else -> Color(0xAA151824)
                 }
@@ -256,7 +256,7 @@ fun PlayerRoundButton(
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .onFocusChanged { focused = it.isFocused }
             .clip(CircleShape)
-            .background(if (active) Accent else if (focused) Color(0xFF2A2F55) else Color(0xAA151824))
+            .background(if (active) AccentFill else if (focused) Color(0xFF2A2F55) else Color(0xAA151824))
             .border(if (focused) 3.dp else 1.dp, if (focused) Color.White else Color(0x44FFFFFF), CircleShape)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center

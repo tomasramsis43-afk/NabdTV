@@ -1,4 +1,4 @@
-package com.nabd.tv
+﻿package com.nabd.tv
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -131,7 +131,7 @@ fun VodBtn(
     val sc by animateFloatAsState(if (focused) 1.14f else 1f, tween(130), label = "vbtn")
     val bg = when {
         focused -> Color.White
-        primary -> Accent
+        primary -> AccentFill
         else -> Color(0x33FFFFFF)
     }
     val fg = when {

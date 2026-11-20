@@ -1,4 +1,4 @@
-package com.nabd.tv
+﻿package com.nabd.tv
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -26,6 +26,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
@@ -46,28 +47,41 @@ fun dayHm(t: Long): String =
 
 /** Button that works with both touch and D-pad. Same shape and colors on every device; target size adapts. */
 @Composable
-fun MBtn(text: String, filled: Boolean = true, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun MBtn(
+    text: String,
+    filled: Boolean = true,
+    modifier: Modifier = Modifier,
+    tint: Color = AccentFill,
+    onClick: () -> Unit
+) {
     val shape = RoundedCornerShape(Radius.small)
-    val pad = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
-    val m = modifier.heightIn(min = LocalDevice.current.control)
+    val pad = PaddingValues(horizontal = 18.dp, vertical = 0.dp)
+    var focused by remember { mutableStateOf(false) }
+    val sc by animateFloatAsState(if (focused) 1.05f else 1f, tween(130), label = "btnZoom")
+    val m = modifier.heightIn(min = LocalDevice.current.control).scale(sc).onFocusChanged { focused = it.isFocused }
+    // A white ring is the one thing that always reads at TV distance, whatever the tint underneath.
+    val ring = if (focused) BorderStroke(2.dp, Color.White) else null
     if (filled) Button(
         onClick = onClick, modifier = m, shape = shape, contentPadding = pad,
-        colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = OnAccent)
+        border = ring,
+        colors = ButtonDefaults.buttonColors(containerColor = tint, contentColor = OnAccent)
     ) { androidx.compose.material3.Text(text, maxLines = 1, fontWeight = FontWeight.SemiBold) }
     else OutlinedButton(
         onClick = onClick, modifier = m, shape = shape, contentPadding = pad,
-        border = BorderStroke(1.dp, Hairline),
-        colors = ButtonDefaults.outlinedButtonColors(containerColor = GlassFill, contentColor = Ink)
+        border = ring ?: BorderStroke(1.dp, if (tint == AccentFill) Hairline else tint.copy(alpha = 0.45f)),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = if (focused) Color(0x2EFFFFFF) else GlassFill, contentColor = Ink
+        )
     ) { androidx.compose.material3.Text(text, maxLines = 1, color = Ink) }
 }
 
 /** Round glass icon button (header actions). */
 @Composable
-fun IconBtn(ic: Ic, onClick: () -> Unit, modifier: Modifier = Modifier, tint: Color = Ink) {
+fun IconBtn(ic: Ic, onClick: () -> Unit, modifier: Modifier = Modifier, tint: Color = Ink, size: androidx.compose.ui.unit.Dp? = null) {
     var focused by remember { mutableStateOf(false) }
     val d = LocalDevice.current
     Box(
-        modifier.size(d.control).onFocusChanged { focused = it.isFocused }
+        modifier.size(size ?: d.control).onFocusChanged { focused = it.isFocused }
             .glass(CircleShape, focused = focused)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
@@ -130,13 +144,13 @@ fun Focusable(
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     zoom: Float = 1.05f,
+    shape: Shape = RoundedCornerShape(Radius.small),
     onFocused: (() -> Unit)? = null,
     focusRequester: FocusRequester? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     var focused by remember { mutableStateOf(false) }
     val sc by animateFloatAsState(if (focused) zoom else 1f, tween(160), label = "zoom")
-    val shape = RoundedCornerShape(Radius.small)
     Column(
         modifier
             .scale(sc)
@@ -189,9 +203,10 @@ fun LiveCard(vm: AppViewModel, ch: Channel, modifier: Modifier = Modifier) {
     Focusable(
         onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) },
         onFocused = { vm.lastFocusKey = key }, focusRequester = fr,
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth(), zoom = 1.04f,
+        shape = RoundedCornerShape(Radius.poster)
     ) {
-        Column(Modifier.fillMaxWidth().padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(Modifier.fillMaxWidth().padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(if (ch.number > 0) "${ch.number}" else "", fontSize = 10.sp, color = TextSecondary)
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -223,45 +238,103 @@ fun LiveCard(vm: AppViewModel, ch: Channel, modifier: Modifier = Modifier) {
     }
 }
 
-@OptIn(ExperimentalTvMaterial3Api::class)
+@OptIn(ExperimentalTvMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun PosterCard(vm: AppViewModel, ch: Channel, modifier: Modifier = Modifier) {
+fun PosterCard(
+    vm: AppViewModel,
+    ch: Channel,
+    modifier: Modifier = Modifier,
+    focusKey: String = ch.url + ch.id,
+    onFocusExtra: (() -> Unit)? = null
+) {
     val progress = vm.history.firstOrNull { it.url == ch.url }?.progress ?: 0f
     val locked = vm.parental.needsPin(ch)
-    val key = ch.url + ch.id
-    val fr = rememberCardFocus(vm, key)
-    Focusable(
-        onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) },
-        onFocused = { vm.lastFocusKey = key }, focusRequester = fr,
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Box {
+    val fr = rememberCardFocus(vm, focusKey)
+    var focused by remember { mutableStateOf(false) }
+    val sc by animateFloatAsState(if (focused) 1.045f else 1f, tween(150), label = "posterZoom")
+    val shape = RoundedCornerShape(Radius.poster)
+    val d = LocalDevice.current
+
+    Column(modifier.fillMaxWidth()) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(2f / 3f)
+                .scale(sc)
+                .then(if (focused) Modifier.softShadow(shape, 18.dp) else Modifier)
+                .focusRequester(fr)
+                .onFocusChanged {
+                    focused = it.isFocused
+                    if (it.isFocused) { vm.lastFocusKey = focusKey; onFocusExtra?.invoke() }
+                }
+                .clip(shape)
+                .background(SurfHigh)
+                .combinedClickable(onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) })
+        ) {
             AsyncImage(
-                model = ch.logo, contentDescription = null, contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f).background(Surf)
+                model = ch.logo, contentDescription = null,
+                contentScale = if (kindOf(ch) == Kind.Live) ContentScale.Fit else ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().then(if (kindOf(ch) == Kind.Live) Modifier.padding(6.dp) else Modifier)
             )
-            if (locked) Text("🔒", modifier = Modifier.align(Alignment.TopEnd).padding(6.dp))
-            ratingBadge(ch)?.let { r ->
-                Row(
-                    Modifier.align(Alignment.TopStart).padding(6.dp).clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xCC0E1235)).padding(horizontal = 7.dp, vertical = 3.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("★", fontSize = 11.sp, color = Color(0xFFFFC857))
-                    Spacer(Modifier.width(3.dp))
-                    Text(r, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            // Bottom scrim keeps the progress bar and badges readable on bright posters.
+            Box(
+                Modifier.matchParentSize().background(
+                    Brush.verticalGradient(0.6f to Color.Transparent, 1f to Color(0x99000000))
+                )
+            )
+            ratingBadge(ch)?.let { r -> RatingPill(r, Modifier.align(Alignment.TopStart).padding(6.dp)) }
+            Row(
+                Modifier.align(Alignment.TopEnd).padding(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (ch.url in vm.favs) Text("★", fontSize = 12.sp, color = Accent2)
+                if (locked) Text("🔒", fontSize = 11.sp)
+            }
+            if (progress > 0.02f) {
+                Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color(0x66000000))) {
+                    Box(Modifier.fillMaxHeight().fillMaxWidth(progress).background(Accent))
                 }
             }
-            if (progress > 0.02f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) {
-                Box(Modifier.fillMaxHeight().fillMaxWidth(progress).background(Accent))
-            }
+            if (focused) Box(Modifier.matchParentSize().border(2.dp, Accent, shape))
         }
         Text(
-            (if (ch.url in vm.favs) "★ " else "") + ch.name,
-            maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 12.sp, color = Ink,
-            modifier = Modifier.padding(8.dp).height(34.dp)
+            ch.name,
+            maxLines = 2, overflow = TextOverflow.Ellipsis,
+            fontSize = if (d.tv) 13.sp else 12.sp, lineHeight = if (d.tv) 16.sp else 15.sp,
+            fontWeight = if (focused) FontWeight.SemiBold else FontWeight.Medium,
+            color = Ink,
+            modifier = Modifier.padding(start = 2.dp, end = 2.dp, top = 6.dp, bottom = 2.dp).heightIn(min = if (d.tv) 34.dp else 30.dp)
         )
     }
+}
+
+/** Compact rating badge used on posters and hero frames. */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+fun RatingPill(rating: String, modifier: Modifier = Modifier) {
+    Row(
+        modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xCC05060A)).padding(horizontal = 6.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("★", fontSize = 10.sp, color = Accent2)
+        Spacer(Modifier.width(3.dp))
+        Text(rating, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+    }
+}
+
+/** Small piece of metadata on a hero / detail frame. */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+fun MetaChip(
+    text: String,
+    fg: Color = Color(0xFFE7E9F2),
+    bg: Color = Color(0x26FFFFFF),
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = fg, maxLines = 1,
+        modifier = modifier.clip(RoundedCornerShape(7.dp)).background(bg).padding(horizontal = 8.dp, vertical = 3.dp)
+    )
 }
 
 /** Overlay used for the PIN pad, the context menu and the text prompt. */
@@ -272,7 +345,7 @@ fun GlassDialog(title: String, onDismiss: () -> Unit, content: @Composable Colum
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Column(
             Modifier.softShadow(shape, 24.dp).clip(shape)
-                .background(Brush.verticalGradient(if (Ui.dark) listOf(Color(0xF01B2060), Color(0xF00E1235)) else listOf(Color(0xFAFFFFFF), Color(0xFAF1F2FD))))
+                .background(Brush.verticalGradient(if (Ui.dark) listOf(Color(0xF2171A23), Color(0xF20D0F15)) else listOf(Color(0xFAFFFFFF), Color(0xFAF1F2FD))))
                 .border(1.dp, GlassBorder, shape).padding(22.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {

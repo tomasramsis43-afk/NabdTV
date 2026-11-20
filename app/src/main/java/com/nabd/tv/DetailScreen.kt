@@ -1,11 +1,11 @@
-package com.nabd.tv
+﻿package com.nabd.tv
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,12 +13,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,47 +35,118 @@ fun DetailScreen(vm: AppViewModel) {
     val isSeries = kindOf(c) == Kind.Series
     val info = vm.info
     BackHandler { vm.closeDetail() }
-    val playFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    val playFocus = remember { FocusRequester() }
     LaunchedEffect(c.url) { if (!isSeries) { kotlinx.coroutines.delay(150); runCatching { playFocus.requestFocus() } } }
     val d = LocalDevice.current
     val narrow = d.widthDp < 600
+    val palette = rememberArtworkPalette(info?.backdrop ?: c.logo)
+    val typeLabel = if (isSeries) "مسلسل" else "فيلم"
+
     Box(Modifier.fillMaxSize().appBackground()) {
-        Box(Modifier.fillMaxWidth().fillMaxHeight(0.52f)) {
-            AsyncImage(model = info?.backdrop ?: c.logo, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-            Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0x550E1235), Color(0xF00E1235)))))
-        }
-        val details: @Composable ColumnScope.() -> Unit = {
-            Text(c.name, fontSize = if (narrow) 20.sp else 26.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            val meta = listOfNotNull(
-                info?.year?.takeIf { it.isNotBlank() }, info?.genre?.takeIf { it.isNotBlank() },
-                info?.duration?.takeIf { it.isNotBlank() }, info?.rating?.takeIf { it.isNotBlank() }?.let { "★ $it" }
-            ).joinToString("  ·  ")
-            if (meta.isNotEmpty()) Text(meta, fontSize = 13.sp, color = Accent)
-            if (info != null && info.plot.isNotBlank()) {
-                Spacer(Modifier.height(6.dp))
-                Text(info.plot, fontSize = 13.sp, color = Color(0xFFE0E2FF), maxLines = if (narrow) 2 else 3, overflow = TextOverflow.Ellipsis)
-            }
-            if (info != null && info.cast.isNotBlank()) Text("بطولة: ${info.cast}", fontSize = 12.sp, color = Color(0xFFC9CBFF), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        val actions: @Composable () -> Unit = {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (!isSeries) {
-                    val h = vm.store.historyOf(c.url)
-                    MBtn(if (h != null && !h.finished && h.position > 10_000) "▶ استكمال (${h.position / 60000} د)" else "▶ تشغيل", modifier = Modifier.focusRequester(playFocus)) { vm.play(c) }
+        // Artwork fills the upper part and dissolves into the page — the title block never sits on busy pixels.
+        Box(Modifier.fillMaxWidth().fillMaxHeight(0.62f)) {
+            AsyncImage(
+                model = info?.backdrop ?: c.logo, contentDescription = null,
+                contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()
+            )
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(listOf(Scrim.copy(alpha = 0.22f), Scrim.copy(alpha = 0.72f), Scrim.copy(alpha = 0.96f)))
+                )
+            )
+            Box(
+                Modifier.fillMaxSize().drawBehind {
+                    drawCircle(
+                        Brush.radialGradient(
+                            listOf(palette.glow, Color.Transparent),
+                            center = Offset(size.width * 0.15f, size.height * 0.05f),
+                            radius = size.width * 0.5f
+                        ),
+                        radius = size.width * 0.5f,
+                        center = Offset(size.width * 0.15f, size.height * 0.05f)
+                    )
                 }
-                MBtn(if (c.url in vm.favs) "★ في المفضلة" else "☆ مفضلة", filled = false) { vm.toggleFav(c) }
-                MBtn("رجوع", filled = false) { vm.closeDetail() }
-            }
+            )
         }
-        Column(Modifier.fillMaxSize().padding(if (narrow) d.pad else 24.dp)) {
+
+        Column(Modifier.fillMaxSize().padding(start = d.pad, end = d.pad, top = 12.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                MBtn("رجوع", filled = false) { vm.closeDetail() }
+                Spacer(Modifier.weight(1f))
+                Text(
+                    typeLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White,
+                    modifier = Modifier.clip(RoundedCornerShape(7.dp)).background(palette.primary.copy(alpha = 0.55f))
+                        .padding(horizontal = 9.dp, vertical = 4.dp)
+                )
+            }
+
             Column(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.Bottom) {
-                Column(Modifier.fillMaxWidth(if (narrow) 1f else 0.65f), content = details)
-                Spacer(Modifier.height(10.dp))
-                actions()
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                    if (!narrow) {
+                        val shape = RoundedCornerShape(14.dp)
+                        Box(
+                            Modifier.width(if (d.tv) 132.dp else 116.dp).aspectRatio(2f / 3f)
+                                .softShadow(shape, 16.dp, palette.primary).clip(shape)
+                                .background(SurfHigh).border(1.dp, Color(0x2EFFFFFF), shape)
+                        ) {
+                            AsyncImage(model = c.logo, contentDescription = c.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                        }
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.Bottom) {
+                        Text(
+                            c.name, fontSize = if (narrow) 22.sp else if (d.tv) 32.sp else 27.sp,
+                            lineHeight = if (d.tv) 38.sp else 32.sp,
+                            fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                            (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let {
+                                MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D))
+                            }
+                            info?.year?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
+                            info?.duration?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
+                            info?.genre?.takeIf { it.isNotBlank() }?.split(',', '،', '/')?.map { it.trim() }
+                                ?.filter { it.isNotEmpty() }?.take(if (narrow) 1 else 2)?.forEach { MetaChip(it) }
+                        }
+                        if (info != null && info.plot.isNotBlank()) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                info.plot, fontSize = if (narrow) 12.sp else 13.sp, lineHeight = 19.sp,
+                                color = Color(0xFFD9DCE8), maxLines = if (narrow) 2 else 3, overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        if (info != null && info.cast.isNotBlank()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "بطولة: ${info.cast}", fontSize = 11.5.sp, color = Color(0xFFAEB4C6),
+                                maxLines = 1, overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (!isSeries) {
+                        val h = vm.store.historyOf(c.url)
+                        val label = if (h != null && !h.finished && h.position > 10_000) "▶ استكمال (${h.position / 60000} د)" else "▶ تشغيل"
+                        MBtn(label, tint = buttonTone(palette.primary), modifier = Modifier.focusRequester(playFocus)) { vm.play(c) }
+                    }
+                    MBtn(if (c.url in vm.favs) "★ في المفضلة" else "☆ مفضلة", filled = false, tint = palette.accent) { vm.toggleFav(c) }
+                }
                 Spacer(Modifier.height(12.dp))
             }
-            Column(Modifier.fillMaxWidth().weight(1f)) {
-                if (isSeries) Episodes(vm, c)
+
+            if (isSeries) {
+                Row(
+                    Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("الحلقات", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.weight(1f))
+                    if (vm.episodes.isNotEmpty()) Text("${vm.episodes.size} حلقة", fontSize = 11.sp, color = TextMuted)
+                }
+                Column(Modifier.fillMaxWidth().weight(1f)) { Episodes(vm, c) }
+            } else {
+                Spacer(Modifier.height(24.dp))
             }
         }
     }
@@ -92,10 +165,11 @@ private fun Episodes(vm: AppViewModel, s: Channel) {
     if (vm.epLoading) Text("جارٍ تحميل الحلقات...", color = Accent)
     vm.error?.let { Text("خطأ: $it", color = Danger, fontSize = 13.sp) }
     if (!vm.epLoading && vm.episodes.isEmpty() && vm.error == null) Text("لا توجد حلقات", color = TextSecondary)
+
     val eps = vm.episodes.filter { it.season == vm.season }
     val target = eps.indexOfFirst { e -> vm.store.historyOf(e.url).let { it == null || !it.finished } }.coerceAtLeast(0)
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-    val epFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    val epFocus = remember { FocusRequester() }
     // Remote: land on the episode to watch next (first unfinished) so OK starts it immediately.
     LaunchedEffect(eps.size, vm.season) {
         if (eps.isNotEmpty()) {
@@ -104,17 +178,20 @@ private fun Episodes(vm: AppViewModel, s: Channel) {
             runCatching { epFocus.requestFocus() }
         }
     }
-    LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         itemsIndexed(eps, key = { _, e -> e.url }) { idx, e ->
             val h = vm.store.historyOf(e.url)
-            Focusable(onClick = { vm.playEpisode(s, e) }, modifier = Modifier.fillMaxWidth(), focusRequester = if (idx == target) epFocus else null) {
+            Focusable(
+                onClick = { vm.playEpisode(s, e) }, modifier = Modifier.fillMaxWidth(),
+                focusRequester = if (idx == target) epFocus else null, zoom = 1.02f
+            ) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(
                             "حلقة ${e.num}" + if (e.title.isNotBlank()) " — ${e.title}" else "",
-                            fontSize = 15.sp, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis
+                            fontSize = 14.sp, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis
                         )
-                        if (e.plot.isNotBlank()) Text(e.plot, fontSize = 11.sp, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        if (e.plot.isNotBlank()) Text(e.plot, fontSize = 11.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     if (h != null) Text(if (h.finished) "✓" else "${(h.progress * 100).toInt()}%", color = Accent, fontSize = 12.sp)
                 }

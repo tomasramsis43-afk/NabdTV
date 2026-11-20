@@ -1,4 +1,4 @@
-package com.nabd.tv
+﻿package com.nabd.tv
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -171,7 +171,7 @@ fun RecordingsTab(vm: AppViewModel) {
     }
 }
 
-/** Registers a composed item as the place the remote lands when entering this page from the side rail. */
+/** Registers a composed item as the place the remote lands when entering this page from the top bar. */
 @Composable
 fun EntryPoint(vm: AppViewModel, key: String, fr: androidx.compose.ui.focus.FocusRequester) {
     DisposableEffect(key, fr) {

@@ -1,5 +1,6 @@
 package com.nabd.tv
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -13,33 +14,52 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 
-private val avatarColors = listOf(Color(0xFF00E5A0), Color(0xFF4FC3F7), Color(0xFFFFB74D), Color(0xFFBA68C8), Color(0xFFFF8A65), Color(0xFF81C784))
+private val avatarColors = listOf(Color(0xFF7C8CFF), Color(0xFF57CCF0), Color(0xFFE5B567), Color(0xFFC29BFF), Color(0xFFFF9FBF), Color(0xFF69DDBB))
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun ProfilesScreen(vm: AppViewModel) {
-    Column(Modifier.fillMaxSize().background(Bg).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Text("من يشاهد؟", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Ink)
-        Spacer(Modifier.height(28.dp))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+    // Back keeps the current profile instead of leaving the app.
+    BackHandler { vm.switchProfile(vm.profile.id) }
+    Column(
+        Modifier.fillMaxSize().appBackground().padding(if (LocalDevice.current.tv) 32.dp else 18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
+    ) {
+        Text("من يشاهد؟", fontSize = if (LocalDevice.current.tv) 32.sp else 26.sp, fontWeight = FontWeight.Bold, color = Ink)
+        Text(
+            "لكل ملف مفضلاته وسجل مشاهدته وإعداداته الخاصة",
+            fontSize = 12.5.sp, color = TextSecondary, textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 6.dp)
+        )
+        Spacer(Modifier.height(26.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
             items(vm.profileList, key = { it.id }) { p ->
-                Focusable(onClick = { vm.switchProfile(p.id) }, zoom = 1.1f) {
-                    Column(Modifier.padding(18.dp).width(110.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Focusable(onClick = { vm.switchProfile(p.id) }, zoom = 1.06f) {
+                    Column(Modifier.padding(14.dp).width(112.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(
-                            Modifier.size(84.dp).clip(CircleShape).background(avatarColors[(p.id.hashCode() and 0x7fffffff) % avatarColors.size]),
+                            Modifier.size(82.dp).clip(CircleShape)
+                                .background(avatarColors[(p.id.hashCode() and 0x7fffffff) % avatarColors.size]),
                             contentAlignment = Alignment.Center
-                        ) { Text(if (p.kids) "★" else p.name.take(1), fontSize = 34.sp, color = Color.Black, fontWeight = FontWeight.Bold) }
+                        ) {
+                            Text(
+                                if (p.kids) "★" else p.name.take(1),
+                                fontSize = 32.sp, color = Color(0xFF0A0B10), fontWeight = FontWeight.Bold
+                            )
+                        }
                         Spacer(Modifier.height(10.dp))
-                        Text(p.name, fontSize = 15.sp, color = Ink, maxLines = 1)
+                        Text(p.name, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Ink, maxLines = 1)
                         if (p.kids) Text("أطفال", fontSize = 11.sp, color = Accent)
                     }
                 }
             }
         }
+        Spacer(Modifier.height(24.dp))
+        MBtn("رجوع", filled = false) { vm.switchProfile(vm.profile.id) }
     }
 }

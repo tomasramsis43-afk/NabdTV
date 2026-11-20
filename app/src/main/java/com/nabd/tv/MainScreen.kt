@@ -3,10 +3,12 @@ package com.nabd.tv
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -14,8 +16,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -33,18 +36,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -67,37 +72,16 @@ fun MainScreen(vm: AppViewModel) {
         }
         vm.restoreFocus = false
     }
-    // Pressing a section icon starts at the first card of that section.
+    // Pressing a section starts at the first card of that section.
     LaunchedEffect(vm.focusContentTick) {
         if (vm.focusContentTick == 0 || !d.tv) return@LaunchedEffect
         delay(320)
         repeat(15) { if (vm.enterContent()) return@LaunchedEffect; delay(130) }
     }
 
-    Box(Modifier.fillMaxSize()) {
-        if (d.nav == NavMode.Bottom) {
-            Column(Modifier.fillMaxSize()) {
-                Content(vm, d, Modifier.weight(1f))
-                BottomBar(vm)
-            }
-        } else {
-            Row(Modifier.fillMaxSize()) {
-                NavRail(vm, d)
-                Content(vm, d, Modifier.weight(1f))
-            }
-        }
-    }
-}
-
-private fun titleFor(vm: AppViewModel, searching: Boolean): Pair<String, String> = when {
-    searching -> "نتائج" to "البحث"
-    else -> when (vm.tab) {
-        Tab.Home -> "أهلاً بعودتك،" to (if (vm.profileList.size > 1) vm.profile.name else "Nabd TV")
-        Tab.Live -> "بث" to "مباشر"
-        Tab.Movies -> "مكتبة" to "الأفلام"
-        Tab.Series -> "عالم" to "المسلسلات"
-        Tab.Guide -> "دليل" to "البرامج"
-        Tab.Recordings -> "مركز" to "التسجيل"
+    Column(Modifier.fillMaxSize()) {
+        AppBar(vm, d)
+        Content(vm, d, Modifier.weight(1f))
     }
 }
 
@@ -105,39 +89,39 @@ private fun titleFor(vm: AppViewModel, searching: Boolean): Pair<String, String>
 @Composable
 private fun Content(vm: AppViewModel, d: Device, modifier: Modifier) {
     val searching = vm.query.isNotBlank() && (vm.tab == Tab.Home || vm.tab == Tab.Guide || vm.tab == Tab.Recordings)
-    val (t, a) = titleFor(vm, searching)
-    Column(modifier.padding(start = d.pad, end = d.pad, top = 12.dp)) {
-        Header(vm, d, t, a)
+    Column(modifier.padding(start = d.pad, end = d.pad, top = 2.dp)) {
         vm.update?.let { u ->
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             Row(
                 Modifier.fillMaxWidth().glass(RoundedCornerShape(Radius.small)).padding(horizontal = 14.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 NIcon(Ic.Download, Accent, 20.dp)
-                Text("إصدار جديد ${u.tag}", color = Ink, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                MBtn(vm.updateProgress?.let { "جارٍ التنزيل $it%" } ?: "تحديث الآن") { vm.installUpdate() }
+                Text("نسخة جديدة متاحة ${u.tag}", color = Ink, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                MBtn(vm.updateProgress?.let { "جارٍ التحميل $it%" } ?: "تحديث الآن") { vm.installUpdate() }
             }
         }
         if (vm.loading || vm.vodLoading || vm.error != null || vm.healthStatus != null) {
-            Spacer(Modifier.height(6.dp))
-            if (vm.loading || vm.vodLoading) Text("جارٍ التحميل...", color = Accent, fontSize = 13.sp)
-            vm.error?.let { Text("خطأ: $it", color = Danger, fontSize = 13.sp) }
-            vm.healthStatus?.let { Text("فحص الروابط: $it", color = Accent, fontSize = 13.sp) }
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (vm.loading || vm.vodLoading) Text("جارٍ التحميل...", color = Accent, fontSize = 12.sp)
+                vm.error?.let { Text("خطأ: $it", color = Danger, fontSize = 12.sp) }
+                vm.healthStatus?.let { Text("فحص الروابط: $it", color = Accent, fontSize = 12.sp) }
+            }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
 
         val key = if (searching) "search" else vm.tab.name
         AnimatedContent(
             targetState = key,
             modifier = Modifier.weight(1f),
             transitionSpec = {
-                (fadeIn(tween(240)) + scaleIn(initialScale = 0.98f, animationSpec = tween(240))) togetherWith fadeOut(tween(120))
+                (fadeIn(tween(220)) + scaleIn(initialScale = 0.99f, animationSpec = tween(220))) togetherWith fadeOut(tween(110))
             },
             label = "page"
         ) { k ->
             // Soft blur-in between pages (phones/tablets on Android 12+; skipped on TV boxes to keep them smooth).
-            val blurR by transition.animateDp(label = "blur") { s -> if (s == EnterExitState.Visible) 0.dp else 12.dp }
+            val blurR by transition.animateDp(label = "blur") { s -> if (s == EnterExitState.Visible) 0.dp else 8.dp }
             Box(Modifier.fillMaxSize().then(if (!d.tv && Build.VERSION.SDK_INT >= 31 && blurR > 0.dp) Modifier.blur(blurR) else Modifier)) {
                 when (k) {
                     "search" -> SearchResults(vm, d)
@@ -151,7 +135,7 @@ private fun Content(vm: AppViewModel, d: Device, modifier: Modifier) {
     }
 }
 
-/* ───────── Home ───────── */
+/* ───────────────────────────── Home ───────────────────────────── */
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -159,49 +143,222 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
     val shelves = vm.shelves
     if (shelves.isEmpty() && vm.loading) { SkeletonGrid(d); return }
     if (shelves.isEmpty()) {
-        Text("لا يوجد محتوى بعد. حدّث القائمة أو افتح الإعدادات.", color = TextSecondary, modifier = Modifier.padding(16.dp))
+        Text("لا يوجد محتوى بعد. حدّد هذا القسم أو أضف مزوّد البث.", color = TextSecondary, modifier = Modifier.padding(16.dp))
         return
     }
-    val showHero = !d.portrait
+
     SideEffect { vm.firstKey = shelves.firstOrNull()?.items?.firstOrNull()?.let { shelves.first().title + "|" + it.url + it.id } }
     val focus = vm.homeFocus ?: shelves.first().items.first()
-    LaunchedEffect(focus.url, showHero) { if (showHero) { kotlinx.coroutines.delay(350); vm.loadHomeInfo(focus) } }
-    val fade = if (Ui.dark) Color(0xFF0B0D1F) else Color(0xFFF1F2FD)
-    Box(Modifier.fillMaxSize()) {
-        if (showHero) {
-            // Full-bleed backdrop of the focused title, fading into the page.
-            Box(Modifier.fillMaxWidth().fillMaxHeight(0.7f).align(Alignment.TopCenter)) {
-                androidx.compose.animation.Crossfade(vm.homeInfo?.backdrop ?: focus.logo, animationSpec = tween(500), label = "bd") { img ->
-                    AsyncImage(model = img, contentDescription = null, contentScale = ContentScale.Crop, alignment = Alignment.TopCenter, modifier = Modifier.fillMaxSize())
-                }
-                Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xF00E1235), Color(0x990E1235), Color(0x220E1235)))))
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to fade)))
-            }
-        }
-        Column(Modifier.fillMaxSize()) {
-            if (showHero) HomeHero(focus, vm.homeInfo, d, Modifier.weight(0.82f))
-            LazyColumn(
-                state = vm.listState("home"), modifier = Modifier.weight(if (showHero) 1.18f else 1f),
-                verticalArrangement = Arrangement.spacedBy(d.gap + 2.dp),
-                contentPadding = PaddingValues(bottom = 24.dp, top = 4.dp)
-            ) {
-                items(shelves, key = { it.title }) { s ->
-                    Column {
-                        Row(Modifier.padding(bottom = 4.dp, start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(s.title, fontSize = if (d.tv) 19.sp else 17.sp, fontWeight = FontWeight.Bold, color = Ink)
-                            Text("  ›", fontSize = 22.sp, color = Accent)
-                        }
-                        LazyRow(
-                            state = vm.listState("row:" + s.title),
-                            horizontalArrangement = Arrangement.spacedBy(if (s.ranked) d.gap + 14.dp else d.gap),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
-                        ) {
-                            itemsIndexed(s.items) { i, c -> HomeCard(vm, d, s, c, i + 1) }
-                        }
+    LaunchedEffect(focus.url) { delay(280); vm.loadHomeInfo(focus) }
+
+    val heroArt = vm.homeInfo?.backdrop ?: focus.logo
+    val palette = rememberArtworkPalette(heroArt)
+
+    Column(Modifier.fillMaxSize()) {
+        HomeHero(vm, focus, vm.homeInfo, d, palette, Modifier.fillMaxWidth())
+        Spacer(Modifier.height(12.dp))
+        LazyColumn(
+            state = vm.listState("home"),
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(if (d.tv) 14.dp else 12.dp),
+            contentPadding = PaddingValues(bottom = 28.dp)
+        ) {
+            items(shelves, key = { it.title }) { s ->
+                Column {
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 2.dp, end = 2.dp, bottom = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            s.title,
+                            fontSize = if (d.tv) 17.sp else 15.sp, fontWeight = FontWeight.Bold, color = Ink,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
+                        )
+                        Text("${s.items.size}", fontSize = 11.sp, color = TextMuted)
+                    }
+                    LazyRow(
+                        state = vm.listState("row:" + s.title),
+                        horizontalArrangement = Arrangement.spacedBy(if (s.ranked) d.gap + 16.dp else d.gap),
+                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp)
+                    ) {
+                        itemsIndexed(s.items) { i, c -> HomeCard(vm, d, s, c, i + 1) }
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * Cinematic hero: large artwork, an independent poster card, the title, structured metadata,
+ * a short synopsis and real actions. Colours come from the artwork itself.
+ */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun HomeHero(
+    vm: AppViewModel,
+    c: Channel,
+    info: VodInfo?,
+    d: Device,
+    palette: ArtworkPalette,
+    modifier: Modifier = Modifier
+) {
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val kind = kindOf(c)
+    val scrimColors = listOf(
+        Scrim.copy(alpha = 0.97f), Scrim.copy(alpha = 0.86f), Scrim.copy(alpha = 0.42f), Color.Transparent
+    )
+    val art = info?.backdrop ?: c.logo
+    val typeLabel = when (kind) { Kind.Movie -> "فيلم"; Kind.Series -> "مسلسل"; Kind.Live -> "بث مباشر" }
+    val primaryLabel = when (kind) { Kind.Series -> "الحلقات"; Kind.Movie -> "تشغيل"; Kind.Live -> "مشاهدة" }
+
+    Box(
+        modifier.height(d.heroHeight).fillMaxWidth()
+    ) {
+        if (kind == Kind.Live) {
+            // A channel logo is square art: stretching it across a 21:9 frame looks broken, so live
+            // heroes use a calm gradient and keep the logo crisp in the poster tile instead.
+            Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(SurfHigh, NavyDeep))))
+        } else {
+            Crossfade(art, animationSpec = tween(520), label = "heroArt") { img ->
+                AsyncImage(
+                    model = img, contentDescription = null, contentScale = ContentScale.Crop,
+                    alignment = Alignment.TopCenter, modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+        // Readability scrim: stronger on the text side, fading out over the artwork.
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.horizontalGradient(if (rtl) scrimColors.reversed() else scrimColors)
+            )
+        )
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(0.55f to Color.Transparent, 1f to Bg.copy(alpha = 0.78f))
+            )
+        )
+        // Artwork-coloured glow in the opposite corner — subtle, never over the text.
+        Box(
+            Modifier.fillMaxSize().drawBehind {
+                drawCircle(
+                    Brush.radialGradient(
+                        listOf(palette.glow, Color.Transparent),
+                        center = Offset(if (rtl) size.width * 0.15f else size.width * 0.85f, 0f),
+                        radius = size.width * 0.55f
+                    ),
+                    radius = size.width * 0.55f,
+                    center = Offset(if (rtl) size.width * 0.15f else size.width * 0.85f, 0f)
+                )
+            }
+        )
+
+        Row(
+            Modifier.fillMaxSize().padding(horizontal = if (d.tv) 30.dp else 18.dp, vertical = if (d.tv) 24.dp else 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(if (d.tv) 28.dp else 16.dp)
+        ) {
+            if (d.widthDp >= 600) HeroPoster(vm, c, d, palette)
+
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        typeLabel,
+                        fontSize = 10.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp,
+                        color = readableOnArt(palette.accent),
+                        modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                            .background(palette.primary.copy(alpha = 0.26f))
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                    if (c.hasCatchup) MetaChip("إعادة", fg = Color(0xFFE7E9F2), bg = Color(0x26FFFFFF))
+                    if (c.url in vm.favs) Text("★ في المفضلة", fontSize = 11.sp, color = Accent2)
+                }
+                Spacer(Modifier.height(if (d.tv) 12.dp else 8.dp))
+                Text(
+                    c.name,
+                    fontSize = if (d.tv) 38.sp else if (d.widthDp >= 600) 30.sp else 24.sp,
+                    lineHeight = if (d.tv) 44.sp else 30.sp,
+                    fontWeight = FontWeight.ExtraBold, color = Color.White,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(8.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                    (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let {
+                        MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D))
+                    }
+                    info?.year?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
+                    info?.duration?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
+                    info?.genre?.takeIf { it.isNotBlank() }?.split(',', '،', '/')?.map { it.trim() }
+                        ?.filter { it.isNotEmpty() }?.take(if (d.tv) 2 else 1)?.forEach { MetaChip(it) }
+                }
+
+                info?.plot?.takeIf { it.isNotBlank() }?.let {
+                    Spacer(Modifier.height(if (d.tv) 10.dp else 7.dp))
+                    Text(
+                        it, fontSize = if (d.tv) 14.sp else 12.5.sp, lineHeight = if (d.tv) 21.sp else 18.sp,
+                        color = Color(0xFFD9DCE8), maxLines = if (d.narrow) 2 else 3, overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Spacer(Modifier.height(if (d.tv) 16.dp else 11.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(if (d.tv) 12.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                    MBtn(primaryLabel, tint = buttonTone(palette.primary)) {
+                        if (kind == Kind.Series) vm.openDetail(c) else vm.play(c)
+                    }
+                    if (kind != Kind.Live) MBtn("التفاصيل", filled = false, tint = palette.accent) { vm.openDetail(c) }
+                    HeroFav(vm, c, palette, d)
+                }
+            }
+        }
+    }
+}
+
+/** The poster is a separate object from the backdrop — it never dissolves into the hero background. */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun HeroPoster(vm: AppViewModel, c: Channel, d: Device, palette: ArtworkPalette) {
+    val shape = RoundedCornerShape(16.dp)
+    Box(
+        Modifier.width(if (d.tv) 156.dp else 126.dp).aspectRatio(2f / 3f)
+            .softShadow(shape, 18.dp, palette.primary)
+            .clip(shape).background(SurfHigh)
+            .border(1.dp, Color(0x2EFFFFFF), shape)
+            .clickable { vm.open(c) }
+    ) {
+        AsyncImage(
+            model = c.logo, contentDescription = c.name,
+            contentScale = if (kindOf(c) == Kind.Live) ContentScale.Fit else ContentScale.Crop,
+            modifier = Modifier.fillMaxSize().then(if (kindOf(c) == Kind.Live) Modifier.padding(10.dp) else Modifier)
+        )
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(0.7f to Color.Transparent, 1f to Color(0x66000000))
+            )
+        )
+        ratingBadge(c)?.let { RatingPill(it, Modifier.align(Alignment.TopStart).padding(7.dp)) }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun HeroFav(vm: AppViewModel, c: Channel, palette: ArtworkPalette, d: Device) {
+    var focused by remember { mutableStateOf(false) }
+    val fav = c.url in vm.favs
+    val sc by animateFloatAsState(if (focused) 1.08f else 1f, tween(140), label = "favScale")
+    val size = if (d.tv) 52.dp else 46.dp
+    val iconSize = if (d.tv) 24.dp else 20.dp
+    Box(
+        Modifier.size(size).scale(sc)
+            .onFocusChanged { focused = it.isFocused }
+            .clip(CircleShape)
+            .background(if (fav) Accent2.copy(alpha = 0.26f) else Color(0x55000000))
+            .border(if (focused) 2.dp else 1.5.dp, if (focused) Color.White else if (fav) Accent2.copy(alpha = 0.85f) else Color(0xCCFFFFFF), CircleShape)
+            .then(if (focused) Modifier.softShadow(CircleShape, 12.dp, if (fav) Accent2 else Color.White) else Modifier)
+            .clickable { vm.toggleFav(c) },
+        contentAlignment = Alignment.Center
+    ) {
+        NIcon(Ic.Star, if (fav) Accent2 else Color.White, iconSize)
     }
 }
 
@@ -209,100 +366,62 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
 @Composable
 private fun HomeCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel, rank: Int) {
     val key = s.title + "|" + ch.url + ch.id
-    val fr = rememberCardFocus(vm, key)
-    val cont = s.title == "استكمال المشاهدة"
-    val progress = if (cont) vm.history.firstOrNull { it.url == ch.url }?.progress ?: 0f else 0f
     Row(verticalAlignment = Alignment.Bottom) {
         if (s.ranked) {
             Text(
-                "$rank", fontSize = if (d.tv) 92.sp else 70.sp, fontWeight = FontWeight.Black, maxLines = 1, softWrap = false,
+                "$rank", fontSize = if (d.tv) 46.sp else 36.sp, fontWeight = FontWeight.Black,
+                maxLines = 1, softWrap = false,
                 style = androidx.compose.ui.text.TextStyle(
-                    color = Accent, drawStyle = androidx.compose.ui.graphics.drawscope.Stroke(width = 5f, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+                    color = Accent.copy(alpha = 0.85f),
+                    drawStyle = Stroke(width = 2.5f, join = androidx.compose.ui.graphics.StrokeJoin.Round)
                 ),
-                modifier = Modifier.padding(end = 2.dp).offset(y = 6.dp)
+                modifier = Modifier.padding(end = 6.dp).offset(y = 0.dp)
             )
         }
-        Focusable(
-            onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) },
-            onFocused = { vm.lastFocusKey = key; vm.homeFocus = ch }, focusRequester = fr,
-            modifier = Modifier.width(if (d.tv) 128.dp else 108.dp)
-        ) {
-            Box {
-                AsyncImage(
-                    model = ch.logo, contentDescription = null, contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f).background(Surf)
-                )
-                ratingBadge(ch)?.let { r ->
-                    Row(
-                        Modifier.align(Alignment.TopStart).padding(6.dp).clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xCC0E1235)).padding(horizontal = 7.dp, vertical = 3.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("★", fontSize = 11.sp, color = Color(0xFFFFC857)); Spacer(Modifier.width(3.dp))
-                        Text(r, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    }
-                }
-                if (progress > 0.02f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) {
-                    Box(Modifier.fillMaxHeight().fillMaxWidth(progress).background(Accent))
-                }
-            }
-            Text(ch.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp, color = Ink, modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp))
-        }
+        PosterCard(
+            vm, ch,
+            modifier = Modifier.width(d.shelfPoster),
+            focusKey = key,
+            onFocusExtra = { vm.homeFocus = ch }
+        )
     }
-}
-
-/** Title block of the focused item over the backdrop (TV / tablet / landscape). */
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun HomeHero(c: Channel, info: VodInfo?, d: Device, modifier: Modifier) {
-    Column(modifier.fillMaxWidth(0.55f).padding(start = 8.dp, top = 6.dp), verticalArrangement = Arrangement.Center) {
-        Text(c.name, fontSize = if (d.tv) 34.sp else 26.sp, fontWeight = FontWeight.Black, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            ratingBadge(c)?.let { HeroChip("★ $it", Color(0xFFFFC857), Color(0xFF0E1235)) }
-            info?.year?.takeIf { it.isNotBlank() }?.let { HeroChip(it) }
-            info?.genre?.takeIf { it.isNotBlank() }?.split(',', '،', '/')?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(2)?.forEach { HeroChip(it) }
-        }
-        info?.plot?.takeIf { it.isNotBlank() }?.let {
-            Spacer(Modifier.height(10.dp))
-            Text(it, fontSize = if (d.tv) 14.sp else 13.sp, lineHeight = 20.sp, color = Color(0xFFE0E2FF), maxLines = 3, overflow = TextOverflow.Ellipsis)
-        }
-    }
-}
-
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun HeroChip(t: String, bg: Color = Color(0x33FFFFFF), fg: Color = Color.White) {
-    Text(t, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = fg, maxLines = 1,
-        modifier = Modifier.clip(RoundedCornerShape(50)).background(bg).padding(horizontal = 10.dp, vertical = 4.dp))
 }
 
 /** Pulsing placeholders while the first list loads. */
 @Composable
 private fun SkeletonGrid(d: Device) {
     val a by rememberInfiniteTransition(label = "sk").animateFloat(
-        0.35f, 0.9f, infiniteRepeatable(tween(800), RepeatMode.Reverse), label = "skA"
+        0.30f, 0.75f, infiniteRepeatable(tween(850), RepeatMode.Reverse), label = "skA"
     )
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(d.liveMin), userScrollEnabled = false,
-        horizontalArrangement = Arrangement.spacedBy(d.gap), verticalArrangement = Arrangement.spacedBy(d.gap)
+        columns = GridCells.Adaptive(d.posterMin), userScrollEnabled = false,
+        horizontalArrangement = Arrangement.spacedBy(d.gap), verticalArrangement = Arrangement.spacedBy(d.gap + 10.dp)
     ) {
-        items(12) { Box(Modifier.fillMaxWidth().height(120.dp).alpha(a).glass(RoundedCornerShape(Radius.card))) }
+        items(18) {
+            Column {
+                Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).alpha(a).clip(RoundedCornerShape(Radius.poster)).background(SurfHigh))
+                Spacer(Modifier.height(6.dp))
+                Box(Modifier.fillMaxWidth(0.7f).height(9.dp).alpha(a).clip(RoundedCornerShape(4.dp)).background(SurfHigh))
+            }
+        }
     }
 }
 
-/* ───────── Live / Movies / Series browsing ───────── */
+/* ─────────────── Live / Movies / Series browsing ─────────────── */
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun GroupItem(vm: AppViewModel, g: String, modifier: Modifier = Modifier) {
     val sel = vm.group == g
-    Focusable(selected = sel, onClick = { vm.group = g }, onLongClick = { vm.groupMenu(g) }, modifier = modifier) {
+    Focusable(
+        selected = sel, onClick = { vm.group = g }, onLongClick = { vm.groupMenu(g) },
+        modifier = modifier, zoom = 1.03f, shape = RoundedCornerShape(10.dp)
+    ) {
         Text(
-            vm.groupLabel(g), maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 14.sp,
+            vm.groupLabel(g), maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 13.sp,
             fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
-            color = if (sel) Accent else Ink,
-            modifier = Modifier.padding(horizontal = 14.dp).heightIn(min = LocalDevice.current.control).wrapContentHeight(Alignment.CenterVertically)
+            color = if (sel) Accent else if (Ui.dark) Ink.copy(alpha = 0.82f) else Ink,
+            modifier = Modifier.padding(horizontal = 12.dp).heightIn(min = LocalDevice.current.control).wrapContentHeight(Alignment.CenterVertically)
         )
     }
 }
@@ -322,8 +441,8 @@ private fun BrowseTab(vm: AppViewModel, d: Device) {
         LazyVerticalGrid(
             state = vm.gridState(vm.tab.name + "|" + vm.group),
             columns = GridCells.Adaptive(if (poster) d.posterMin else d.liveMin),
-            horizontalArrangement = Arrangement.spacedBy(d.gap), verticalArrangement = Arrangement.spacedBy(d.gap),
-            contentPadding = PaddingValues(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 20.dp), modifier = modifier
+            horizontalArrangement = Arrangement.spacedBy(d.gap), verticalArrangement = Arrangement.spacedBy(d.gap + 6.dp),
+            contentPadding = PaddingValues(start = 2.dp, end = 2.dp, top = 4.dp, bottom = 24.dp), modifier = modifier
         ) {
             items(items, key = { it.url + it.id }) { ch -> if (poster) PosterCard(vm, ch) else LiveCard(vm, ch) }
         }
@@ -333,19 +452,19 @@ private fun BrowseTab(vm: AppViewModel, d: Device) {
         Row(Modifier.fillMaxSize()) {
             LazyColumn(
                 Modifier.width(d.sideList), state = vm.listState("groups:" + vm.tab.name),
-                verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(4.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp), contentPadding = PaddingValues(2.dp)
             ) {
                 items(vm.groups, key = { it }) { g -> GroupItem(vm, g, Modifier.fillMaxWidth()) }
                 item {
                     if (vm.tab == Tab.Live) {
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(10.dp))
                         MBtn("▦ مشاهدة متعددة (${vm.multi.size})", filled = false, modifier = Modifier.fillMaxWidth()) { vm.openMulti() }
                     }
                 }
             }
-            Spacer(Modifier.width(d.gap + 4.dp))
+            Spacer(Modifier.width(d.gap + 6.dp))
             Column(Modifier.weight(1f)) {
-                Text("${items.size}", color = TextSecondary, fontSize = 12.sp)
+                Text("${items.size} عنصر", color = TextMuted, fontSize = 11.sp, modifier = Modifier.padding(bottom = 4.dp))
                 Grid(Modifier.fillMaxSize())
             }
         }
@@ -353,11 +472,12 @@ private fun BrowseTab(vm: AppViewModel, d: Device) {
         Column(Modifier.fillMaxSize()) {
             LazyRow(
                 state = vm.listState("chips:" + vm.tab.name),
-                horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
             ) {
                 items(vm.groups, key = { it }) { g -> GroupItem(vm, g) }
                 if (vm.tab == Tab.Live) item { TabChip("▦ متعدد (${vm.multi.size})", false) { vm.openMulti() } }
             }
+            Spacer(Modifier.height(4.dp))
             Grid(Modifier.fillMaxSize())
         }
     }
@@ -370,12 +490,12 @@ private fun SearchResults(vm: AppViewModel, d: Device) {
     val progs = vm.progResults
     SideEffect { vm.firstKey = if (progs.isNotEmpty()) null else r.firstOrNull()?.let { it.url + it.id } }
     Column {
-        Text("نتائج البحث: ${r.size + progs.size}", color = TextSecondary, fontSize = 12.sp)
+        Text("نتائج البحث: ${r.size + progs.size}", color = TextMuted, fontSize = 11.sp, modifier = Modifier.padding(bottom = 4.dp))
         LazyVerticalGrid(
             state = vm.gridState("search"),
-            columns = GridCells.Adaptive(d.liveMin),
+            columns = GridCells.Adaptive(if (r.any { kindOf(it) == Kind.Live }) d.liveMin else d.posterMin),
             horizontalArrangement = Arrangement.spacedBy(d.gap), verticalArrangement = Arrangement.spacedBy(d.gap),
-            contentPadding = PaddingValues(4.dp)
+            contentPadding = PaddingValues(2.dp)
         ) {
             if (progs.isNotEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }, key = "prog-head") {
@@ -403,7 +523,7 @@ private fun ProgRow(vm: AppViewModel, c: Channel, p: Prog) {
             if (airing) vm.play(c)
             else vm.menu = MenuRequest(p.title, listOf("▶ مشاهدة القناة" to { vm.play(c) }, "⏺ تسجيل البرنامج" to { vm.record(c, p) }))
         },
-        modifier = Modifier.fillMaxWidth(), zoom = 1.02f
+        modifier = Modifier.fillMaxWidth(), zoom = 1.02f, shape = RoundedCornerShape(Radius.small)
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(

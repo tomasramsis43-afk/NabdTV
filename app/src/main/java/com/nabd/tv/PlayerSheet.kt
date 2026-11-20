@@ -1,4 +1,4 @@
-@file:OptIn(
+﻿@file:OptIn(
     androidx.tv.material3.ExperimentalTvMaterial3Api::class,
     androidx.media3.common.util.UnstableApi::class,
     androidx.compose.ui.ExperimentalComposeUiApi::class
@@ -505,7 +505,7 @@ private fun SheetRow(
             .clip(shape)
             .background(
                 when {
-                    selected -> Accent
+                    selected -> AccentFill
                     focused -> Color(0xFF2A3355)
                     else -> Color(0xAA171C2A)
                 }
