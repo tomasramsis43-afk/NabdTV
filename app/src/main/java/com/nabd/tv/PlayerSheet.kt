@@ -476,7 +476,7 @@ private fun SheetSection(title: String) {
 @Composable
 private fun SheetInfo(text: String, danger: Boolean = false) {
     Text(
-        text, fontSize = 11.sp, color = if (danger) Color(0xFFFF9A9A) else TextSecondary,
+        text, fontSize = 12.sp, color = if (danger) Color(0xFFFF9A9A) else TextSecondary,
         modifier = Modifier.padding(vertical = 4.dp)
     )
 }
@@ -525,7 +525,7 @@ private fun SheetRow(
                     else -> Color.White
                 }
             )
-            if (!detail.isNullOrBlank()) Text(detail, fontSize = 10.sp, color = TextSecondary, maxLines = 2)
+            if (!detail.isNullOrBlank()) Text(detail, fontSize = 12.sp, color = TextSecondary, maxLines = 2)
         }
         if (value.isNotEmpty()) {
             Spacer(Modifier.width(8.dp))

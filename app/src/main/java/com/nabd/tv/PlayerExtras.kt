@@ -186,7 +186,7 @@ fun ChannelPanel(vm: AppViewModel, current: Channel, onClose: () -> Unit, modifi
                                 fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal
                             )
                             vm.nowNext(c).first?.let {
-                                Text(it.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp, color = TextSecondary)
+                                Text(it.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp, color = TextSecondary)
                             }
                         }
                     }

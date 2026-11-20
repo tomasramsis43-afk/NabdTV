@@ -64,7 +64,7 @@ fun GuideTab(vm: AppViewModel) {
                         Spacer(Modifier.width(8.dp))
                         Column {
                             Text(c.name, fontSize = 13.sp, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(vm.nowNext(c).first?.title ?: "", fontSize = 11.sp, color = Accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(vm.nowNext(c).first?.title ?: "", fontSize = 12.sp, color = Accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }
@@ -95,7 +95,7 @@ fun ProgrammeList(vm: AppViewModel, c: Channel, modifier: Modifier = Modifier) {
                         Text("${hm(p.start)} - ${hm(p.stop)}", fontSize = 13.sp, color = if (live) Accent else TextSecondary, modifier = Modifier.width(if (LocalDevice.current.widthDp < 600) 92.dp else 110.dp))
                         Column(Modifier.weight(1f)) {
                             Text(p.title, fontSize = 15.sp, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            if (p.desc.isNotBlank()) Text(p.desc, fontSize = 11.sp, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            if (p.desc.isNotBlank()) Text(p.desc, fontSize = 12.sp, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                         if (live) Text("● الآن", color = Accent, fontSize = 12.sp)
                         else if (past && c.hasCatchup) Text("↺ إعادة", color = Accent, fontSize = 12.sp)

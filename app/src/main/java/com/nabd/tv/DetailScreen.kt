@@ -74,7 +74,7 @@ fun DetailScreen(vm: AppViewModel) {
                 MBtn("رجوع", filled = false) { vm.closeDetail() }
                 Spacer(Modifier.weight(1f))
                 Text(
-                    typeLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White,
+                    typeLabel, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White,
                     modifier = Modifier.clip(RoundedCornerShape(7.dp)).background(palette.primary.copy(alpha = 0.55f))
                         .padding(horizontal = 9.dp, vertical = 4.dp)
                 )
@@ -142,7 +142,7 @@ fun DetailScreen(vm: AppViewModel) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("الحلقات", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.weight(1f))
-                    if (vm.episodes.isNotEmpty()) Text("${vm.episodes.size} حلقة", fontSize = 11.sp, color = TextMuted)
+                    if (vm.episodes.isNotEmpty()) Text("${vm.episodes.size} حلقة", fontSize = 12.sp, color = TextMuted)
                 }
                 Column(Modifier.fillMaxWidth().weight(1f)) { Episodes(vm, c) }
             } else {
@@ -191,7 +191,7 @@ private fun Episodes(vm: AppViewModel, s: Channel) {
                             "حلقة ${e.num}" + if (e.title.isNotBlank()) " — ${e.title}" else "",
                             fontSize = 14.sp, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis
                         )
-                        if (e.plot.isNotBlank()) Text(e.plot, fontSize = 11.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (e.plot.isNotBlank()) Text(e.plot, fontSize = 12.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     if (h != null) Text(if (h.finished) "✓" else "${(h.progress * 100).toInt()}%", color = Accent, fontSize = 12.sp)
                 }

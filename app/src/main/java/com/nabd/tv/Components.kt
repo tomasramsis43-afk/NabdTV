@@ -208,10 +208,10 @@ fun LiveCard(vm: AppViewModel, ch: Channel, modifier: Modifier = Modifier) {
     ) {
         Column(Modifier.fillMaxWidth().padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(if (ch.number > 0) "${ch.number}" else "", fontSize = 10.sp, color = TextSecondary)
+                Text(if (ch.number > 0) "${ch.number}" else "", fontSize = 12.sp, color = TextSecondary)
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (ch.hasCatchup) Text("↺", fontSize = 11.sp, color = Accent)
-                    if (locked) Text("🔒", fontSize = 10.sp)
+                    if (ch.hasCatchup) Text("↺", fontSize = 12.sp, color = Accent)
+                    if (locked) Text("🔒", fontSize = 12.sp)
                     HealthDot(vm.health.state(ch.url))
                 }
             }
@@ -227,7 +227,7 @@ fun LiveCard(vm: AppViewModel, ch: Channel, modifier: Modifier = Modifier) {
                 )
             }
             val (now, _) = vm.nowNext(ch)
-            Text(now?.title ?: " ", maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp, color = Accent)
+            Text(now?.title ?: " ", maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp, color = Accent)
             if (now != null) {
                 val pct = ((System.currentTimeMillis() - now.start).toFloat() / (now.stop - now.start).coerceAtLeast(1)).coerceIn(0f, 1f)
                 Box(Modifier.padding(top = 4.dp).fillMaxWidth().height(3.dp).clip(CircleShape).background(Hairline)) {
@@ -288,7 +288,7 @@ fun PosterCard(
                 horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically
             ) {
                 if (ch.url in vm.favs) Text("★", fontSize = 12.sp, color = Accent2)
-                if (locked) Text("🔒", fontSize = 11.sp)
+                if (locked) Text("🔒", fontSize = 12.sp)
             }
             if (progress > 0.02f) {
                 Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color(0x66000000))) {
@@ -316,9 +316,9 @@ fun RatingPill(rating: String, modifier: Modifier = Modifier) {
         modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xCC05060A)).padding(horizontal = 6.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("★", fontSize = 10.sp, color = Accent2)
+        Text("★", fontSize = 12.sp, color = Accent2)
         Spacer(Modifier.width(3.dp))
-        Text(rating, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text(rating, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
     }
 }
 

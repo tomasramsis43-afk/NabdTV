@@ -54,7 +54,7 @@ fun ProfilesScreen(vm: AppViewModel) {
                         }
                         Spacer(Modifier.height(10.dp))
                         Text(p.name, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Ink, maxLines = 1)
-                        if (p.kids) Text("أطفال", fontSize = 11.sp, color = Accent)
+                        if (p.kids) Text("أطفال", fontSize = 12.sp, color = Accent)
                     }
                 }
             }

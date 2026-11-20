@@ -320,7 +320,7 @@ fun PlayerTimeline(
                     modifier = Modifier.widthIn(min = 54.dp)
                 )
                 Text(
-                    " / " + fmtTime(duration), color = Color(0xFFB8C2CF), fontSize = 11.sp,
+                    " / " + fmtTime(duration), color = Color(0xFFB8C2CF), fontSize = 12.sp,
                     modifier = Modifier.widthIn(min = 58.dp)
                 )
                 BoxWithConstraints(
@@ -499,7 +499,7 @@ fun PlayerErrorCard(
             Text(message, color = Color.White, fontSize = 14.sp, textAlign = TextAlign.Center)
             if (detail.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
-                Text(detail, color = Color(0xFF9AA3B8), fontSize = 11.sp, textAlign = TextAlign.Center, maxLines = 4)
+                Text(detail, color = Color(0xFF9AA3B8), fontSize = 12.sp, textAlign = TextAlign.Center, maxLines = 4)
             }
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -562,7 +562,7 @@ private fun TimeColumn(label: String, value: Int, onDelta: (Int) -> Unit) {
         PlayerButton("＋") { onDelta(1) }
         Text("%02d".format(value), color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(vertical = 4.dp))
         PlayerButton("－") { onDelta(-1) }
-        Text(label, color = Color(0xFF9AA3B8), fontSize = 11.sp)
+        Text(label, color = Color(0xFF9AA3B8), fontSize = 12.sp)
     }
 }
 

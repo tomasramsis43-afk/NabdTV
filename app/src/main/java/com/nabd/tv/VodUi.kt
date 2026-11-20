@@ -156,7 +156,7 @@ fun VodBtn(
 private fun CaptionBtn(ic: VIc, label: String, size: Dp, onFocus: () -> Unit, onClick: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         VodBtn(ic, size = size, onFocus = onFocus, onClick = onClick)
-        Text(label, fontSize = 10.sp, color = Color(0xCCFFFFFF), maxLines = 1)
+        Text(label, fontSize = 12.sp, color = Color(0xCCFFFFFF), maxLines = 1)
     }
 }
 

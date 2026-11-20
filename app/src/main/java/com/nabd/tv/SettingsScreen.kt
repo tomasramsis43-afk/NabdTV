@@ -194,7 +194,7 @@ private fun SettingsCard(
             maxLines = 1, overflow = TextOverflow.Ellipsis
         )
         Text(
-            page.subtitle, fontSize = 11.sp, lineHeight = 15.sp, color = TextSecondary, maxLines = 2,
+            page.subtitle, fontSize = 12.sp, lineHeight = 16.sp, color = TextSecondary, maxLines = 2,
             overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp)
         )
     }
@@ -226,7 +226,7 @@ private fun PageView(
             ) { NIcon(page.icon, tint, if (d.tv) 22.dp else 19.dp) }
             Column(Modifier.weight(1f)) {
                 Text(page.title, fontSize = if (d.tv) 24.sp else 20.sp, fontWeight = FontWeight.Bold, color = Ink)
-                Text(page.subtitle, fontSize = 11.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(page.subtitle, fontSize = 12.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         Spacer(Modifier.height(14.dp))

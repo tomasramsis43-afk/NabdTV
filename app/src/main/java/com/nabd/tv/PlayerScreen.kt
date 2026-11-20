@@ -1096,7 +1096,7 @@ fun PlayerScreen(vm: AppViewModel) {
 
         if (ui.stats && !vm.inPip) {
             Text(
-                ui.infoText, fontSize = 11.sp, color = Accent,
+                ui.infoText, fontSize = 12.sp, color = Accent,
                 modifier = Modifier.align(Alignment.TopStart).padding(12.dp)
                     .background(Color(0xAA000000), RoundedCornerShape(8.dp)).padding(8.dp)
             )
@@ -1184,7 +1184,7 @@ fun PlayerScreen(vm: AppViewModel) {
                                 }
                                 Text(
                                     "${hm(now.start)} - ${hm(now.stop)}" + (next?.let { " · التالي: ${it.title}" } ?: ""),
-                                    fontSize = 11.sp, color = Color(0xFFB8C2CF), maxLines = 1
+                                    fontSize = 12.sp, color = Color(0xFFB8C2CF), maxLines = 1
                                 )
                             }
                         }

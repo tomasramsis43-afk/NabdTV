@@ -170,7 +170,7 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
                             fontSize = if (d.tv) 17.sp else 15.sp, fontWeight = FontWeight.Bold, color = Ink,
                             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
                         )
-                        Text("${s.items.size}", fontSize = 11.sp, color = TextMuted)
+                        Text("${s.items.size}", fontSize = 12.sp, color = TextMuted)
                     }
                     LazyRow(
                         state = vm.listState("row:" + s.title),
@@ -226,7 +226,7 @@ private fun HomeHero(
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(typeLabel, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp, color = readableOnArt(palette.accent), modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(palette.primary.copy(alpha = 0.26f)).padding(horizontal = 8.dp, vertical = 3.dp))
                 if (c.hasCatchup) MetaChip("إعادة", fg = Color(0xFFE7E9F2), bg = Color(0x26FFFFFF))
-                if (c.url in vm.favs) Text("★ في المفضلة", fontSize = 11.sp, color = Accent2)
+                if (c.url in vm.favs) Text("★ في المفضلة", fontSize = 12.sp, color = Accent2)
             }
             Spacer(Modifier.height(if (d.tv) 10.dp else 6.dp))
             Text(c.name, fontSize = if (d.tv) 36.sp else if (d.widthDp >= 600) 28.sp else 22.sp, lineHeight = if (d.tv) 42.sp else 32.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -375,7 +375,7 @@ private fun BrowseTab(vm: AppViewModel, d: Device) {
             }
             Spacer(Modifier.width(d.gap + 6.dp))
             Column(Modifier.weight(1f)) {
-                Text("${items.size} عنصر", color = TextMuted, fontSize = 11.sp, modifier = Modifier.padding(bottom = 4.dp))
+                Text("${items.size} عنصر", color = TextMuted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
                 Grid(Modifier.fillMaxSize())
             }
         }
@@ -401,7 +401,7 @@ private fun SearchResults(vm: AppViewModel, d: Device) {
     val progs = vm.progResults
     SideEffect { vm.firstKey = if (progs.isNotEmpty()) null else r.firstOrNull()?.let { it.url + it.id } }
     Column {
-        Text("نتائج البحث: ${r.size + progs.size}", color = TextMuted, fontSize = 11.sp, modifier = Modifier.padding(bottom = 4.dp))
+        Text("نتائج البحث: ${r.size + progs.size}", color = TextMuted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
         LazyVerticalGrid(
             state = vm.gridState("search"),
             columns = GridCells.Adaptive(if (r.any { kindOf(it) == Kind.Live }) d.liveMin else d.posterMin),
@@ -443,7 +443,7 @@ private fun ProgRow(vm: AppViewModel, c: Channel, p: Prog) {
             )
             Column(Modifier.weight(1f)) {
                 Text(p.title, fontSize = 14.sp, maxLines = 1, color = Ink)
-                Text(c.name, fontSize = 11.sp, maxLines = 1, color = TextSecondary)
+                Text(c.name, fontSize = 12.sp, maxLines = 1, color = TextSecondary)
             }
         }
     }
