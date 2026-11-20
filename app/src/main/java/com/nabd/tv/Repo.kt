@@ -275,13 +275,15 @@ class Repo(private val ctx: Context, val store: Store) {
         return if (f > 0) "%.1f".format(java.util.Locale.US, f * 2) else ""
     }
 
-    private fun buildM3u(arr: JSONArray, names: Map<String, String>, icon: String, url: (JSONObject) -> String?): String {
+    private fun buildM3u(arr: JSONArray, names: Map<String, String>, icon: Any, url: (JSONObject) -> String?): String {
+        val iconFields = if (icon is List<*>) icon.filterIsInstance<String>() else listOf(icon.toString())
         val sb = StringBuilder("#EXTM3U\n")
         for (i in 0 until arr.length()) {
             val s = arr.getJSONObject(i)
             val u = url(s) ?: continue
             val rating = ratingOf(s)
-            sb.append("#EXTINF:-1 tvg-logo=\"").append(a(str(s, icon)))
+            val logo = iconFields.firstOrNull { str(s, it).isNotBlank() }?.let { str(s, it) } ?: ""
+            sb.append("#EXTINF:-1 tvg-logo=\"").append(a(logo))
                 .append("\" tn-rating=\"").append(a(rating))
                 .append("\" tn-added=\"").append((str(s, "added").toLongOrNull() ?: str(s, "last_modified").toLongOrNull()) ?: 0L)
                 .append("\" group-title=\"").append(a(names[str(s, "category_id")] ?: "Other"))
@@ -300,7 +302,7 @@ class Repo(private val ctx: Context, val store: Store) {
         if (!force) dao.channels("movie").takeIf { it.isNotEmpty() }?.let { r -> return@withContext r.map { it.toChannel() } }
         val names = categories("get_vod_categories")
         if (names.isNotEmpty()) setGroupOrder("movie", names.values)
-        val t = buildM3u(JSONArray(api("get_vod_streams")), names, "stream_icon") { s ->
+        val t = buildM3u(JSONArray(api("get_vod_streams")), names, listOf("cover", "stream_icon")) { s ->
             val id = str(s, "stream_id")
             if (id.isBlank()) null else "$b/movie/$u/$p/$id.${str(s, "container_extension").ifBlank { "mp4" }}"
         }
@@ -314,7 +316,7 @@ class Repo(private val ctx: Context, val store: Store) {
         if (!force) dao.channels("series").takeIf { it.isNotEmpty() }?.let { r -> return@withContext r.map { it.toChannel() } }
         val names = categories("get_series_categories")
         if (names.isNotEmpty()) setGroupOrder("series", names.values)
-        val t = buildM3u(JSONArray(api("get_series")), names, "cover") { s ->
+        val t = buildM3u(JSONArray(api("get_series")), names, listOf("cover", "stream_icon")) { s ->
             val id = str(s, "series_id")
             if (id.isBlank()) null else "series:$id"
         }
