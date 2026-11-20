@@ -37,6 +37,7 @@ import kotlinx.coroutines.delay
 /** Tabs of the in-player settings panel. */
 enum class PlayerTab(val label: String) {
     Playback("التشغيل"),
+    Episodes("الحلقات"),
     Audio("الصوت"),
     Subtitles("الترجمة"),
     Display("الصورة"),

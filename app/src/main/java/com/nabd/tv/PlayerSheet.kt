@@ -122,7 +122,8 @@ fun PlayerSheet(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(7.dp)
             ) {
-                PlayerTab.entries.forEach { t ->
+                val hasEpisodes = !live && vm.episodes.any { it.url == ch.url }
+                PlayerTab.entries.filter { it != PlayerTab.Episodes || hasEpisodes }.forEach { t ->
                     PlayerButton(
                         t.label,
                         active = t == tab,
@@ -160,6 +161,33 @@ fun PlayerSheet(
                     verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     when (tab) {
+                        PlayerTab.Episodes -> {
+                            // Netflix / Kodi style episode list: ▶ playing · ✓ watched · % in progress.
+                            val eps = vm.episodes
+                            val seasons = eps.map { it.season }.distinct().sorted()
+                            var sSel by remember(ch.url) { mutableStateOf(eps.firstOrNull { it.url == ch.url }?.season ?: seasons.firstOrNull() ?: 1) }
+                            if (seasons.size > 1) {
+                                SheetRow("الموسم", "الموسم $sSel") {
+                                    openChoice("اختر الموسم", seasons.map { n -> SheetOption("الموسم $n", n == sSel) { sSel = n } })
+                                }
+                            }
+                            SheetSection("حلقات الموسم $sSel")
+                            eps.filter { it.season == sSel }.forEach { e ->
+                                val h = store.historyOf(e.url)
+                                val playingNow = e.url == ch.url
+                                val value = when {
+                                    playingNow -> "▶ يعمل الآن"
+                                    h?.finished == true -> "✓ شوهدت"
+                                    h != null && h.progress > 0.02f -> "${(h.progress * 100).toInt()}%"
+                                    else -> ""
+                                }
+                                val t = e.title.takeIf { it.isNotBlank() }?.let { " — $it" } ?: ""
+                                SheetRow("حلقة ${e.num}$t", value, selected = playingNow) {
+                                    val d = vm.detail
+                                    if (!playingNow && d != null) { vm.playEpisode(d, e); onClose() }
+                                }
+                            }
+                        }
                         PlayerTab.Playback -> {
                             SheetSection("التحكم بالتشغيل")
                             SheetRow("السرعة", if (ui.speed == 1f) "عادية" else "${ui.speed}x", detail = "تُحفظ كسرعة افتراضية للمحتوى القادم") {

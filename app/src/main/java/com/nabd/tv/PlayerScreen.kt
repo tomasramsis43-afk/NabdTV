@@ -1134,6 +1134,7 @@ fun PlayerScreen(vm: AppViewModel) {
                         PlayerButton("⏭", enabled = vm.hasNextEpisode(chRef.value)) { actions.nextEpisode() }
                     }
                     PlayerButton(if (am.isStreamMute(AudioManager.STREAM_MUSIC)) "🔇" else "🔊") { actions.toggleMute() }
+                    if (!live && vm.episodes.any { it.url == chRef.value.url }) PlayerButton("📺 الحلقات") { openSheet(PlayerTab.Episodes) }
                     PlayerButton("💬 ترجمة", active = ui.subOn) { openSheet(PlayerTab.Subtitles) }
                     PlayerButton("🎧 صوت", active = store.audioBoost) { openSheet(PlayerTab.Audio) }
                     PlayerButton(if (ui.speed == 1f) "⏱ السرعة" else "⏱ ${ui.speed}x", active = ui.speed != 1f) { openSheet(PlayerTab.Playback) }
