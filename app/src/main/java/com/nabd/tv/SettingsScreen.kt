@@ -258,6 +258,24 @@ fun SettingsScreen(vm: AppViewModel) {
                 cm.setPrimaryClip(android.content.ClipData.newPlainText("nabd-backup", s.exportBackup()))
                 vm.say("تم النسخ. الصقها في جهاز آخر عبر \"استيراد\"")
             }
+            val saveFile = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")
+            ) { uri ->
+                if (uri != null) {
+                    val ok = runCatching { cx.contentResolver.openOutputStream(uri)?.use { it.write(s.exportBackup().toByteArray()) } != null }.getOrDefault(false)
+                    vm.say(if (ok) "تم حفظ النسخة الاحتياطية (مع تقدّم المشاهدة)" else "تعذّر حفظ الملف")
+                }
+            }
+            val openFile = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+            ) { uri ->
+                if (uri != null) {
+                    val txt = runCatching { cx.contentResolver.openInputStream(uri)?.use { String(it.readBytes()) }.orEmpty() }.getOrDefault("")
+                    if (s.importBackup(txt)) { vm.say("تم الاستيراد"); vm.listsChanged(); tick++ } else vm.say("الملف ليس نسخة احتياطية صالحة")
+                }
+            }
+            Row2("حفظ نسخة احتياطية في ملف (مع التقدّم)") { saveFile.launch("nabd-backup.json") }
+            Row2("استيراد نسخة احتياطية من ملف") { openFile.launch(arrayOf("*/*")) }
             Row2("استيراد من الحافظة") {
                 val cm = cx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                 val txt = cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString().orEmpty()

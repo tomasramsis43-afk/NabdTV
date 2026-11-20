@@ -509,9 +509,9 @@ class Store(private val ctx: Context) {
         healthMap().entries.filter { it.value.failures > 0 || it.value.state == Health.Dead }
             .sortedByDescending { it.value.failures }.take(n).map { it.key to it.value }
 
-    /* ---------- backup (favorites + preferences, never the PIN or server credentials) ---------- */
+    /* ---------- backup (favorites, watch progress + preferences, never the PIN or server credentials) ---------- */
     fun exportBackup(): String {
-        val o = JSONObject().put("v", 1)
+        val o = JSONObject().put("v", 2)
         o.put("fav", JSONArray(favorites.toList()))
         o.put("pinnedGroups", JSONArray(pinnedGroups.toList()))
         o.put("hiddenGroups", JSONArray(hiddenGroups.toList()))
@@ -523,13 +523,24 @@ class Store(private val ctx: Context) {
         val cg = JSONObject()
         customGroups().forEach { (k, v) -> cg.put(k, JSONArray(v)) }
         o.put("customGroups", cg)
+        // watch progress, so "continue watching" follows the user to another device
+        val hs = JSONArray()
+        hist().values.forEach { h ->
+            hs.put(JSONObject().put("u", h.url).put("n", h.name).put("l", h.logo ?: "").put("g", h.group).put("k", h.kind.name)
+                .put("p", h.position).put("d", h.duration).put("t", h.last).put("c", h.count))
+        }
+        o.put("history", hs)
+        // per-series learned intro end and chosen audio / subtitle language
+        val sp = JSONObject()
+        p.all.forEach { (k, v) -> if (v != null && (k.startsWith("intro_") || k.startsWith("sAud_") || k.startsWith("sSub_"))) sp.put(k, v) }
+        o.put("seriesPrefs", sp)
         return o.toString()
     }
 
     /** Merges a backup produced by [exportBackup]. Returns false when the text is not a valid backup. */
     fun importBackup(text: String): Boolean = runCatching {
         val o = JSONObject(text)
-        if (o.optInt("v", 0) != 1) return false
+        if (o.optInt("v", 0) !in 1..2) return false
         fun set(k: String): Set<String> {
             val a = o.optJSONArray(k) ?: return emptySet()
             return (0 until a.length()).map { a.getString(it) }.toSet()
@@ -550,6 +561,27 @@ class Store(private val ctx: Context) {
                 merged[k] = ((merged[k] ?: emptyList()) + (0 until a.length()).map { a.getString(it) }).distinct()
             }
             saveCustomGroups(merged)
+        }
+        o.optJSONArray("history")?.let { a ->
+            val m = hist()
+            for (i in 0 until a.length()) {
+                val j = a.getJSONObject(i)
+                val url = j.getString("u")
+                val kind = runCatching { Kind.valueOf(j.getString("k")) }.getOrDefault(Kind.Movie)
+                val e = HistoryEntry(url, j.getString("n"), j.optString("l").ifBlank { null }, j.optString("g"), kind,
+                    j.optLong("p"), j.optLong("d"), j.optLong("t"), j.optInt("c"))
+                val old = m[url]
+                if (old == null || e.last > old.last) m[url] = e   // keep the most recent progress
+            }
+            saveHist()
+        }
+        o.optJSONObject("seriesPrefs")?.let { sp ->
+            val ed = p.edit()
+            for (k in sp.keys()) {
+                if (!(k.startsWith("intro_") || k.startsWith("sAud_") || k.startsWith("sSub_"))) continue
+                when (val v = sp.get(k)) { is Number -> ed.putLong(k, v.toLong()); is String -> ed.putString(k, v) }
+            }
+            ed.apply()
         }
         true
     }.getOrDefault(false)
