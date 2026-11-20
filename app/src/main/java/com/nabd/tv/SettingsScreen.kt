@@ -285,6 +285,9 @@ fun SettingsScreen(vm: AppViewModel) {
 
         Section("التشخيص") {
             val c = androidx.compose.ui.platform.LocalContext.current
+            Row2("إرسال تقارير الأعطال إلى Sentry (اختياري)", if (s.sentryDsn.isBlank()) "متوقف" else "مفعّل") {
+                vm.prompt = PromptRequest("Sentry DSN (اتركه فارغاً للإيقاف)", s.sentryDsn) { v -> upd { s.sentryDsn = v } }
+            }
             Row2("آخر أخطاء التطبيق") {
                 val t = CrashLog.read(c)
                 if (t.isBlank()) vm.say("لا توجد أخطاء مسجّلة") else vm.menu = MenuRequest("الأخطاء", listOf(

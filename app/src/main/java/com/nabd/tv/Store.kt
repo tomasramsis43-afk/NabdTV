@@ -231,6 +231,11 @@ class Store(private val ctx: Context) {
     var catchupOffsetHours: Int
         get() = g.getInt("catchupOffset", 0)
         set(v) = g.edit().putInt("catchupOffset", v).apply()
+    /** Optional Sentry DSN: when set, the last crash log is sent there once, at the next launch. Empty = never sent anywhere. */
+    var sentryDsn: String
+        get() = g.getString("sentryDsn", "") ?: ""
+        set(v) = g.edit().putString("sentryDsn", v.trim()).apply()
+
     /* Trakt.tv sync: the user's own Trakt API app + the tokens obtained by linking. Secrets are stored encrypted. */
     var traktId: String
         get() = g.getString("traktId", "") ?: ""
