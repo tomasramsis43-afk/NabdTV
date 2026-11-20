@@ -26,8 +26,9 @@ object AppState { @Volatile var foreground = false }
 /** Settings for automatic updates (kept in their own file so the background worker can read them). */
 object UpdatePrefs {
     private fun p(c: Context) = c.getSharedPreferences("nabd_update", Context.MODE_PRIVATE)
-    fun auto(c: Context) = p(c).getBoolean("auto", true)
-    fun setAuto(c: Context, v: Boolean) = p(c).edit().putBoolean("auto", v).apply()
+    /** Automatic updates are OFF by default; the user must turn them on in Settings. */
+    fun auto(c: Context) = p(c).getBoolean("auto2", false)
+    fun setAuto(c: Context, v: Boolean) = p(c).edit().putBoolean("auto2", v).apply()
     fun lastTried(c: Context) = p(c).getInt("tried", 0)
     fun triedAt(c: Context) = p(c).getLong("triedAt", 0L)
     fun setTried(c: Context, build: Int) = p(c).edit().putInt("tried", build).putLong("triedAt", System.currentTimeMillis()).apply()
@@ -81,6 +82,12 @@ class UpdateWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) 
     }
 
     companion object {
+        /** Background polling exists only while automatic updates are enabled. */
+        fun sync(ctx: Context) {
+            if (UpdatePrefs.auto(ctx)) schedule(ctx)
+            else WorkManager.getInstance(ctx).cancelUniqueWork("nabd-update")
+        }
+
         fun schedule(ctx: Context) {
             val req = PeriodicWorkRequestBuilder<UpdateWorker>(15, TimeUnit.MINUTES)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())

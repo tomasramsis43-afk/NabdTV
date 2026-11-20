@@ -11,7 +11,7 @@ class NabdApp : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         CrashLog.install(this)
-        UpdateWorker.schedule(this)
+        UpdateWorker.sync(this)   // cancels the background updater unless the user enabled it
     }
 
     /** Posters/logos are cached on disk, so scrolling big lists stays smooth and works offline. */
