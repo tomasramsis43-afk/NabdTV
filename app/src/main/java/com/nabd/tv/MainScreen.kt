@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -386,16 +387,53 @@ private fun BrowseTab(vm: AppViewModel, d: Device) {
 @Composable
 private fun SearchResults(vm: AppViewModel, d: Device) {
     val r = vm.searchResults
-    SideEffect { vm.firstKey = r.firstOrNull()?.let { it.url + it.id } }
+    val progs = vm.progResults
+    SideEffect { vm.firstKey = if (progs.isNotEmpty()) null else r.firstOrNull()?.let { it.url + it.id } }
     Column {
-        Text("نتائج البحث: ${r.size}", color = TextSecondary, fontSize = 12.sp)
+        Text("نتائج البحث: ${r.size + progs.size}", color = TextSecondary, fontSize = 12.sp)
         LazyVerticalGrid(
             state = vm.gridState("search"),
             columns = GridCells.Adaptive(d.liveMin),
             horizontalArrangement = Arrangement.spacedBy(d.gap), verticalArrangement = Arrangement.spacedBy(d.gap),
             contentPadding = PaddingValues(4.dp)
         ) {
+            if (progs.isNotEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }, key = "prog-head") {
+                    Text("برامج في الدليل (${progs.size})", color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+                items(progs, key = { "p" + it.first.url + it.second.start }, span = { GridItemSpan(maxLineSpan) }) { (c, p) ->
+                    ProgRow(vm, c, p)
+                }
+                if (r.isNotEmpty()) item(span = { GridItemSpan(maxLineSpan) }, key = "prog-tail") {
+                    Text("القنوات والأفلام والمسلسلات (${r.size})", color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+            }
             items(r, key = { it.url + it.id }) { c -> if (kindOf(c) == Kind.Live) LiveCard(vm, c) else PosterCard(vm, c) }
+        }
+    }
+}
+
+/** A program found in the EPG: tap to watch the channel (airing now) or choose watch / record (upcoming). */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun ProgRow(vm: AppViewModel, c: Channel, p: Prog) {
+    val airing = p.start <= System.currentTimeMillis()
+    Focusable(
+        onClick = {
+            if (airing) vm.play(c)
+            else vm.menu = MenuRequest(p.title, listOf("▶ مشاهدة القناة" to { vm.play(c) }, "⏺ تسجيل البرنامج" to { vm.record(c, p) }))
+        },
+        modifier = Modifier.fillMaxWidth(), zoom = 1.02f
+    ) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                if (airing) "الآن" else dayHm(p.start), color = if (airing) Accent else TextSecondary,
+                fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(84.dp), maxLines = 1
+            )
+            Column(Modifier.weight(1f)) {
+                Text(p.title, fontSize = 14.sp, maxLines = 1, color = Ink)
+                Text(c.name, fontSize = 11.sp, maxLines = 1, color = TextSecondary)
+            }
         }
     }
 }

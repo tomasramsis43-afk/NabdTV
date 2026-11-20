@@ -1,5 +1,9 @@
 package com.nabd.tv
 
+import android.content.Intent
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -121,6 +125,20 @@ fun BottomBar(vm: AppViewModel) {
 fun Header(vm: AppViewModel, d: Device, title: String, accent: String) {
     var searchOpen by remember { mutableStateOf(false) }
     val narrow = d.widthDp < 600 || (d.touch && d.portrait)
+    val voice = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        val said = r.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+        if (!said.isNullOrBlank()) { vm.query = said; searchOpen = true }
+    }
+    fun startVoice() {
+        runCatching {
+            voice.launch(
+                Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ar")
+                    .putExtra(RecognizerIntent.EXTRA_PROMPT, "قل اسم القناة أو الفيلم أو المسلسل")
+            )
+        }.onFailure { vm.say("البحث الصوتي غير مدعوم على هذا الجهاز") }
+    }
     Column {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AccentTitle(title, accent, size = if (d.tv) 30.sp else if (narrow) 22.sp else 26.sp, modifier = Modifier.weight(1f))
@@ -129,6 +147,7 @@ fun Header(vm: AppViewModel, d: Device, title: String, accent: String) {
             } else {
                 SearchField(vm.query, { vm.query = it })
             }
+            MBtn("🎤", filled = false) { startVoice() }
             IconBtn(Ic.Refresh, { vm.refresh() })
             if (narrow) IconBtn(Ic.Settings, { vm.openSettings() })
         }

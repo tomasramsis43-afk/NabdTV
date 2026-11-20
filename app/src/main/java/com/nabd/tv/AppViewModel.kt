@@ -161,17 +161,29 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Global search across live, movies and series, answered by the database. */
     var searchResults by mutableStateOf<List<Channel>>(emptyList()); private set
+    /** Programs (now or upcoming) whose title matches the search, taken from the EPG. */
+    var progResults by mutableStateOf<List<Pair<Channel, Prog>>>(emptyList()); private set
     private var searchJob: kotlinx.coroutines.Job? = null
 
     fun runSearch() {
         searchJob?.cancel()
         val q = query
-        if (q.isBlank()) { searchResults = emptyList(); return }
+        if (q.isBlank()) { searchResults = emptyList(); progResults = emptyList(); return }
         searchJob = viewModelScope.launch {
             kotlinx.coroutines.delay(250)   // debounce typing
             val h = store.hiddenChannels
             val rows = withContext(Dispatchers.IO) { repo.dao.search(q) }
             searchResults = rows.map { it.toChannel() }.filter { ok(it, kindOf(it) == Kind.Live, h) }
+            val now = System.currentTimeMillis()
+            val epgNow = epg
+            val live = liveList
+            progResults = if (q.trim().length < 2 || epgNow.isEmpty()) emptyList() else withContext(Dispatchers.Default) {
+                val byUrl = live.associateBy { it.url }
+                epgNow.entries.flatMap { (url, list) ->
+                    val c = byUrl[url] ?: return@flatMap emptyList<Pair<Channel, Prog>>()
+                    list.filter { it.stop > now && it.title.contains(q, ignoreCase = true) }.take(2).map { c to it }
+                }.sortedBy { it.second.start }.take(40)
+            }
         }
     }
 
