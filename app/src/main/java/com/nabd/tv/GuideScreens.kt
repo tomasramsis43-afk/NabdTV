@@ -29,6 +29,7 @@ fun GuideTab(vm: AppViewModel) {
         return
     }
     val sel = vm.guideChannel ?: channels.first()
+    val selFr = remember { androidx.compose.ui.focus.FocusRequester() }
     val d = LocalDevice.current
     if (d.widthDp < 600) {
         // Phones: channel chips on top, programmes below.
@@ -38,7 +39,8 @@ fun GuideTab(vm: AppViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 4.dp)
             ) {
                 items(channels, key = { it.url + it.id }) { c ->
-                    Focusable(selected = c.url == sel.url, onClick = { vm.guideChannel = c }, onLongClick = { vm.channelMenu(c) }) {
+                    if (c.url == sel.url) EntryPoint(vm, "guide", selFr)
+                    Focusable(selected = c.url == sel.url, focusRequester = if (c.url == sel.url) selFr else null, onClick = { vm.guideChannel = c }, onLongClick = { vm.channelMenu(c) }) {
                         Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                             AsyncImage(model = c.logo, contentDescription = null, modifier = Modifier.size(26.dp))
                             Spacer(Modifier.width(6.dp))
@@ -55,7 +57,8 @@ fun GuideTab(vm: AppViewModel) {
     Row(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.width(d.sideList), state = vm.listState("guideChannels"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             items(channels, key = { it.url + it.id }) { c ->
-                Focusable(selected = c.url == sel.url, onClick = { vm.guideChannel = c }, onLongClick = { vm.channelMenu(c) }, modifier = Modifier.fillMaxWidth()) {
+                if (c.url == sel.url) EntryPoint(vm, "guide", selFr)
+                    Focusable(selected = c.url == sel.url, focusRequester = if (c.url == sel.url) selFr else null, onClick = { vm.guideChannel = c }, onLongClick = { vm.channelMenu(c) }, modifier = Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         AsyncImage(model = c.logo, contentDescription = null, modifier = Modifier.size(34.dp))
                         Spacer(Modifier.width(8.dp))
@@ -130,6 +133,7 @@ private fun programmeMenu(vm: AppViewModel, c: Channel, p: Prog) {
 fun RecordingsTab(vm: AppViewModel) {
     LaunchedEffect(Unit) { vm.refreshRecordings() }
     val list = vm.recordings.filter { it.status != RecStatus.Cancelled }.sortedByDescending { it.start }
+    val recFr = remember { androidx.compose.ui.focus.FocusRequester() }
     Column {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("التسجيلات (${list.size})", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Ink)
@@ -142,7 +146,9 @@ fun RecordingsTab(vm: AppViewModel) {
                     RecStatus.Scheduled -> "مجدول"; RecStatus.Recording -> "● يسجّل"
                     RecStatus.Done -> "جاهز"; RecStatus.Failed -> "فشل"; RecStatus.Cancelled -> ""
                 }
+                if (r.id == list.first().id) EntryPoint(vm, "rec", recFr)
                 Focusable(
+                    focusRequester = if (r.id == list.first().id) recFr else null,
                     onClick = {
                         val items = ArrayList<Pair<String, () -> Unit>>()
                         if (r.status == RecStatus.Done && r.file != null) items += "▶ تشغيل" to { vm.playRecording(r) }
@@ -162,5 +168,14 @@ fun RecordingsTab(vm: AppViewModel) {
                 }
             }
         }
+    }
+}
+
+/** Registers a composed item as the place the remote lands when entering this page from the side rail. */
+@Composable
+fun EntryPoint(vm: AppViewModel, key: String, fr: androidx.compose.ui.focus.FocusRequester) {
+    DisposableEffect(key, fr) {
+        vm.cardFocus[key] = fr; vm.firstKey = key
+        onDispose { if (vm.cardFocus[key] === fr) vm.cardFocus.remove(key) }
     }
 }
