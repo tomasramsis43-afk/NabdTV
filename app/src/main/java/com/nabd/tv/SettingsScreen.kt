@@ -205,6 +205,18 @@ fun SettingsScreen(vm: AppViewModel) {
             }
         }
 
+        Section("ترجمة من الإنترنت (OpenSubtitles)") {
+            Row2("مفتاح API", if (s.osKey.isBlank()) "—" else "••••") {
+                vm.prompt = PromptRequest("مفتاح OpenSubtitles API", s.osKey) { v -> upd { s.osKey = v } }
+            }
+            Row2("اسم المستخدم", s.osUser.ifBlank { "—" }) {
+                vm.prompt = PromptRequest("اسم مستخدم OpenSubtitles", s.osUser) { v -> upd { s.osUser = v } }
+            }
+            Row2("كلمة المرور", if (s.osPass.isBlank()) "—" else "••••") {
+                vm.prompt = PromptRequest("كلمة مرور OpenSubtitles", "") { v -> upd { s.osPass = v } }
+            }
+        }
+
         Section("التطبيق") {
             val ctxU = androidx.compose.ui.platform.LocalContext.current
             Toggle("تحديث تلقائي عند صدور إصدار جديد", UpdatePrefs.auto(ctxU)) { upd { UpdatePrefs.setAuto(ctxU, it) } }

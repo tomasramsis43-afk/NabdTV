@@ -25,6 +25,16 @@ object SubtitleFiles {
         ExternalSubtitle(out.absolutePath, name, "auto")
     }.getOrNull()
 
+    /** Saves downloaded subtitle bytes the same way [copy] stores a picked file. */
+    fun save(ctx: Context, bytes: ByteArray, name: String, mediaKey: String): ExternalSubtitle? = runCatching {
+        if (bytes.isEmpty()) return null
+        val dir = File(ctx.filesDir, DIR).apply { mkdirs() }
+        val safe = name.substringBeforeLast('.').take(40).replace(Regex("[^\\p{L}\\p{N}._-]"), "_")
+        val out = File(dir, "${mediaKey.hashCode()}_${System.currentTimeMillis()}_$safe.srt")
+        out.writeBytes(bytes)
+        ExternalSubtitle(out.absolutePath, name, "auto")
+    }.getOrNull()
+
     fun load(sub: ExternalSubtitle): SubtitleParseResult = runCatching {
         val bytes = File(sub.path).readBytes()
         val decoded = SubtitleParser.decode(bytes, sub.encoding)

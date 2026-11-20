@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.tv.material3.Text
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 private data class SheetChoice(val title: String, val options: List<SheetOption>)
 private data class SheetOption(
@@ -69,6 +70,7 @@ fun PlayerSheet(
 
     var tab by remember(ui.sheetRev) { mutableStateOf(ui.sheet ?: PlayerTab.Playback) }
     var choice by remember { mutableStateOf<SheetChoice?>(null) }
+    val scope = rememberCoroutineScope()
     val closeFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { closeFocus.requestFocus() } }
 
@@ -78,6 +80,34 @@ fun PlayerSheet(
 
     fun openChoice(title: String, options: List<SheetOption>) {
         choice = SheetChoice(title, options)
+    }
+
+    /** Online subtitle search (OpenSubtitles): lists results, downloads the picked one and applies it. */
+    fun searchOnlineSubtitles() {
+        if (store.osKey.isBlank() || store.osUser.isBlank() || store.osPass.isBlank()) {
+            vm.say("أدخل مفتاح OpenSubtitles واسم المستخدم وكلمة المرور من الإعدادات"); return
+        }
+        val ep = vm.episodes.firstOrNull { it.url == ch.url }
+        val title = OpenSubtitles.cleanQuery(if (ep != null) vm.detail?.name ?: ch.name else ch.name)
+        if (title.isBlank()) { vm.say("تعذّر تحديد اسم العمل للبحث"); return }
+        vm.say("جارٍ البحث عن ترجمة...")
+        scope.launch {
+            try {
+                val res = OpenSubtitles.search(vm.repo.http, store.osKey, title, ep?.season, ep?.num)
+                if (res.isEmpty()) { vm.say("لا توجد ترجمة لهذا العمل"); return@launch }
+                openChoice("نتائج OpenSubtitles", res.map { r ->
+                    SheetOption("[${r.lang}] ${r.label}  ·  ⬇ ${r.downloads}") {
+                        vm.say("جارٍ تحميل الترجمة...")
+                        scope.launch {
+                            try {
+                                val sub = OpenSubtitles.download(vm.repo.http, ctx, store.osKey, store.osUser, store.osPass, r.fileId, ch.url, title)
+                                actions.useSubtitle(sub)
+                            } catch (e: Exception) { vm.say(e.message ?: "تعذّر تحميل الترجمة") }
+                        }
+                    }
+                })
+            } catch (e: Exception) { vm.say(e.message ?: "تعذّر البحث عن الترجمة") }
+        }
     }
 
     fun setOrientation(pref: OrientationPref) {
@@ -295,6 +325,7 @@ fun PlayerSheet(
                             SheetSection("مصدر الترجمة")
                             SheetRow("تفعيل الترجمة", if (ui.subOn) "مفعّل" else "متوقف") { actions.setSubtitlesEnabled(!ui.subOn) }
                             SheetRow("ترجمة خارجية", ui.extSub?.name ?: "لم يتم تحميل ملف") { actions.loadSubtitle() }
+                            SheetRow("بحث عن ترجمة على الإنترنت", "OpenSubtitles", enabled = !live) { searchOnlineSubtitles() }
                             SheetRow("إزالة الترجمة الخارجية", enabled = ui.extSub != null) { actions.removeSubtitle() }
                             ui.extError?.let { SheetInfo("خطأ: $it", danger = true) }
                             ui.extSub?.let { SheetInfo("الترميز المكتشف: ${ui.extCharset} · ${ui.extCues.size} سطر") }

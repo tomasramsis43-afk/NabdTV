@@ -162,7 +162,8 @@ class PlayerActions(
     val retry: () -> Unit,
     val openExternal: () -> Unit,
     val interact: () -> Unit,
-    val changed: () -> Unit
+    val changed: () -> Unit,
+    val useSubtitle: (ExternalSubtitle) -> Unit = {}
 )
 
 /* ------------------------------------------------------------------ */

@@ -221,6 +221,16 @@ class Store(private val ctx: Context) {
     var catchupOffsetHours: Int
         get() = g.getInt("catchupOffset", 0)
         set(v) = g.edit().putInt("catchupOffset", v).apply()
+    /* OpenSubtitles.com (online subtitle search): the user's own API key + account. */
+    var osKey: String
+        get() = g.getString("osKey", "") ?: ""
+        set(v) = g.edit().putString("osKey", v.trim()).apply()
+    var osUser: String
+        get() = g.getString("osUser", "") ?: ""
+        set(v) = g.edit().putString("osUser", v.trim()).apply()
+    var osPass: String
+        get() = Secret.dec(g.getString("osPass", "") ?: "")
+        set(v) = g.edit().putString("osPass", Secret.enc(v.trim())).apply()
     var tmdbKey: String
         get() = g.getString("tmdbKey", "") ?: ""
         set(v) = g.edit().putString("tmdbKey", v.trim()).apply()

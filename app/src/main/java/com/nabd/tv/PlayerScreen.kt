@@ -148,28 +148,28 @@ fun PlayerScreen(vm: AppViewModel) {
         ui.settingsRev++
     }
 
+    fun applyExternalSubtitle(copied: ExternalSubtitle) {
+        val res = SubtitleFiles.load(copied)
+        store.setExternalSubtitle(chRef.value.url, copied)
+        store.subEncoding = "auto"
+        ui.extSub = copied
+        ui.extCues = res.cues
+        ui.extCharset = res.charset
+        ui.extError = res.error
+        ui.subOn = true
+        store.subEnabled = true
+        player.setSubtitlesEnabled(false)   // avoid double subtitles with Media3's renderer
+        ui.settingsRev++
+        vm.say(
+            if (res.cues.isEmpty()) res.error ?: "لم يتم العثور على ترجمة في الملف"
+            else "تم تحميل ${res.cues.size} سطر ترجمة"
+        )
+    }
+
     val subPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         val copied = SubtitleFiles.copy(ctx, uri, chRef.value.url)
-        if (copied == null) {
-            vm.say("تعذّر قراءة ملف الترجمة")
-        } else {
-            val res = SubtitleFiles.load(copied)
-            store.setExternalSubtitle(chRef.value.url, copied)
-            store.subEncoding = "auto"
-            ui.extSub = copied
-            ui.extCues = res.cues
-            ui.extCharset = res.charset
-            ui.extError = res.error
-            ui.subOn = true
-            store.subEnabled = true
-            player.setSubtitlesEnabled(false)   // avoid double subtitles with Media3's renderer
-            ui.settingsRev++
-            vm.say(
-                if (res.cues.isEmpty()) res.error ?: "لم يتم العثور على ترجمة في الملف"
-                else "تم تحميل ${res.cues.size} سطر ترجمة"
-            )
-        }
+        if (copied == null) vm.say("تعذّر قراءة ملف الترجمة") else applyExternalSubtitle(copied)
     }
 
     val actions = remember(player, rKey, seriesKey, subPicker) {
@@ -362,7 +362,8 @@ fun PlayerScreen(vm: AppViewModel) {
                 }.onFailure { vm.say("لا يوجد مشغّل مناسب على الجهاز") }
             },
             interact = { ui.overlay = true; ui.ping++ },
-            changed = { ui.settingsRev++ }
+            changed = { ui.settingsRev++ },
+            useSubtitle = { applyExternalSubtitle(it) }
         )
     }
 
