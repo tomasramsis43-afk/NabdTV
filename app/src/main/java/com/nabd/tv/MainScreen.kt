@@ -166,25 +166,38 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
     SideEffect { vm.firstKey = shelves.firstOrNull()?.items?.firstOrNull()?.let { shelves.first().title + "|" + it.url + it.id } }
     val focus = vm.homeFocus ?: shelves.first().items.first()
     LaunchedEffect(focus.url, showHero) { if (showHero) { kotlinx.coroutines.delay(350); vm.loadHomeInfo(focus) } }
-    Column(Modifier.fillMaxSize()) {
-        if (showHero) HomeHero(focus, vm.homeInfo?.takeIf { vm.homeInfo != null }, d)
-        LazyColumn(
-            state = vm.listState("home"), modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(d.gap + 4.dp),
-            contentPadding = PaddingValues(bottom = 24.dp, top = 6.dp)
-        ) {
-            items(shelves, key = { it.title }) { s ->
-                Column {
-                    Row(Modifier.padding(bottom = 6.dp, start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(s.title, fontSize = if (d.tv) 18.sp else 17.sp, fontWeight = FontWeight.Bold, color = Ink)
-                        Text("  ›", fontSize = 20.sp, color = TextSecondary)
-                    }
-                    LazyRow(
-                        state = vm.listState("row:" + s.title),
-                        horizontalArrangement = Arrangement.spacedBy(d.gap),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
-                    ) {
-                        itemsIndexed(s.items) { i, c -> HomeCard(vm, d, s, c, i + 1) }
+    val fade = if (Ui.dark) Color(0xFF0B0D1F) else Color(0xFFF1F2FD)
+    Box(Modifier.fillMaxSize()) {
+        if (showHero) {
+            // Full-bleed backdrop of the focused title, fading into the page.
+            Box(Modifier.fillMaxWidth().fillMaxHeight(0.7f).align(Alignment.TopCenter)) {
+                androidx.compose.animation.Crossfade(vm.homeInfo?.backdrop ?: focus.logo, animationSpec = tween(500), label = "bd") { img ->
+                    AsyncImage(model = img, contentDescription = null, contentScale = ContentScale.Crop, alignment = Alignment.TopCenter, modifier = Modifier.fillMaxSize())
+                }
+                Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xF00E1235), Color(0x990E1235), Color(0x220E1235)))))
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to fade)))
+            }
+        }
+        Column(Modifier.fillMaxSize()) {
+            if (showHero) HomeHero(focus, vm.homeInfo, d, Modifier.weight(0.82f))
+            LazyColumn(
+                state = vm.listState("home"), modifier = Modifier.weight(if (showHero) 1.18f else 1f),
+                verticalArrangement = Arrangement.spacedBy(d.gap + 2.dp),
+                contentPadding = PaddingValues(bottom = 24.dp, top = 4.dp)
+            ) {
+                items(shelves, key = { it.title }) { s ->
+                    Column {
+                        Row(Modifier.padding(bottom = 4.dp, start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(s.title, fontSize = if (d.tv) 19.sp else 17.sp, fontWeight = FontWeight.Bold, color = Ink)
+                            Text("  ›", fontSize = 22.sp, color = Accent)
+                        }
+                        LazyRow(
+                            state = vm.listState("row:" + s.title),
+                            horizontalArrangement = Arrangement.spacedBy(if (s.ranked) d.gap + 14.dp else d.gap),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                        ) {
+                            itemsIndexed(s.items) { i, c -> HomeCard(vm, d, s, c, i + 1) }
+                        }
                     }
                 }
             }
@@ -197,65 +210,71 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
 private fun HomeCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel, rank: Int) {
     val key = s.title + "|" + ch.url + ch.id
     val fr = rememberCardFocus(vm, key)
-    val landscape = s.ranked || s.title == "استكمال المشاهدة"
-    val progress = if (s.title == "استكمال المشاهدة") vm.history.firstOrNull { it.url == ch.url }?.progress ?: 0f else 0f
-    val w = if (landscape) (if (d.tv) 250.dp else 190.dp) else d.shelfPoster
-    Focusable(
-        onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) },
-        onFocused = { vm.lastFocusKey = key; vm.homeFocus = ch }, focusRequester = fr,
-        modifier = Modifier.width(w)
-    ) {
-        Box {
-            AsyncImage(
-                model = ch.logo, contentDescription = null, contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxWidth().aspectRatio(if (landscape) 16f / 9f else 2f / 3f).background(Surf)
+    val cont = s.title == "استكمال المشاهدة"
+    val progress = if (cont) vm.history.firstOrNull { it.url == ch.url }?.progress ?: 0f else 0f
+    Row(verticalAlignment = Alignment.Bottom) {
+        if (s.ranked) {
+            Text(
+                "$rank", fontSize = if (d.tv) 92.sp else 70.sp, fontWeight = FontWeight.Black, maxLines = 1, softWrap = false,
+                style = androidx.compose.ui.text.TextStyle(
+                    color = Accent, drawStyle = androidx.compose.ui.graphics.drawscope.Stroke(width = 5f, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+                ),
+                modifier = Modifier.padding(end = 2.dp).offset(y = 6.dp)
             )
-            if (s.ranked && d.tv) {
-                Text("$rank", fontSize = 64.sp, fontWeight = FontWeight.Black, color = Color.White.copy(alpha = 0.92f),
-                    modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp))
-            }
-            if (!s.ranked) ratingBadge(ch)?.let { r ->
-                Row(
-                    Modifier.align(Alignment.TopStart).padding(6.dp).clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xCC0E1235)).padding(horizontal = 7.dp, vertical = 3.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("★", fontSize = 11.sp, color = Color(0xFFFFC857)); Spacer(Modifier.width(3.dp))
-                    Text(r, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        }
+        Focusable(
+            onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) },
+            onFocused = { vm.lastFocusKey = key; vm.homeFocus = ch }, focusRequester = fr,
+            modifier = Modifier.width(if (d.tv) 128.dp else 108.dp)
+        ) {
+            Box {
+                AsyncImage(
+                    model = ch.logo, contentDescription = null, contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f).background(Surf)
+                )
+                ratingBadge(ch)?.let { r ->
+                    Row(
+                        Modifier.align(Alignment.TopStart).padding(6.dp).clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xCC0E1235)).padding(horizontal = 7.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("★", fontSize = 11.sp, color = Color(0xFFFFC857)); Spacer(Modifier.width(3.dp))
+                        Text(r, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
+                if (progress > 0.02f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) {
+                    Box(Modifier.fillMaxHeight().fillMaxWidth(progress).background(Accent))
                 }
             }
-            if (progress > 0.02f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) {
-                Box(Modifier.fillMaxHeight().fillMaxWidth(progress).background(Accent))
-            }
-        }
-        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (s.ranked && !d.tv) Text("$rank", fontSize = 30.sp, fontWeight = FontWeight.Black, color = Ink, modifier = Modifier.padding(end = 8.dp))
-            Column {
-                Text(ch.name, maxLines = if (s.ranked) 1 else 2, overflow = TextOverflow.Ellipsis, fontSize = 12.sp, color = Ink)
-                if (s.ranked) ratingBadge(ch)?.let { Text("$it/10", fontSize = 11.sp, color = TextSecondary) }
-            }
+            Text(ch.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp, color = Ink, modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp))
         }
     }
 }
 
-/** Big preview of the focused title (TV / tablet / landscape), like a streaming-app home. */
+/** Title block of the focused item over the backdrop (TV / tablet / landscape). */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun HomeHero(c: Channel, info: VodInfo?, d: Device) {
-    Box(Modifier.fillMaxWidth().height(if (d.tv) 230.dp else 190.dp).clip(RoundedCornerShape(Radius.card)).background(Surf)) {
-        AsyncImage(model = info?.backdrop ?: c.logo, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xF00E1235), Color(0x550E1235)))))
-        Column(Modifier.align(Alignment.CenterStart).padding(22.dp).fillMaxWidth(0.55f)) {
-            Text(c.name, fontSize = if (d.tv) 28.sp else 22.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            val chips = listOfNotNull(ratingBadge(c)?.let { "★ $it" }, info?.year?.takeIf { it.isNotBlank() }, info?.genre?.takeIf { it.isNotBlank() }).joinToString("   ·   ")
-            if (chips.isNotEmpty()) Text(chips, fontSize = 13.sp, color = Color(0xFFC9CBFF), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            info?.plot?.takeIf { it.isNotBlank() }?.let {
-                Spacer(Modifier.height(6.dp))
-                Text(it, fontSize = 12.sp, color = Color(0xFFE0E2FF), maxLines = 3, overflow = TextOverflow.Ellipsis)
-            }
+private fun HomeHero(c: Channel, info: VodInfo?, d: Device, modifier: Modifier) {
+    Column(modifier.fillMaxWidth(0.55f).padding(start = 8.dp, top = 6.dp), verticalArrangement = Arrangement.Center) {
+        Text(c.name, fontSize = if (d.tv) 34.sp else 26.sp, fontWeight = FontWeight.Black, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            ratingBadge(c)?.let { HeroChip("★ $it", Color(0xFFFFC857), Color(0xFF0E1235)) }
+            info?.year?.takeIf { it.isNotBlank() }?.let { HeroChip(it) }
+            info?.genre?.takeIf { it.isNotBlank() }?.split(',', '،', '/')?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(2)?.forEach { HeroChip(it) }
+        }
+        info?.plot?.takeIf { it.isNotBlank() }?.let {
+            Spacer(Modifier.height(10.dp))
+            Text(it, fontSize = if (d.tv) 14.sp else 13.sp, lineHeight = 20.sp, color = Color(0xFFE0E2FF), maxLines = 3, overflow = TextOverflow.Ellipsis)
         }
     }
-    Spacer(Modifier.height(8.dp))
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun HeroChip(t: String, bg: Color = Color(0x33FFFFFF), fg: Color = Color.White) {
+    Text(t, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = fg, maxLines = 1,
+        modifier = Modifier.clip(RoundedCornerShape(50)).background(bg).padding(horizontal = 10.dp, vertical = 4.dp))
 }
 
 /** Pulsing placeholders while the first list loads. */
