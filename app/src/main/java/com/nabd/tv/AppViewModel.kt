@@ -216,31 +216,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val out = ArrayList<Shelf>()
         val cont = history.filter { it.kind != Kind.Live && !it.finished && it.progress > 0.02f && parental.visible(histChannel(it)) }
             .take(20).map { histChannel(it) }
-        if (cont.isNotEmpty()) out += Shelf("استكمال المشاهدة", cont, style = ShelfStyle.Wide)
-
-        // Live TV belongs on the home screen of an IPTV app: favourites first, otherwise what is on air now.
-        val favLive = liveList.filter { it.url in favs }.take(20)
-        if (favLive.isNotEmpty()) out += Shelf("قنواتي المفضلة", favLive, style = ShelfStyle.Live)
-        else {
-            val onAir = liveList.asSequence().filter { nowNext(it).first != null }.take(15).toList()
-            if (onAir.isNotEmpty()) out += Shelf("على الهواء الآن", onAir, style = ShelfStyle.Live)
-        }
-
-        val forYou = recs.filter { kindOf(it) != Kind.Live && parental.visible(it) }.take(20)
-        if (forYou.isNotEmpty()) out += Shelf("مقترح لك", forYou)
-        because?.let { (title, l) ->
-            val items = l.filter { kindOf(it) != Kind.Live && parental.visible(it) }.take(20)
-            if (items.isNotEmpty()) out += Shelf("لأنك شاهدت $title", items)
-        }
-
+        if (cont.isNotEmpty()) out += Shelf("استكمال المشاهدة", cont)
         fun top(l: List<Channel>) = l.filter { (it.rating?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: 0.0) > 0.0 }
             .sortedByDescending { it.rating!!.trim().replace(',', '.').toDouble() }.take(10)
         val topM = top(movieList)
         if (topM.isNotEmpty()) out += Shelf("الأفلام الأعلى تقييماً", topM, ranked = true)
-        val newMovies = movieList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { movieList.take(30) }
-        if (newMovies.isNotEmpty()) out += Shelf("أحدث الأفلام", newMovies)
         val topS = top(seriesList)
         if (topS.isNotEmpty()) out += Shelf("المسلسلات الأعلى تقييماً", topS, ranked = true)
+        val newMovies = movieList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { movieList.take(30) }
+        if (newMovies.isNotEmpty()) out += Shelf("أحدث الأفلام", newMovies)
         val newSeries = seriesList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { seriesList.take(30) }
         if (newSeries.isNotEmpty()) out += Shelf("أحدث المسلسلات", newSeries)
         out
