@@ -713,7 +713,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         play(Channel(-1, r.title, "file://$f", null, r.channelName), PlayMode.Recording, 0)
     }
 
-    fun stop() { history = store.history(); restoreFocus = true; screen = back; bump(); refreshRecs() }
+    fun stop() { sleepAt = 0L; history = store.history(); restoreFocus = true; screen = back; bump(); refreshRecs() }
 
     fun zap(delta: Int) {
         if (!zapEnabled) return

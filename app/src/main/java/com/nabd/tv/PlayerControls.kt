@@ -53,6 +53,8 @@ class PlayerUiState {
     var settingsRev by mutableIntStateOf(0)
     var buffered by mutableLongStateOf(0L)
     var playing by mutableStateOf(false)
+    /** playWhenReady: what the play button will do next (isPlaying is false while buffering). */
+    var wantPlay by mutableStateOf(true)
     var speed by mutableFloatStateOf(1f)
 
     var aspect by mutableStateOf(AspectMode.Fit)
@@ -278,7 +280,9 @@ fun PlayerTimeline(
     onSeekBy: (Long) -> Unit,
     onSeekTo: (Long) -> Unit,
     onInteract: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null,
+    onToggle: (() -> Unit)? = null
 ) {
     val duration = ui.duration
     var focused by remember { mutableStateOf(false) }
@@ -323,6 +327,7 @@ fun PlayerTimeline(
                     Modifier
                         .weight(1f)
                         .height(if (LocalDevice.current.tv) 34.dp else 40.dp)
+                        .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
                         .onFocusChanged { focused = it.isFocused }
                         .onPreviewKeyEvent { ev ->
                             if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -335,6 +340,7 @@ fun PlayerTimeline(
                                     val base = seekInterval.coerceAtLeast(1) * 1000L
                                     onSeekBy(seekAccelerated(base, ev.nativeKeyEvent.repeatCount)); true
                                 }
+                                Key.DirectionCenter, Key.Enter -> if (onToggle != null) { onToggle(); true } else false
                                 else -> false
                             }
                         }

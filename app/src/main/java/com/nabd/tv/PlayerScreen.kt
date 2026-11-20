@@ -102,6 +102,9 @@ fun PlayerScreen(vm: AppViewModel) {
     var startedAt by remember { mutableLongStateOf(0L) }
     val rootFocus = remember { FocusRequester() }
     val playFocus = remember { FocusRequester() }
+    val timelineFocus = remember { FocusRequester() }
+    val nextFocus = remember { FocusRequester() }
+    val endFocus = remember { FocusRequester() }
 
     fun openSheet(tab: PlayerTab) {
         ui.sheet = tab
@@ -222,7 +225,7 @@ fun PlayerScreen(vm: AppViewModel) {
             resetZoom = { ui.zoom = 1f; ui.panX = 0f; ui.panY = 0f; hud("🔍 100%") },
             rotate = { ui.rotation = (ui.rotation + 90) % 360; hud("↻ ${ui.rotation}°") },
             resetTransform = { ui.zoom = 1f; ui.panX = 0f; ui.panY = 0f; ui.rotation = 0; hud("↺") },
-            setLoop = { on -> ui.loop = on; store.loopByDefault = on; ui.settingsRev++; hud(if (on) "🔁 تكرار" else "🔁 إيقاف التكرار") },
+            setLoop = { on -> ui.loop = on; ui.settingsRev++; hud(if (on) "🔁 تكرار" else "🔁 إيقاف التكرار") },
             setPointA = {
                 ui.abStart = player.currentPosition
                 if (ui.abEnd <= ui.abStart) ui.abEnd = -1L
@@ -428,6 +431,11 @@ fun PlayerScreen(vm: AppViewModel) {
         rootFocus.requestFocus()
     }
 
+    LaunchedEffect(ch.url) {
+        ui.zoom = 1f; ui.panX = 0f; ui.panY = 0f; ui.rotation = 0
+        ui.abStart = -1L; ui.abEnd = -1L
+    }
+
     LaunchedEffect(rKey) {
         val legacy = runCatching { vprefs.getInt("r:" + (seriesKey ?: ch.url).hashCode(), -1) }.getOrDefault(-1)
         val legacyMode = when (legacy) {
@@ -439,8 +447,6 @@ fun PlayerScreen(vm: AppViewModel) {
         }
         val saved = runCatching { vprefs.getString(rKey, null) }.getOrNull()
         ui.aspect = saved?.let { AspectMode.of(it) } ?: legacyMode ?: AspectMode.of(store.defaultAspect)
-        ui.zoom = 1f; ui.panX = 0f; ui.panY = 0f; ui.rotation = 0
-        ui.abStart = -1L; ui.abEnd = -1L
         ui.loop = store.loopByDefault
         ui.seekInterval = store.seekInterval
         ui.subOn = store.subEnabled
@@ -544,7 +550,7 @@ fun PlayerScreen(vm: AppViewModel) {
                             if (player.duration > pendingResume + 5_000L) {
                                 player.playWhenReady = false
                                 ui.resumeAt = pendingResume
-                            }
+                            } else player.playWhenReady = true   // nothing to ask about: start playing instead of staying paused
                             pendingResume = -1L
                         }
                         if (LiveRewind.pending > 0) {
@@ -626,6 +632,7 @@ fun PlayerScreen(vm: AppViewModel) {
             ui.duration = player.duration.takeIf { it > 0 && it != C.TIME_UNSET } ?: 0L
             ui.buffered = player.bufferedPosition
             ui.playing = player.isPlaying
+            ui.wantPlay = player.playWhenReady
             ui.speed = player.playbackParameters.speed
             ui.volume = am.getStreamVolume(AudioManager.STREAM_MUSIC)
             ui.volumeMax = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
@@ -676,16 +683,17 @@ fun PlayerScreen(vm: AppViewModel) {
 
     // Save the position of the outgoing title before its media item is replaced.
     DisposableEffect(ch.url, player) {
+        val outgoing = ch   // captured now: chRef already points at the next episode when this runs
         onDispose {
-            if (store.rememberPosition && vm.playMode == PlayMode.Vod)
-                vm.saveProgress(chRef.value, ui.position, ui.duration)
+            if (store.rememberPosition && vm.playMode == PlayMode.Vod && ui.duration > 0 && ui.resumeAt <= 0L && ui.error == null)
+                vm.saveProgress(outgoing, ui.position, ui.duration)
         }
     }
 
     LaunchedEffect(ch.url, player) {
         while (true) {
             delay(10_000)
-            if (store.rememberPosition && vm.playMode == PlayMode.Vod)
+            if (store.rememberPosition && vm.playMode == PlayMode.Vod && ui.duration > 0 && ui.resumeAt <= 0L && ui.error == null)
                 vm.saveProgress(chRef.value, ui.position, ui.duration)
         }
     }
@@ -736,16 +744,25 @@ fun PlayerScreen(vm: AppViewModel) {
         if (ui.overlay && ui.sheet == null && !ui.panel && !ui.locked && ui.error == null &&
             ui.resumeAt <= 0L && !ui.showJump && ui.nextEp == null
         ) {
-            delay(if (dev.tv) 7_000L else 3_500L)
+            delay(if (dev.tv) 7_000L else if (vod) 5_000L else 3_500L)
             if (ui.overlay && ui.sheet == null && !ui.panel && !ui.locked && ui.error == null &&
                 ui.resumeAt <= 0L && !ui.showJump && ui.nextEp == null && !(vod && !player.playWhenReady)
             ) ui.overlay = false
         }
     }
 
-    LaunchedEffect(ui.overlay, ui.sheet, ui.panel, dev.tv) {
-        if (ui.overlay && ui.sheet == null && !ui.panel && dev.tv) runCatching { playFocus.requestFocus() }
+    LaunchedEffect(ui.overlay, ui.sheet, ui.panel, dev.tv, ui.duration > 0) {
+        if (ui.overlay && ui.sheet == null && !ui.panel && !ui.locked && dev.tv) {
+            delay(60)
+            // Movies / episodes: land on the timeline so Left/Right scrub immediately.
+            runCatching { if (vod && ui.duration > 0) timelineFocus.requestFocus() else playFocus.requestFocus() }
+        } else if (!ui.overlay && ui.sheet == null && !ui.panel && ui.nextEp == null && !ui.ended && ui.resumeAt <= 0L && ui.error == null) {
+            // Controls hid while a button had focus: hand the keys back to the player.
+            runCatching { rootFocus.requestFocus() }
+        }
     }
+    LaunchedEffect(ui.nextEp) { if (ui.nextEp != null) { delay(80); runCatching { nextFocus.requestFocus() } } }
+    LaunchedEffect(ui.ended) { if (ui.ended) { delay(80); runCatching { endFocus.requestFocus() } } }
 
     LaunchedEffect(ui.nextEp) {
         val target = ui.nextEp ?: return@LaunchedEffect
@@ -778,6 +795,7 @@ fun PlayerScreen(vm: AppViewModel) {
             ui.showJump -> ui.showJump = false
             ui.panel -> { ui.panel = false; runCatching { rootFocus.requestFocus() } }
             ui.locked -> { ui.lockHint = true; hud("🔒 الشاشة مقفولة، اضغط 🔓 لفتح القفل") }
+            vod && ui.overlay && dev.tv -> { ui.overlay = false; runCatching { rootFocus.requestFocus() } }
             else -> vm.stop()
         }
     }
@@ -824,7 +842,7 @@ fun PlayerScreen(vm: AppViewModel) {
         }
 
         // With controls visible, arrows move focus between focusable buttons / the timeline.
-        if (ui.overlay && dev.tv) return false
+        if (ui.overlay && (dev.tv || vod)) { if (vod) ui.ping++; return false }
 
         fun scrub(direction: Int) {
             val base = ui.seekInterval.coerceAtLeast(1) * 1_000L
@@ -835,6 +853,20 @@ fun PlayerScreen(vm: AppViewModel) {
                 else -> 12
             }
             actions.seekBy(direction * base * multiplier)
+        }
+
+        if (vod) {
+            // Controls hidden: ANY arrow brings up the timeline (Left/Right also move through the film).
+            when (ev.key) {
+                Key.DirectionLeft -> { scrub(-1); ui.overlay = true; ui.ping++; return true }
+                Key.DirectionRight -> { scrub(1); ui.overlay = true; ui.ping++; return true }
+                Key.DirectionUp, Key.DirectionDown -> { ui.overlay = true; ui.ping++; return true }
+                Key.DirectionCenter, Key.Enter -> {
+                    if (showSkip) { player.seekTo(introEnd); hud("⏭ تم تخطي المقدمة") } else actions.togglePlay()
+                    ui.overlay = true; ui.ping++; return true
+                }
+                else -> {}
+            }
         }
 
         return when (ev.key) {
@@ -1071,7 +1103,7 @@ fun PlayerScreen(vm: AppViewModel) {
         }
 
         // Top bar
-        if (ui.overlay && !ui.locked && !vm.inPip && ui.sheet == null) {
+        if (ui.overlay && !ui.locked && !vm.inPip && ui.sheet == null && !vod) {
             Row(
                 Modifier.align(Alignment.TopCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color(0xCC000000), Color.Transparent)))
@@ -1108,8 +1140,30 @@ fun PlayerScreen(vm: AppViewModel) {
             }
         }
 
-        // Bottom control bar
-        if (ui.overlay && !ui.locked && !vm.inPip && ui.sheet == null && ui.error == null && ui.resumeAt <= 0L) {
+        // Movies / series: the new icon-based controls.
+        if (vod && ui.overlay && !ui.locked && !vm.inPip && ui.sheet == null && ui.error == null && ui.resumeAt <= 0L &&
+            !ui.showJump && ui.nextEp == null && !ui.ended
+        ) {
+            VodOverlay(
+                title = if (seriesKey != null) (vm.detail?.name ?: ch.name) + " — " + ch.name else ch.name,
+                subtitle = player.videoFormat?.let { "${it.width}×${it.height}" },
+                ui = ui, thumbnails = thumbnails, seekInterval = ui.seekInterval,
+                hasPrev = vm.hasPreviousEpisode(chRef.value), hasNext = vm.hasNextEpisode(chRef.value),
+                hasEpisodes = vm.episodes.any { it.url == chRef.value.url },
+                timelineFocus = timelineFocus,
+                onBack = { vm.stop() }, onToggle = { actions.togglePlay() },
+                onSeekBy = actions.seekBy, onSeekTo = actions.seekTo,
+                onPrev = { actions.prevEpisode() }, onNext = { actions.nextEpisode() },
+                onSubs = { openSheet(PlayerTab.Subtitles) },
+                onEpisodes = { openSheet(PlayerTab.Episodes) },
+                onSettings = { openSheet(PlayerTab.Playback) },
+                onPip = { actions.enterPip() }, onLock = { actions.toggleLock() },
+                onInteract = actions.interact
+            )
+        }
+
+        // Bottom control bar (live TV, catch-up, recordings)
+        if (ui.overlay && !ui.locked && !vm.inPip && ui.sheet == null && ui.error == null && ui.resumeAt <= 0L && !vod) {
             Column(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xEE000000))))
@@ -1203,7 +1257,7 @@ fun PlayerScreen(vm: AppViewModel) {
                     color = Color.White, fontSize = 14.sp)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MBtn("تشغيل الآن") { ui.nextEp = null; vm.playNext() }
+                    MBtn("تشغيل الآن", modifier = Modifier.focusRequester(nextFocus)) { ui.nextEp = null; vm.playNext() }
                     MBtn("إلغاء", filled = false) { ui.nextEp = null }
                 }
             }
@@ -1218,7 +1272,7 @@ fun PlayerScreen(vm: AppViewModel) {
                 Text("انتهى المحتوى", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MBtn("إعادة") { actions.restart() }
+                    MBtn("إعادة", modifier = Modifier.focusRequester(endFocus)) { actions.restart() }
                     if (vm.hasNextEpisode(chRef.value)) MBtn("الحلقة التالية") { vm.playNext() }
                     MBtn("خروج", filled = false) { vm.stop() }
                 }
