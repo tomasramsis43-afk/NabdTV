@@ -59,6 +59,7 @@ fun SettingsScreen(vm: AppViewModel) {
         }
 
         Section("المصدر") {
+            Row2("تحديث الحساب من السيرفر (قنوات + أفلام + مسلسلات + دليل)") { vm.refreshAccount() }
             Row2("تغيير السيرفر / الاشتراك") { vm.openSetup() }
             if (vm.hasXtream) Row2(if (vm.diagBusy) "جارٍ الفحص..." else "فحص الحساب والاتصالات") { vm.runDiag() }
             vm.diag?.let { Text(it, fontSize = 13.sp, color = Ink) }

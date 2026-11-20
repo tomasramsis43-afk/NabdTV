@@ -450,6 +450,18 @@ class Repo(private val ctx: Context, val store: Store) {
         }
     }
 
+    /** One-line account status from the server (null when the login is not Xtream or the server did not answer). */
+    suspend fun accountInfo(): String? = withContext(Dispatchers.IO) {
+        val (b, u, p) = xt() ?: return@withContext null
+        try {
+            val ui = JSONObject(fetch("$b/player_api.php?username=${Uri.encode(u)}&password=${Uri.encode(p)}")).optJSONObject("user_info")
+                ?: return@withContext null
+            val exp = str(ui, "exp_date").toLongOrNull()
+                ?.let { SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(it * 1000)) } ?: "غير محدود"
+            "الحساب: ${str(ui, "status")} · ينتهي: $exp · الاتصالات: ${str(ui, "active_cons")}/${str(ui, "max_connections")}"
+        } catch (_: Exception) { null }
+    }
+
     /** Self-test: account status and connection limit (the stream-level probes live in HealthChecker). */
     suspend fun diagnose(): String = withContext(Dispatchers.IO) {
         val (b, u, p) = xt() ?: return@withContext "الدخول ليس بـ Xtream"

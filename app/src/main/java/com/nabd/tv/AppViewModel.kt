@@ -333,7 +333,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (t == Tab.Recordings) recordings = store.recordings()
     }
 
-    fun refresh() { if (tab == Tab.Movies || tab == Tab.Series) loadVod(tab, true) else load(true) }
+    fun refresh() {
+        if (tab == Tab.Movies || tab == Tab.Series) loadVod(tab, true)
+        else if (tab == Tab.Home && hasXtream) refreshAccount()
+        else load(true)
+    }
+
+    /** Re-reads everything from the provider: account status, channels, movies, series and the guide. */
+    fun refreshAccount() {
+        viewModelScope.launch {
+            say("جارٍ تحديث الحساب من السيرفر...")
+            val info = repo.accountInfo()
+            if (info != null) say(info)
+            load(true)
+            if (hasXtream) {
+                clearJob?.join()
+                fetchVod(Tab.Movies, true, silent = false)
+                fetchVod(Tab.Series, true, silent = false)
+            }
+        }
+    }
 
     private fun resetVod() {
         movies = emptyList(); series = emptyList(); tab = Tab.Home
