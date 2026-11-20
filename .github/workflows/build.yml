@@ -26,7 +26,16 @@ jobs:
         run: |
           if [ -n "$KEYSTORE_B64" ]; then echo "$KEYSTORE_B64" | base64 -d > app/nabd-release.jks; fi
       - name: Unit tests
-        run: gradle testDebugUnitTest --no-daemon
+        run: |
+          set +e
+          gradle testDebugUnitTest --no-daemon > test.log 2>&1
+          rc=$?
+          if [ $rc -ne 0 ]; then
+            ERR=$(grep -E "^e: |What went wrong|error:|FAILED" -A3 test.log | head -40)
+            ERR="${ERR//$'\n'/%0A}"
+            echo "::error::$ERR"
+          fi
+          exit $rc
       - name: Build
         run: |
           set +e
