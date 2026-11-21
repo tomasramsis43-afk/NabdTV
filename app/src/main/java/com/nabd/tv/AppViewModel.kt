@@ -275,14 +275,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { while (true) { kotlinx.coroutines.delay(20 * 60_000L); checkUpdate(false) } }
     }
 
-    private fun friendly(e: Exception): String = when (e) {
-        is java.net.UnknownHostException -> "تعذّر الوصول للسيرفر (الاسم غير صحيح أو لا يوجد إنترنت)"
-        is java.net.SocketTimeoutException -> "انتهت مهلة الاتصال بالسيرفر"
-        is java.net.ConnectException -> "السيرفر رفض الاتصال، تأكد من العنوان والبورت"
-        is IllegalArgumentException -> "العنوان غير صحيح: " + (e.message ?: "")
-        is org.json.JSONException -> "رد غير متوقع من السيرفر (الخدمة غير مفعّلة في اشتراكك أو الرد تالف)"
-        else -> e.message ?: "خطأ غير معروف"
-    }
+    private fun friendly(e: Exception): String = VmLogic.friendlyError(e)
 
     fun load(force: Boolean) {
         viewModelScope.launch {
@@ -670,14 +663,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Episode that follows the one currently playing, if any (for auto-next). */
     fun nextEpisodeOf(c: Channel): Episode? {
-        val i = episodes.indexOfFirst { it.url == c.url }
-        return if (i >= 0) episodes.getOrNull(i + 1) else null
+        return VmLogic.nextEpisode(episodes, c.url)
     }
 
     /** Episode before the current one, if any. */
     fun previousEpisodeOf(c: Channel): Episode? {
-        val i = episodes.indexOfFirst { it.url == c.url }
-        return if (i > 0) episodes.getOrNull(i - 1) else null
+        return VmLogic.previousEpisode(episodes, c.url)
     }
 
     fun hasNextEpisode(c: Channel): Boolean = nextEpisodeOf(c) != null
