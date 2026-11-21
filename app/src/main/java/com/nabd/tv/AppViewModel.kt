@@ -104,7 +104,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var history by mutableStateOf(store.history()); private set
     /** url → history entry, rebuilt only when history changes (cards look progress up here instead of scanning the list). */
     val historyByUrl: Map<String, HistoryEntry> by derivedStateOf { history.associateBy { it.url } }
-    var recordings by mutableStateOf(store.recordings()); private set
+    private val recCtl = RecordingsController(app, store)
+    val recordings: List<Recording> get() = recCtl.items
     var recs by mutableStateOf<List<Channel>>(emptyList()); private set
     var because by mutableStateOf<Pair<String, List<Channel>>?>(null); private set
 
@@ -278,7 +279,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 launch {
                     epg = repo.loadEpg(all, force)
                     Recorder.syncAuto(ctx, store, all, epg)
-                    recordings = store.recordings()
+                    recCtl.refresh()
                     bump()
                 }
                 refreshRecs()
@@ -338,7 +339,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (t == Tab.Movies && movies.isEmpty() && hasXtream) loadVod(t, false)
         if (t == Tab.Series && series.isEmpty() && hasXtream) loadVod(t, false)
         if (t == Tab.Guide && guideChannel == null) guideChannel = guideChannels.firstOrNull()
-        if (t == Tab.Recordings) recordings = store.recordings()
+        if (t == Tab.Recordings) recCtl.refresh()
     }
 
     fun refresh() {
@@ -826,25 +827,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /* ───────── recording / reminders ───────── */
     fun record(c: Channel, p: Prog) {
-        val clash = Recorder.conflicts(store, p.start, p.stop).isNotEmpty()
-        val r = Recorder.schedule(ctx, store, c, p)
-        recordings = store.recordings()
-        say(VmLogic.recordMessage(r != null, clash))
+        val clash = recCtl.schedule(c, p)
+        say(VmLogic.recordMessage(clash != null, clash == true))
     }
 
     fun autoRecord(c: Channel, p: Prog) {
         if (c.url !in favs) toggleFav(c)
         store.autoRecordTitles = store.autoRecordTitles + p.title.lowercase()
         Recorder.syncAuto(ctx, store, all, epg)
-        recordings = store.recordings()
+        recCtl.refresh()
         say("سيتم تسجيل كل حلقات \"${p.title}\"")
     }
 
     fun remind(c: Channel, p: Prog) { Recorder.remind(ctx, store, c, p); say("سيصلك تنبيه قبل البدء") }
 
-    fun cancelRecording(r: Recording) { Recorder.cancel(ctx, store, r.id); recordings = store.recordings() }
-    fun deleteRecording(r: Recording) { Recorder.delete(ctx, store, r.id); recordings = store.recordings() }
-    fun refreshRecordings() { recordings = store.recordings() }
+    fun cancelRecording(r: Recording) { recCtl.cancel(r) }
+    fun deleteRecording(r: Recording) { recCtl.delete(r) }
+    fun refreshRecordings() { recCtl.refresh() }
 
     /* ───────── health ───────── */
     var healthStatus by mutableStateOf<String?>(null); private set
