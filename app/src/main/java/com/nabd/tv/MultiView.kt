@@ -75,7 +75,7 @@ fun MultiViewScreen(vm: AppViewModel) {
                         )
                         Text(
                             (if (i == audio) "🔊 " else "") + channels[i].name, fontSize = 12.sp, color = Color.White,
-                            modifier = Modifier.align(Alignment.TopStart).background(Color(0x99000000)).padding(6.dp)
+                            modifier = Modifier.align(Alignment.TopStart).background(OverlayScrim).padding(6.dp)
                         )
                     }
                 }

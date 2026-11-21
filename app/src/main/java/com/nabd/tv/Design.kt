@@ -59,6 +59,11 @@ val TextMuted: Color get() = if (Ui.dark) Color(0xFF6B7385) else Color(0xFF8B92A
 /** Text on top of video/overlays: always light, independent of the app theme. */
 val OverlayText = Color(0xFFB8C2CF)
 val OverlayTextMuted = Color(0xFF9AA3B8)
+/** Hairline border of panels drawn over video. */
+val OverlayLine = Color(0x44FFFFFF)
+/** Dark scrims behind panels / labels drawn over video (medium and strong). */
+val OverlayScrim = Color(0x99000000)
+val OverlayScrimStrong = Color(0xCC000000)
 
 val Danger: Color get() = if (Ui.dark) Color(0xFFFF7B7B) else Color(0xFFD93B3B)
 val Ok: Color get() = if (Ui.dark) Color(0xFF4BD6A2) else Color(0xFF12855D)

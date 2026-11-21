@@ -218,7 +218,7 @@ fun PlayerButton(
                 when {
                     focused -> Color.White
                     active -> Accent
-                    else -> Color(0x44FFFFFF)
+                    else -> OverlayLine
                 },
                 shape
             )
@@ -257,7 +257,7 @@ fun PlayerRoundButton(
             .onFocusChanged { focused = it.isFocused }
             .clip(CircleShape)
             .background(if (active) AccentFill else if (focused) Color(0xFF2A2F55) else Color(0xAA151824))
-            .border(if (focused) 3.dp else 1.dp, if (focused) Color.White else Color(0x44FFFFFF), CircleShape)
+            .border(if (focused) 3.dp else 1.dp, if (focused) Color.White else OverlayLine, CircleShape)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -430,7 +430,7 @@ fun GestureHud(feedback: GestureFeedback, modifier: Modifier = Modifier) {
         GestureKind.None -> "" to ""
     }
     Column(
-        modifier.background(Color(0xCC000000), RoundedCornerShape(16.dp)).padding(horizontal = 22.dp, vertical = 16.dp),
+        modifier.background(OverlayScrimStrong, RoundedCornerShape(16.dp)).padding(horizontal = 22.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (feedback.kind != GestureKind.None) {
@@ -442,7 +442,7 @@ fun GestureHud(feedback: GestureFeedback, modifier: Modifier = Modifier) {
                 )
             } else {
                 Spacer(Modifier.height(8.dp))
-                Box(Modifier.width(180.dp).height(6.dp).clip(CircleShape).background(Color(0x44FFFFFF))) {
+                Box(Modifier.width(180.dp).height(6.dp).clip(CircleShape).background(OverlayLine)) {
                     Box(Modifier.fillMaxWidth(feedback.progress.coerceIn(0f, 1f)).fillMaxHeight().clip(CircleShape).background(Accent))
                 }
             }
@@ -460,10 +460,10 @@ fun GestureHud(feedback: GestureFeedback, modifier: Modifier = Modifier) {
 fun ResumePrompt(position: Long, onResume: () -> Unit, onRestart: () -> Unit) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.focusWhenReady() }
-    Box(Modifier.fillMaxSize().background(Color(0x99000000)), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().background(OverlayScrim), contentAlignment = Alignment.Center) {
         Column(
             Modifier.widthIn(max = 420.dp).background(Color(0xF0121622), RoundedCornerShape(20.dp))
-                .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(20.dp)).padding(24.dp),
+                .border(1.dp, OverlayLine, RoundedCornerShape(20.dp)).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text("متابعة المشاهدة؟", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
@@ -488,10 +488,10 @@ fun PlayerErrorCard(
 ) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.focusWhenReady() }
-    Box(Modifier.fillMaxSize().background(Color(0xCC000000)), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().background(OverlayScrimStrong), contentAlignment = Alignment.Center) {
         Column(
             Modifier.widthIn(max = 480.dp).background(Color(0xF0121622), RoundedCornerShape(20.dp))
-                .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(20.dp)).padding(24.dp),
+                .border(1.dp, OverlayLine, RoundedCornerShape(20.dp)).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text("تعذّر التشغيل", color = Color(0xFFFF8A8F), fontSize = 21.sp, fontWeight = FontWeight.Bold)
@@ -532,7 +532,7 @@ fun TimeJumpDialog(current: Long, duration: Long, onJump: (Long) -> Unit, onDism
     Box(Modifier.fillMaxSize().background(Color(0xAA000000)).clickable { onDismiss() }, contentAlignment = Alignment.Center) {
         Column(
             Modifier.widthIn(max = 520.dp).background(Color(0xF0121622), RoundedCornerShape(20.dp))
-                .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(20.dp)).padding(24.dp)
+                .border(1.dp, OverlayLine, RoundedCornerShape(20.dp)).padding(24.dp)
                 .clickable(enabled = false) {},
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -591,7 +591,7 @@ fun ExternalSubtitleOverlay(ui: PlayerUiState, store: Store, modifier: Modifier 
                 .padding(start = 28.dp, end = 28.dp, bottom = (maxHeight * store.subPosition).value.coerceAtLeast(12f).dp)
                 .widthIn(max = maxWidth * 0.9f)
                 .background(
-                    if (store.subBackground) Color(0x99000000) else Color.Transparent,
+                    if (store.subBackground) OverlayScrim else Color.Transparent,
                     RoundedCornerShape(8.dp)
                 )
                 .padding(horizontal = 12.dp, vertical = 4.dp)

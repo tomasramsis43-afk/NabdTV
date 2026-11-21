@@ -1052,7 +1052,7 @@ fun PlayerScreen(vm: AppViewModel) {
         if (ui.locked && !vm.inPip) {
             Box(Modifier.fillMaxSize().clickable { ui.lockHint = true; ui.ping++ })
             Row(
-                Modifier.align(Alignment.Center).background(Color(0xCC000000), RoundedCornerShape(20.dp))
+                Modifier.align(Alignment.Center).background(OverlayScrimStrong, RoundedCornerShape(20.dp))
                     .clickable { actions.toggleLock() }.padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1072,7 +1072,7 @@ fun PlayerScreen(vm: AppViewModel) {
         if (showSkip && !vm.inPip && !ui.locked) {
             Box(
                 Modifier.align(Alignment.BottomEnd).padding(horizontal = 24.dp, vertical = 150.dp)
-                    .background(Color(0xCC000000), RoundedCornerShape(12.dp))
+                    .background(OverlayScrimStrong, RoundedCornerShape(12.dp))
                     .clickable { player.seekTo(introEnd); hud("⏭ تم تخطي المقدمة") }
                     .padding(horizontal = 18.dp, vertical = 12.dp)
             ) { Text("⏭ تخطي المقدمة  (OK)", color = Accent, fontSize = 15.sp) }
@@ -1111,7 +1111,7 @@ fun PlayerScreen(vm: AppViewModel) {
         if (ui.overlay && !ui.locked && !vm.inPip && ui.sheet == null && !vod) {
             Row(
                 Modifier.align(Alignment.TopCenter).fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Color(0xCC000000), Color.Transparent)))
+                    .background(Brush.verticalGradient(listOf(OverlayScrimStrong, Color.Transparent)))
                     .padding(
                         horizontal = if (dev.tv) 48.dp else 12.dp,
                         vertical = if (dev.tv) 22.dp else 8.dp
@@ -1253,7 +1253,7 @@ fun PlayerScreen(vm: AppViewModel) {
             Column(
                 Modifier.align(Alignment.BottomEnd).padding(24.dp)
                     .background(Color(0xEE101522), RoundedCornerShape(16.dp))
-                    .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(16.dp)).padding(16.dp),
+                    .border(1.dp, OverlayLine, RoundedCornerShape(16.dp)).padding(16.dp),
                 horizontalAlignment = Alignment.End
             ) {
                 Text(
@@ -1271,7 +1271,7 @@ fun PlayerScreen(vm: AppViewModel) {
         if (ui.ended && !vm.inPip) {
             Column(
                 Modifier.align(Alignment.Center).background(Color(0xEE101522), RoundedCornerShape(18.dp))
-                    .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(18.dp)).padding(24.dp),
+                    .border(1.dp, OverlayLine, RoundedCornerShape(18.dp)).padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text("انتهى المحتوى", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)

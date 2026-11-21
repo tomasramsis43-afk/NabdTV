@@ -154,7 +154,7 @@ fun PlayerSheet(
                 .fillMaxWidth(0.94f)
                 .widthIn(max = 560.dp)
                 .background(Color(0xF0101420), RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp))
-                .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp))
+                .border(1.dp, OverlayLine, RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp))
                 .pointerInput(Unit) { detectTapGestures { } }   // taps inside never reach the scrim
                 .focusProperties { exit = { FocusRequester.Cancel } }   // remote focus cannot leave the sheet
                 .focusGroup()

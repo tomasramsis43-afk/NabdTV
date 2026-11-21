@@ -279,7 +279,7 @@ fun PosterCard(
             // Bottom scrim keeps the progress bar and badges readable on bright posters.
             Box(
                 Modifier.matchParentSize().background(
-                    Brush.verticalGradient(0.6f to Color.Transparent, 1f to Color(0x99000000))
+                    Brush.verticalGradient(0.6f to Color.Transparent, 1f to OverlayScrim)
                 )
             )
             ratingBadge(ch)?.let { r -> RatingPill(r, Modifier.align(Alignment.TopStart).padding(6.dp)) }
