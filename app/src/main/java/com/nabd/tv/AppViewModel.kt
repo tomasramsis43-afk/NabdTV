@@ -102,6 +102,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     var favs by mutableStateOf(store.favorites); private set
     var history by mutableStateOf(store.history()); private set
+    /** url → history entry, rebuilt only when history changes (cards look progress up here instead of scanning the list). */
+    val historyByUrl: Map<String, HistoryEntry> by derivedStateOf { history.associateBy { it.url } }
     var recordings by mutableStateOf(store.recordings()); private set
     var recs by mutableStateOf<List<Channel>>(emptyList()); private set
     var because by mutableStateOf<Pair<String, List<Channel>>?>(null); private set

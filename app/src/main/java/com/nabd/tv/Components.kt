@@ -247,7 +247,7 @@ fun PosterCard(
     focusKey: String = ch.url + ch.id,
     onFocusExtra: (() -> Unit)? = null
 ) {
-    val progress = vm.history.firstOrNull { it.url == ch.url }?.progress ?: 0f
+    val progress = vm.historyByUrl[ch.url]?.progress ?: 0f
     val locked = vm.parental.needsPin(ch)
     val fr = rememberCardFocus(vm, focusKey)
     var focused by remember { mutableStateOf(false) }
