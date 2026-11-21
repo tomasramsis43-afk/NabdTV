@@ -1,11 +1,11 @@
 OK   Inception          movie  2010  -> Q25188 | Inception-wordmark.svg | image/png 6939B P 960x123 | P31=['Q11424']
-MISS The Dark Knight    movie  2008  -> no verified candidate (label/type/year)
-MISS Avatar             movie  2009  -> no verified candidate (label/type/year)
+MISS The Dark Knight    movie  2008  -> no verified candidate | Q2393298 The Dark Knight ['Q482994'] [2008] ; Q246649 The Dark Knight ['Q61475894'] [] ; Q2695156 Batman ['Q1114461', 'Q117089018', 'Q15632617'] [] ; Q163872 None ['Q11424'] [2008, 2008] ; Q12859908 The Dark Knight trilogy ['Q13593818'] [2005, 2005] ; Q16273466 The Dark Knight Rises ['Q7889'] []
+OK   Avatar             movie  2009  -> Q29387886 | Avatar-Logo-avatar.svg | image/png 78192B RGBA 960x398 | P31=['Q24856']
 OK   Joker              movie  2019  -> Q42759035 | Joker (2019) logotype.png | image/png 522883B RGBA 960x483 | P31=['Q11424']
-MISS Titanic            movie  1997  -> no verified candidate (label/type/year)
+MISS Titanic            movie  1997  -> no verified candidate | Q25173 Titanic ['Q12859788', 'Q3362987', 'Q852190'] [1909] ; Q6147471 Titanic ['Q7889'] [1988] ; Q44578 None ['Q11424'] [1997, 1998] ; Q124981245 Titanic ['Q55850593'] [] ; Q1416989 Titanic ['Q58483083'] [] ; Q21027972 RMS Titanic maiden voyage ['Q1501837'] [1912]
 OK   Interstellar       movie  2014  -> Q13417189 | Interstellar-logo.jpg | image/jpeg 35993B RGB 645x430 | P31=['Q11424']
 OK   Parasite           movie  2019  -> Q61448040 | Parasite Logo.jpg | image/jpeg 7857B RGB 400x192 | P31=['Q11424']
-MISS Gladiator          movie  2000  -> no verified candidate (label/type/year)
+MISS Gladiator          movie  2000  -> no verified candidate | Q3282906 Gladiator ['Q7889'] [1986] ; Q3771854 Gladiator ['Q7725634'] [1930] ; Q482999 gladiator ['Q16335296'] [] ; Q128518 None ['Q11424'] [2000, 2000] ; Q131151918 Gladiator ['Q7889'] [1985, 1986] ; Q142207003 Gladiator ['Q3331189'] [1930]
 OK   Joker              movie  None  -> Q42759035 | Joker (2019) logotype.png | image/png 522883B RGBA 960x483 | P31=['Q11424']
 OK   Breaking Bad       series 2008  -> Q1079 | Breaking Bad logo.svg | image/png 54226B RGBA 960x572 | P31=['Q5398426']
 OK   Game of Thrones    series 2011  -> Q23572 | Game of Thrones 2011 logo.svg | image/png 16379B LA 960x119 | P31=['Q5398426']
@@ -26,4 +26,4 @@ MISS الفيل الأزرق       movie  2014  -> matched Q20419264 but Wikidat
 MISS ولاد رزق           movie  2015  -> matched Q22928491 but Wikidata has no logo (P154)
 MISS جعفر العمدة        series 2023  -> matched Q117321159 but Wikidata has no logo (P154)
 
-logos resolved: 17 / 27
+logos resolved: 18 / 27
