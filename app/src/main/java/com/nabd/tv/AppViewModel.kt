@@ -218,6 +218,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val cont = history.filter { it.kind != Kind.Live && !it.finished && it.progress > 0.02f && parental.visible(histChannel(it)) }
             .take(20).map { histChannel(it) }
         if (cont.isNotEmpty()) out += Shelf(tx(R.string.shelf_continue), cont)
+        // Favourites: only what the user actually starred (any kind), already filtered by parental rules.
+        val favItems = all.filter { it.url in favs && parental.visible(it) }.take(40)
+        if (favItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_fav), favItems)
+        // Recommended: unwatched movies/series from the categories of the last things the user watched, best rated first.
+        val watched = history.filter { it.kind != Kind.Live }
+        val seen = watched.map { it.url }.toHashSet()
+        val liked = watched.take(8).map { it.group }.filter { it.isNotBlank() }.toHashSet()
+        if (liked.isNotEmpty()) {
+            val rec = VmLogic.topRated((movieList + seriesList).filter { it.group in liked && it.url !in seen }, 20)
+            if (rec.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_recommended), rec)
+        }
         fun top(l: List<Channel>) = VmLogic.topRated(l, 10)
         val topM = top(movieList)
         if (topM.isNotEmpty()) out += Shelf(tx(R.string.shelf_top_movies), topM, ranked = true)
@@ -227,6 +238,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (newMovies.isNotEmpty()) out += Shelf(tx(R.string.shelf_new_movies), newMovies)
         val newSeries = seriesList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { seriesList.take(30) }
         if (newSeries.isNotEmpty()) out += Shelf(tx(R.string.shelf_new_series), newSeries)
+        val doneItems = history.filter { it.kind != Kind.Live && it.finished && parental.visible(histChannel(it)) }.take(20).map { histChannel(it) }
+        if (doneItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_recent), doneItems)
         out
     }
 

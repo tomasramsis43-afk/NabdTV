@@ -655,4 +655,8 @@
     <string name="x_next_prog">Next: %1$s</string>
     <string name="x_next_ep_5">Next episode in 5 s: %1$d</string>
     <string name="x_next_ep">Next episode: %1$d</string>
+
+    <string name="x_shelf_fav">My favorites</string>
+    <string name="x_shelf_recommended">Recommended for you</string>
+    <string name="x_shelf_recent">Recently watched</string>
 </resources>

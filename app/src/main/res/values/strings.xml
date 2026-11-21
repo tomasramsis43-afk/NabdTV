@@ -655,4 +655,8 @@
     <string name="x_next_prog">التالي: %1$s</string>
     <string name="x_next_ep_5">الحلقة التالية خلال 5 ثوانٍ: %1$d</string>
     <string name="x_next_ep">الحلقة التالية: %1$d</string>
+
+    <string name="x_shelf_fav">المفضلة</string>
+    <string name="x_shelf_recommended">مقترح لك</string>
+    <string name="x_shelf_recent">شاهدتها مؤخراً</string>
 </resources>
