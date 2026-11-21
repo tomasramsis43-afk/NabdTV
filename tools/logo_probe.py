@@ -46,7 +46,9 @@ def resolve(title, kind, year, lang):
             continue
         cl = e.get("claims", {})
         classes = {c["mainsnak"]["datavalue"]["value"]["id"] for c in cl.get("P31", []) if "datavalue" in c["mainsnak"]}
-        is_film, is_series = bool(classes & FILM), bool(classes & SERIES)
+        desc = " ".join(v["value"] for v in e.get("descriptions", {}).values()).lower()
+        is_series = bool(classes & SERIES) or bool(re.search(r"(television|tv|web|anime|animated) (series|show)|miniseries|tv series", desc))
+        is_film = (bool(classes & FILM) or bool(re.search(r"\b(film|movie)\b", desc))) and not is_series
         if (kind == "movie" and not is_film) or (kind == "series" and not is_series):
             continue
         ys = year_of(cl, "P577") + year_of(cl, "P580")
@@ -55,7 +57,12 @@ def resolve(title, kind, year, lang):
         logo = [c["mainsnak"]["datavalue"]["value"] for c in cl.get("P154", []) if "datavalue" in c["mainsnak"]]
         cands.append((q, ys[:2], logo[:1], sorted(classes)[:3]))
     if not cands:
-        return None, "no verified candidate (label/type/year)"
+        dbg = []
+        for q in ids[:6]:
+            e = ents.get(q, {}); cl = e.get("claims", {})
+            cs = sorted({c["mainsnak"]["datavalue"]["value"]["id"] for c in cl.get("P31", []) if "datavalue" in c["mainsnak"]})[:3]
+            dbg.append("%s %s %s %s" % (q, e.get("labels", {}).get("en", {}).get("value"), cs, (year_of(cl, "P577") + year_of(cl, "P580"))[:2]))
+        return None, "no verified candidate | " + " ; ".join(dbg)
     if len(cands) > 1 and not year:
         return None, "ambiguous: %s" % [c[0] for c in cands]
     withlogo = [c for c in cands if c[2]]
