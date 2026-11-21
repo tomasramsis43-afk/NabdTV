@@ -62,10 +62,10 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.tv:tv-material:1.0.0")
 
-    implementation("androidx.media3:media3-exoplayer:1.4.1")
-    implementation("androidx.media3:media3-exoplayer-hls:1.4.1")
-    implementation("androidx.media3:media3-exoplayer-dash:1.4.1")
-    implementation("androidx.media3:media3-ui:1.4.1")
+    implementation("androidx.media3:media3-exoplayer:1.5.1")
+    implementation("androidx.media3:media3-exoplayer-hls:1.5.1")
+    implementation("androidx.media3:media3-exoplayer-dash:1.5.1")
+    implementation("androidx.media3:media3-ui:1.5.1")
     implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation("androidx.tvprovider:tvprovider:1.0.0")
 
