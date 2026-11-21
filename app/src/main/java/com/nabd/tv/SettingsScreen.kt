@@ -432,13 +432,13 @@ private fun SubtitlePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) 
     }
     Group("ترجمة من الإنترنت (OpenSubtitles)") {
         Row2("مفتاح API", if (s.osKey.isBlank()) "—" else "••••") {
-            vm.prompt = PromptRequest("مفتاح OpenSubtitles API", s.osKey) { v -> upd { s.osKey = v } }
+            vm.prompt = PromptRequest("مفتاح OpenSubtitles API", s.osKey, secret = true) { v -> upd { s.osKey = v } }
         }
         Row2("اسم المستخدم", s.osUser.ifBlank { "—" }) {
             vm.prompt = PromptRequest("اسم مستخدم OpenSubtitles", s.osUser) { v -> upd { s.osUser = v } }
         }
         Row2("كلمة المرور", if (s.osPass.isBlank()) "—" else "••••") {
-            vm.prompt = PromptRequest("كلمة مرور OpenSubtitles", "") { v -> upd { s.osPass = v } }
+            vm.prompt = PromptRequest("كلمة مرور OpenSubtitles", "", secret = true) { v -> upd { s.osPass = v } }
         }
     }
 }
@@ -507,7 +507,7 @@ private fun AccountPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
             vm.prompt = PromptRequest("Trakt Client ID", s.traktId) { v -> upd { s.traktId = v } }
         }
         Row2("Client Secret", if (s.traktSecret.isBlank()) "—" else "••••") {
-            vm.prompt = PromptRequest("Trakt Client Secret", "") { v -> upd { s.traktSecret = v } }
+            vm.prompt = PromptRequest("Trakt Client Secret", "", secret = true) { v -> upd { s.traktSecret = v } }
         }
         if (Trakt.linked(s)) Row2("الحساب", "مربوط ✓ (اضغط لفك الربط)") { vm.traktUnlink() }
         else Row2("ربط الحساب", "غير مربوط") { vm.traktLink() }
@@ -540,7 +540,7 @@ private fun ParentalPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) 
     Group("الرمز السري") {
         Row2(if (s.hasPin) "تغيير الرمز السري" else "تعيين رمز سري") {
             val set = {
-                vm.prompt = PromptRequest("الرمز الجديد (4–6 أرقام)", "") { c ->
+                vm.prompt = PromptRequest("الرمز الجديد (4–6 أرقام)", "", secret = true) { c ->
                     if (c.length in 4..6 && c.all { it.isDigit() }) upd { vm.setPin(c) } else vm.say("الرمز يجب أن يكون 4–6 أرقام")
                 }
             }
@@ -597,7 +597,7 @@ private fun StoragePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
         Row2("نسخ المفضلة والإعدادات إلى الحافظة") {
             val cm = cx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
             cm.setPrimaryClip(android.content.ClipData.newPlainText("nabd-backup", s.exportBackup()))
-            vm.say("تم النسخ. الصقها في جهاز آخر عبر \"استيراد\"")
+            vm.say("تم النسخ. الصقها في جهاز آخر عبر \"استيراد\". تنبيه: تتضمن روابط سجل المشاهدة، فلا تشاركها")
         }
         val saveFile = androidx.activity.compose.rememberLauncherForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")

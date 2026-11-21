@@ -38,7 +38,10 @@ fun Overlays(vm: AppViewModel) {
     vm.prompt?.let { pr ->
         var text by remember(pr) { mutableStateOf(pr.initial) }
         GlassDialog(pr.title, onDismiss = { vm.prompt = null }) {
-            OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true)
+            OutlinedTextField(
+                value = text, onValueChange = { text = it }, singleLine = true,
+                visualTransformation = if (pr.secret) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None
+            )
             Spacer(Modifier.height(10.dp))
             MBtn("حفظ") { vm.prompt = null; pr.onOk(text) }
         }

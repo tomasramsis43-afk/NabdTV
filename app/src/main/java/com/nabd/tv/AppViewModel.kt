@@ -28,7 +28,7 @@ const val GROUP_CUSTOM = "◆ "
 
 class PinRequest(val title: String, val onOk: () -> Unit)
 class MenuRequest(val title: String, val items: List<Pair<String, () -> Unit>>)
-class PromptRequest(val title: String, val initial: String, val onOk: (String) -> Unit)
+class PromptRequest(val title: String, val initial: String, val secret: Boolean = false, val onOk: (String) -> Unit)
 
 fun kindOf(c: Channel): Kind = when {
     c.url.startsWith("series:") || c.url.contains("/series/") -> Kind.Series
