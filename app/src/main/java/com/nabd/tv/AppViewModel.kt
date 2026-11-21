@@ -750,7 +750,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         play(Channel(-1, r.title, "file://$f", null, r.channelName), PlayMode.Recording, 0)
     }
 
-    fun stop() { sleepAt = 0L; history = store.history(); restoreFocus = true; screen = back; bump(); refreshRecs() }
+    fun stop() {
+        sleepAt = 0L; history = store.history(); restoreFocus = true; screen = back
+        // Re-deriving every list (tens of thousands of channels) on the main thread made the way back from the player
+        // take seconds. History is observable state, so shelves refresh on their own; lists only depend on health when these are on.
+        if (store.hideDead || store.mergeDuplicates) bump()
+        refreshRecs()
+    }
 
     fun zap(delta: Int) {
         if (!zapEnabled) return

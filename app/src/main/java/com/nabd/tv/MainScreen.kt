@@ -137,8 +137,7 @@ private fun Content(vm: AppViewModel, d: Device, barH: androidx.compose.ui.unit.
         },
         label = "page"
     ) { k ->
-        val blurR by transition.animateDp(label = "blur") { s -> if (s == EnterExitState.Visible) 0.dp else 8.dp }
-        Box(Modifier.fillMaxSize().then(if (!d.tv && Build.VERSION.SDK_INT >= 31 && blurR > 0.dp) Modifier.blur(blurR) else Modifier)) {
+        Box(Modifier.fillMaxSize()) {
             if (k == Tab.Home.name) {
                 HomeTab(vm, d)   // full-bleed: manages its own side padding
             } else {
