@@ -1,13 +1,19 @@
 package com.nabd.tv
 
+import androidx.annotation.StringRes
+
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 
 /** Buffering profile. Larger profiles tolerate unstable networks at the cost of a slower start. */
-enum class BufferProfile(val label: String, val detail: String) {
-    LowLatency("زمن استجابة منخفض", "بدء سريع وتنقّل فوري — مناسب للشبكات الثابتة"),
-    Balanced("متوازن", "بدء سريع مع مخزن كافٍ لتجنّب التقطيع"),
-    HighStability("استقرار عالٍ", "مخزن أكبر للشبكات البطيئة أو المتقطعة");
+enum class BufferProfile(@StringRes val labelRes: Int,@StringRes val detailRes: Int) {
+    LowLatency(R.string.a_8edfd265, R.string.a_1433812e),
+    Balanced(R.string.a_fc882c8d, R.string.a_80cea2af),
+    HighStability(R.string.a_462d0865, R.string.a_95b8f0f6);
+
+    val label: String get() = S(labelRes)
+    val detail: String get() = S(detailRes)
+
 
     val key: String get() = name
 
@@ -17,10 +23,13 @@ enum class BufferProfile(val label: String, val detail: String) {
 }
 
 /** Hardware / software decoder preference. ExoPlayer falls back automatically when a decoder is missing. */
-enum class DecoderMode(val label: String) {
-    Auto("تلقائي (الأفضل)"),
-    Hardware("عتاد (HW)"),
-    Software("برمجي (SW)");
+enum class DecoderMode(@StringRes val labelRes: Int) {
+    Auto(R.string.a_036b31dd),
+    Hardware(R.string.a_616710a7),
+    Software(R.string.a_3c0669dc);
+
+    val label: String get() = S(labelRes)
+
 
     companion object {
         fun of(key: String?): DecoderMode = entries.firstOrNull { it.name == key } ?: Auto
@@ -29,14 +38,17 @@ enum class DecoderMode(val label: String) {
 
 /** Video scaling mode used by the player surface. */
 @OptIn(UnstableApi::class)
-enum class AspectMode(val label: String) {
-    Fit("ملاءمة (النسبة الأصلية)"),
-    Smart("ذكي (ملء آمن)"),
-    Fill("ملء الشاشة (قص الحواف)"),
-    Stretch("تمديد"),
-    Ratio16x9("16:9"),
-    Ratio4x3("4:3"),
-    Crop("قص وتكبير");
+enum class AspectMode(@StringRes val labelRes: Int) {
+    Fit(R.string.a_72c919d5),
+    Smart(R.string.a_72429e55),
+    Fill(R.string.a_57b70fa3),
+    Stretch(R.string.a_77fa7c87),
+    Ratio16x9(R.string.ratio_16_9),
+    Ratio4x3(R.string.ratio_4_3),
+    Crop(R.string.a_1afb1274);
+
+    val label: String get() = S(labelRes)
+
 
     val resizeMode: Int
         get() = when (this) {
@@ -58,20 +70,26 @@ enum class AspectMode(val label: String) {
     }
 }
 
-enum class ResumeMode(val label: String) {
-    Ask("اسألني قبل الاستكمال"),
-    Always("استكمل دائماً"),
-    Never("ابدأ من البداية دائماً");
+enum class ResumeMode(@StringRes val labelRes: Int) {
+    Ask(R.string.a_e71cb0e5),
+    Always(R.string.a_f4e927c4),
+    Never(R.string.a_788a8260);
+
+    val label: String get() = S(labelRes)
+
 
     companion object {
         fun of(key: String?): ResumeMode = entries.firstOrNull { it.name == key } ?: Always
     }
 }
 
-enum class OrientationPref(val label: String) {
-    Auto("تلقائي (حسب الجهاز)"),
-    Landscape("أفقي"),
-    Portrait("عمودي");
+enum class OrientationPref(@StringRes val labelRes: Int) {
+    Auto(R.string.a_a05c2504),
+    Landscape(R.string.a_a7af94af),
+    Portrait(R.string.a_41af045c);
+
+    val label: String get() = S(labelRes)
+
 
     companion object {
         fun of(key: String?): OrientationPref = entries.firstOrNull { it.name == key } ?: Auto
@@ -79,10 +97,13 @@ enum class OrientationPref(val label: String) {
 }
 
 /** Up/Down behaviour on a TV remote while the player controls are hidden. */
-enum class UpDownAction(val label: String) {
-    Volume("الصوت"),
-    Menu("قائمة المشغّل"),
-    Channels("التنقل بين القنوات");
+enum class UpDownAction(@StringRes val labelRes: Int) {
+    Volume(R.string.a_beb4436d),
+    Menu(R.string.a_90ca90ee),
+    Channels(R.string.a_b7e9d917);
+
+    val label: String get() = S(labelRes)
+
 
     companion object {
         fun of(key: String?): UpDownAction = entries.firstOrNull { it.name == key } ?: Volume

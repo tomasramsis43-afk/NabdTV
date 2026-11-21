@@ -47,8 +47,8 @@ object OpenSubtitles {
                 .addQueryParameter("query", query.lowercase())
             if (season != null && episode != null) b.addQueryParameter("season_number", season.toString())
             http.newCall(req(b.build().toString(), key).build()).execute().use { r ->
-                if (r.code == 401 || r.code == 403) error("مفتاح OpenSubtitles غير صالح")
-                if (!r.isSuccessful) error("خطأ من OpenSubtitles (${r.code})")
+                if (r.code == 401 || r.code == 403) error(S(R.string.x_os_invalid_key))
+                if (!r.isSuccessful) error(S(R.string.x_os_error, r.code))
                 val arr = JSONObject(r.body?.string().orEmpty()).optJSONArray("data") ?: JSONArray()
                 (0 until arr.length()).mapNotNull { i ->
                     val a = arr.getJSONObject(i).optJSONObject("attributes") ?: return@mapNotNull null
@@ -66,10 +66,10 @@ object OpenSubtitles {
         token?.let { if (tokenFor == key + user) return it }
         val body = JSONObject().put("username", user).put("password", pass).toString().toRequestBody(JSON)
         val t = http.newCall(req("https://$HOST/api/v1/login", key).post(body).build()).execute().use { r ->
-            if (!r.isSuccessful) error("فشل تسجيل الدخول إلى OpenSubtitles (${r.code})")
+            if (!r.isSuccessful) error(S(R.string.x_os_login_failed_code, r.code))
             JSONObject(r.body?.string().orEmpty()).optString("token")
         }
-        if (t.isBlank()) error("فشل تسجيل الدخول إلى OpenSubtitles")
+        if (t.isBlank()) error(S(R.string.x_os_login_failed))
         token = t; tokenFor = key + user
         return t
     }
@@ -85,12 +85,12 @@ object OpenSubtitles {
         }
         var res = link(login(http, key, user, pass))
         if (res.first == 401) { token = null; res = link(login(http, key, user, pass)) }   // expired token: log in again once
-        if (res.first == 406) error("انتهى حد التحميل اليومي في OpenSubtitles")
-        if (res.first != 200 || res.second.isBlank()) error("تعذّر الحصول على رابط الترجمة (${res.first})")
+        if (res.first == 406) error(S(R.string.x_os_daily_limit))
+        if (res.first != 200 || res.second.isBlank()) error(S(R.string.x_os_link_failed, res.first))
         val bytes = http.newCall(Request.Builder().url(res.second).header("User-Agent", UA).build()).execute().use { r ->
-            if (!r.isSuccessful) error("تعذّر تحميل ملف الترجمة (${r.code})")
+            if (!r.isSuccessful) error(S(R.string.x_os_download_failed, r.code))
             r.body?.bytes() ?: ByteArray(0)
         }
-        SubtitleFiles.save(ctx, bytes, "$title.srt", mediaKey) ?: error("تعذّر حفظ ملف الترجمة")
+        SubtitleFiles.save(ctx, bytes, "$title.srt", mediaKey) ?: error(S(R.string.x_os_save_failed))
     }
 }

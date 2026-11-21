@@ -35,7 +35,7 @@ object Recorder {
     fun ensureChannel(ctx: Context) {
         if (Build.VERSION.SDK_INT >= 26) {
             val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            nm.createNotificationChannel(NotificationChannel(CHANNEL_ID, "التسجيل والتذكير", NotificationManager.IMPORTANCE_LOW))
+            nm.createNotificationChannel(NotificationChannel(CHANNEL_ID, S(R.string.a_65278c12), NotificationManager.IMPORTANCE_LOW))
         }
     }
 
@@ -139,7 +139,7 @@ object Recorder {
         )
         val n = NotificationCompat.Builder(ctx, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("يبدأ قريباً: ${r.title}")
+            .setContentTitle(S(R.string.x_rec_starting, r.title))
             .setContentText(r.channelName)
             .setContentIntent(open).setAutoCancel(true).build()
         runCatching { (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(id.hashCode(), n) }
@@ -179,7 +179,7 @@ class RecordService : Service() {
         Recorder.ensureChannel(this)
         val n: Notification = NotificationCompat.Builder(this, Recorder.CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_media_play)
-            .setContentTitle("Nabd TV").setContentText("جارٍ التسجيل...").setOngoing(true).build()
+            .setContentTitle("Nabd TV").setContentText(S(R.string.a_1501fee6)).setOngoing(true).build()
         try {
             if (Build.VERSION.SDK_INT >= 29) startForeground(notifId, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
             else startForeground(notifId, n)

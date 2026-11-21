@@ -176,13 +176,13 @@ class Repo(private val ctx: Context, val store: Store) {
             } catch (e: Exception) {
                 val m = e.message ?: ""
                 if (m.startsWith("HTTP 403") || m.startsWith("HTTP 401"))
-                    error("$m: السيرفر رفض الطلب. تأكد من اليوزر والباسورد وأن الاشتراك شغال، أو أن المزوّد يحظر هذا التطبيق أو الـ IP. جرّب نفس البيانات في IPTV Smarters للتأكد.")
+                    error(S(R.string.x_repo_denied, m))
                 throw e
             }
         }
         val text: String = body!!
         val list = M3uParser.parse(text)
-        if (list.isEmpty()) error("رد السيرفر ليس قائمة قنوات. تأكد من البيانات أو الاشتراك. الرد: " + text.trim().take(150))
+        if (list.isEmpty()) error(S(R.string.a_0b8880ec) + text.trim().take(150))
         cacheFile.writeText(text)
         store(list, "live")
         if (!epgManual) M3uParser.epgFromHeader(text)?.let { epgUrl = it }
@@ -467,13 +467,13 @@ class Repo(private val ctx: Context, val store: Store) {
     /* ───────────── Health probe ───────────── */
 
     private fun looksLike(buf: ByteArray, n: Int): String {
-        if (n <= 0) return "فارغ"
+        if (n <= 0) return S(R.string.a_26614bfb)
         val s = String(buf, 0, n, Charsets.ISO_8859_1)
         return when {
             s.startsWith("#EXTM3U") -> "HLS"
             buf[0] == 0x47.toByte() -> "MPEG-TS"
-            s.startsWith("<") -> "صفحة HTML/خطأ"
-            s.startsWith("{") -> "JSON/خطأ"
+            s.startsWith("<") -> S(R.string.a_23045f8c)
+            s.startsWith("{") -> S(R.string.a_91ed297f)
             else -> "بيانات"
         }
     }
@@ -510,36 +510,36 @@ class Repo(private val ctx: Context, val store: Store) {
             val ui = JSONObject(fetch("$b/player_api.php?username=${Uri.encode(u)}&password=${Uri.encode(p)}")).optJSONObject("user_info")
                 ?: return@withContext null
             val exp = str(ui, "exp_date").toLongOrNull()
-                ?.let { SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(it * 1000)) } ?: "غير محدود"
-            "الحساب: ${str(ui, "status")} · ينتهي: $exp · الاتصالات: ${str(ui, "active_cons")}/${str(ui, "max_connections")}"
+                ?.let { SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(it * 1000)) } ?: S(R.string.a_5b4b0d88)
+            S(R.string.x_acct_line, str(ui, "status"), exp, str(ui, "active_cons"), str(ui, "max_connections"))
         } catch (_: Exception) { null }
     }
 
     /** Self-test: account status and connection limit (the stream-level probes live in HealthChecker). */
     suspend fun diagnose(): String = withContext(Dispatchers.IO) {
-        val (b, u, p) = xt() ?: return@withContext "الدخول ليس بـ Xtream"
+        val (b, u, p) = xt() ?: return@withContext S(R.string.a_381f58fe)
         val sb = StringBuilder()
         try {
             val ui = JSONObject(fetch("$b/player_api.php?username=${Uri.encode(u)}&password=${Uri.encode(p)}")).optJSONObject("user_info")
-            if (ui == null) sb.append("لا توجد بيانات حساب في رد السيرفر\n") else {
+            if (ui == null) sb.append(S(R.string.a_bee01191)) else {
                 val exp = str(ui, "exp_date").toLongOrNull()
-                    ?.let { SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(it * 1000)) } ?: "غير محدود"
-                sb.append("الحساب: ${str(ui, "status")} (auth=${str(ui, "auth")}) · ينتهي: $exp\n")
-                sb.append("الاتصالات الآن: ${str(ui, "active_cons")} من ${str(ui, "max_connections")}\n")
+                    ?.let { SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(it * 1000)) } ?: S(R.string.a_5b4b0d88)
+                sb.append(S(R.string.x_diag_acct, str(ui, "status"), str(ui, "auth"), exp))
+                sb.append(S(R.string.x_diag_cons, str(ui, "active_cons"), str(ui, "max_connections")))
             }
-        } catch (e: Exception) { sb.append("فحص الحساب فشل: ${e.message}\n") }
+        } catch (e: Exception) { sb.append(S(R.string.x_diag_acct_failed, e.message ?: "")) }
         val live = cacheFile.takeIf { it.exists() }?.let { M3uParser.parse(it.readText()).firstOrNull()?.url }
-        if (live == null) sb.append("لا توجد قنوات محمّلة للفحص\n") else {
+        if (live == null) sb.append(S(R.string.a_ee94ac8e)) else {
             val stem = live.removeSuffix(".m3u8").removeSuffix(".ts")
             val ts = probeStream("$stem.ts")
             val hls = probeStream("$stem.m3u8")
-            sb.append("مباشر ts: ${ts.state} (${ts.latencyMs}ms) · m3u8: ${hls.state} (${hls.latencyMs}ms)\n")
+            sb.append(S(R.string.x_diag_live, ts.state, ts.latencyMs, hls.state, hls.latencyMs))
             if (hls.state != Health.Dead && ts.state == Health.Dead) {
                 liveExt = "m3u8"; cacheFile.delete()
-                sb.append("→ تم اعتماد m3u8. اضغط تحديث في قسم المباشر.\n")
+                sb.append(S(R.string.a_a1845b79))
             } else if (ts.state != Health.Dead && hls.state == Health.Dead) liveExt = "ts"
             if (ts.state == Health.Dead && hls.state == Health.Dead)
-                sb.append("→ القنوات المباشرة لا تفتح: راجع الاتصالات المتزامنة والاشتراك، أو أن المزوّد يحظر الجهاز/الـ IP.\n")
+                sb.append(S(R.string.a_eb16298d))
         }
         sb.toString()
     }

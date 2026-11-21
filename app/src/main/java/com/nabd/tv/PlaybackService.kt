@@ -50,9 +50,9 @@ class PlaybackService : Service() {
         val n = NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentTitle(title)
-            .setContentText("Nabd TV · قيد التشغيل")
+            .setContentText(S(R.string.a_589c88a1))
             .setContentIntent(open)
-            .addAction(0, "إيقاف", stop)
+            .addAction(0, S(R.string.a_0a390cb7), stop)
             .setOngoing(true).setOnlyAlertOnce(true).setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .build()
@@ -69,7 +69,7 @@ class PlaybackService : Service() {
         private fun ensureChannel(ctx: Context) {
             if (Build.VERSION.SDK_INT >= 26) {
                 val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                nm.createNotificationChannel(NotificationChannel(CHANNEL, "التشغيل", NotificationManager.IMPORTANCE_LOW))
+                nm.createNotificationChannel(NotificationChannel(CHANNEL, S(R.string.a_0ee01a2d), NotificationManager.IMPORTANCE_LOW))
             }
         }
 

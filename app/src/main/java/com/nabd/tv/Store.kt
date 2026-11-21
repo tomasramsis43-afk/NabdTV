@@ -39,7 +39,7 @@ class Store(private val ctx: Context) {
 
     fun addProfile(name: String, kids: Boolean) {
         val id = java.lang.Long.toString(System.currentTimeMillis(), 36)
-        saveProfiles(profiles() + Profile(id, name.trim().ifEmpty { "ملف" }, kids))
+        saveProfiles(profiles() + Profile(id, name.trim().ifEmpty { S(R.string.x_profile_default) }, kids))
     }
 
     fun deleteProfile(id: String) {
@@ -220,7 +220,7 @@ class Store(private val ctx: Context) {
         val k = subKey(mediaKey)
         val path = p.getString(k, null) ?: return null
         if (!java.io.File(path).exists()) { clearExternalSubtitle(mediaKey); return null }
-        return ExternalSubtitle(path, p.getString("${k}_name", "ترجمة خارجية") ?: "ترجمة خارجية", p.getString("${k}_enc", "auto") ?: "auto")
+        return ExternalSubtitle(path, p.getString("${k}_name", null) ?: S(R.string.x_sub_external), p.getString("${k}_enc", "auto") ?: "auto")
     }
 
     fun setExternalSubtitle(mediaKey: String, sub: ExternalSubtitle) {

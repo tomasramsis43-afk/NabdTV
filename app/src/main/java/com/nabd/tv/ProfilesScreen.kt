@@ -48,12 +48,12 @@ fun ProfilesScreen(vm: AppViewModel) {
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                if (p.kids) "★" else p.name.take(1),
+                                if (p.kids) "★" else (if (p.id == "main") tr(R.string.x_profile_main) else p.name).take(1),
                                 fontSize = 32.sp, color = Color(0xFF0A0B10), fontWeight = FontWeight.Bold
                             )
                         }
                         Spacer(Modifier.height(10.dp))
-                        Text(p.name, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Ink, maxLines = 1)
+                        Text(if (p.id == "main") tr(R.string.x_profile_main) else p.name, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Ink, maxLines = 1)
                         if (p.kids) Text(tr(R.string.kids), fontSize = 12.sp, color = Accent)
                     }
                 }

@@ -104,12 +104,12 @@ class PairingServer(private val onReceived: (Map<String, String>) -> Unit) {
                 val kv = it.split('=', limit = 2)
                 if (kv.size == 2) URLDecoder.decode(kv[0], "UTF-8") to URLDecoder.decode(kv[1], "UTF-8").trim() else null
             }.toMap()
-            send("200 OK", page("تم الإرسال ✓", "<p>يمكنك الآن العودة إلى التلفاز.</p>"))
+            send("200 OK", page(S(R.string.x_pair_sent_title), "<p>${S(R.string.x_pair_sent_body)}</p>"))
             onReceived(fields)
         } else send("200 OK", form())
     }
 
-    private fun page(title: String, body: String) = """<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
+    private fun page(title: String, body: String) = """<!doctype html><html dir="${if (Lang.rtl) "rtl" else "ltr"}" lang="${Lang.code}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Nabd TV</title>
 <style>body{font-family:system-ui,sans-serif;background:#07090d;color:#fff;margin:0;padding:24px}
 h1{color:#00e5a0}input,select{width:100%;box-sizing:border-box;padding:14px;margin:6px 0 14px;border-radius:10px;border:1px solid #333;background:#121821;color:#fff;font-size:16px}
@@ -117,11 +117,11 @@ button{width:100%;padding:15px;border:0;border-radius:10px;background:#00e5a0;co
 <body><h1>$title</h1>$body</body></html>"""
 
     private fun form() = page("Nabd TV", """<form method="post">
-<label>نوع الاشتراك</label><select name="t" onchange="x(this.value)"><option value="xtream">Xtream Codes</option><option value="m3u">رابط M3U</option></select>
-<div id="xt"><label>السيرفر</label><input name="host" placeholder="http://server:port" autocapitalize="none">
-<label>اسم المستخدم</label><input name="user" autocapitalize="none"><label>كلمة المرور</label><input name="pass" type="password" autocapitalize="none"></div>
-<div id="m3" style="display:none"><label>رابط M3U</label><input name="url" placeholder="http://.../playlist.m3u" autocapitalize="none"></div>
-<button type="submit">إرسال إلى التلفاز</button></form>
+<label>${S(R.string.x_pair_type)}</label><select name="t" onchange="x(this.value)"><option value="xtream">Xtream Codes</option><option value="m3u">${S(R.string.x_pair_m3u)}</option></select>
+<div id="xt"><label>${S(R.string.x_pair_server)}</label><input name="host" placeholder="http://server:port" autocapitalize="none">
+<label>${S(R.string.x_pair_user)}</label><input name="user" autocapitalize="none"><label>${S(R.string.x_pair_pass)}</label><input name="pass" type="password" autocapitalize="none"></div>
+<div id="m3" style="display:none"><label>${S(R.string.x_pair_m3u)}</label><input name="url" placeholder="http://.../playlist.m3u" autocapitalize="none"></div>
+<button type="submit">${S(R.string.x_pair_send)}</button></form>
 <script>function x(v){document.getElementById('xt').style.display=v=='xtream'?'block':'none';document.getElementById('m3').style.display=v=='m3u'?'block':'none'}</script>""")
 }
 

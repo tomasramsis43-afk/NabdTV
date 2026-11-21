@@ -1,4 +1,4 @@
-﻿package com.nabd.tv
+package com.nabd.tv
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -81,7 +81,7 @@ private fun SetupField(
                 }
                 if (password) {
                     Text(
-                        if (show) "إخفاء" else "إظهار", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Accent,
+                        if (show) S(R.string.a_08042201) else S(R.string.a_f2dde4fd), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Accent,
                         modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { show = !show }.padding(horizontal = 8.dp, vertical = 6.dp)
                     )
                 }
@@ -105,22 +105,22 @@ fun SetupScreen(vm: AppViewModel) {
     fun submit() {
         if (vm.loading) return
         if (m3u) {
-            if (url.isNotBlank()) vm.setUrl(url) else toast("اكتب رابط M3U")
+            if (url.isNotBlank()) vm.setUrl(url) else toast(S(R.string.a_c56dfeff))
         } else {
             if (host.isNotBlank() && user.isNotBlank() && pass.isNotBlank()) vm.setXtream(host, user, pass)
-            else toast("اكتب السيرفر واليوزر والباسورد")
+            else toast(S(R.string.a_ec479973))
         }
     }
     LaunchedEffect(Unit) { if (d.tv) runCatching { firstFocus.requestFocus() } }
     BackHandler(enabled = vm.all.isNotEmpty()) { vm.closeSetup() }
 
     vm.pairingUrl?.let { u ->
-        GlassDialog("امسح الكود بالموبايل", onDismiss = { vm.stopPairing() }) {
+        GlassDialog(S(R.string.a_322b1c4a), onDismiss = { vm.stopPairing() }) {
             QrCode(u)
             Spacer(Modifier.height(10.dp))
             Text(u, fontSize = 12.sp, color = TextSecondary)
             Spacer(Modifier.height(10.dp))
-            MBtn("إلغاء", filled = false) { vm.stopPairing() }
+            MBtn(S(R.string.a_e776b020), filled = false) { vm.stopPairing() }
         }
     }
 
@@ -143,7 +143,7 @@ fun SetupScreen(vm: AppViewModel) {
             AccentTitle("Nabd", "TV", size = 34.sp)
             Spacer(Modifier.height(4.dp))
             Text(
-                if (vm.all.isNotEmpty()) "تغيير حساب الاشتراك" else "سجّل دخولك لبدء المشاهدة",
+                if (vm.all.isNotEmpty()) S(R.string.a_f3b7cf9e) else S(R.string.a_99cf2726),
                 fontSize = 14.sp, color = TextSecondary, textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(22.dp))
@@ -169,7 +169,7 @@ fun SetupScreen(vm: AppViewModel) {
                     }
                     Focusable(selected = m3u, onClick = { m3u = true }, modifier = Modifier.weight(1f), zoom = 1.02f) {
                         Text(
-                            "رابط M3U", fontSize = 14.sp, fontWeight = if (m3u) FontWeight.Bold else FontWeight.Medium,
+                            S(R.string.a_e304a24a), fontSize = 14.sp, fontWeight = if (m3u) FontWeight.Bold else FontWeight.Medium,
                             color = if (m3u) Accent else Ink, textAlign = TextAlign.Center, maxLines = 1,
                             modifier = Modifier.fillMaxWidth().heightIn(min = d.control).wrapContentHeight(Alignment.CenterVertically)
                         )
@@ -178,14 +178,14 @@ fun SetupScreen(vm: AppViewModel) {
                 Spacer(Modifier.height(18.dp))
 
                 if (m3u) {
-                    SetupField("رابط القائمة", url, { url = it }, "http://.../playlist.m3u",
+                    SetupField(S(R.string.a_55bf799f), url, { url = it }, "http://.../playlist.m3u",
                         keyboard = KeyboardType.Uri, ime = ImeAction.Done, onDone = ::submit)
                 } else {
-                    SetupField("عنوان السيرفر", host, { host = it }, "http://server:port", keyboard = KeyboardType.Uri)
+                    SetupField(S(R.string.a_7dbbd516), host, { host = it }, "http://server:port", keyboard = KeyboardType.Uri)
                     Spacer(Modifier.height(12.dp))
-                    SetupField("اسم المستخدم", user, { user = it }, "Username")
+                    SetupField(S(R.string.a_794f68a2), user, { user = it }, "Username")
                     Spacer(Modifier.height(12.dp))
-                    SetupField("كلمة المرور", pass, { pass = it }, "Password", password = true, ime = ImeAction.Done, onDone = ::submit)
+                    SetupField(S(R.string.a_7ba22cf7), pass, { pass = it }, "Password", password = true, ime = ImeAction.Done, onDone = ::submit)
                 }
 
                 /* status */
@@ -194,7 +194,7 @@ fun SetupScreen(vm: AppViewModel) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                         CircularProgressIndicator(Modifier.size(18.dp), color = Accent, strokeWidth = 2.dp)
                         Spacer(Modifier.width(10.dp))
-                        Text("جارٍ الاتصال وتحميل القنوات...", color = Accent, fontSize = 13.sp)
+                        Text(S(R.string.a_13b44d24), color = Accent, fontSize = 13.sp)
                     }
                 }
                 vm.error?.let { e ->
@@ -208,16 +208,16 @@ fun SetupScreen(vm: AppViewModel) {
                 }
 
                 Spacer(Modifier.height(18.dp))
-                MBtn(if (vm.loading) "جارٍ الدخول..." else if (m3u) "تحميل القائمة" else "دخول", modifier = Modifier.fillMaxWidth().height(d.control + 8.dp)) { submit() }
+                MBtn(if (vm.loading) S(R.string.a_04218da9) else if (m3u) S(R.string.a_553a5561) else S(R.string.a_c9cbc8b2), modifier = Modifier.fillMaxWidth().height(d.control + 8.dp)) { submit() }
 
                 /* secondary actions */
                 if (d.tv) {
                     Spacer(Modifier.height(10.dp))
-                    MBtn("إدخال البيانات من الموبايل (QR)", filled = false, modifier = Modifier.fillMaxWidth()) { vm.startPairing() }
+                    MBtn(S(R.string.a_381f2be4), filled = false, modifier = Modifier.fillMaxWidth()) { vm.startPairing() }
                 }
                 if (vm.hasXtream) {
                     Spacer(Modifier.height(10.dp))
-                    MBtn(if (vm.diagBusy) "جارٍ الفحص..." else "فحص الاتصال والقنوات", filled = false, modifier = Modifier.fillMaxWidth()) { vm.runDiag() }
+                    MBtn(if (vm.diagBusy) S(R.string.a_5a679758) else S(R.string.a_44f50601), filled = false, modifier = Modifier.fillMaxWidth()) { vm.runDiag() }
                     vm.diag?.let {
                         Spacer(Modifier.height(10.dp))
                         Text(it, fontSize = 13.sp, color = Ink)
@@ -227,7 +227,7 @@ fun SetupScreen(vm: AppViewModel) {
 
             if (vm.all.isNotEmpty()) {
                 Spacer(Modifier.height(14.dp))
-                MBtn("رجوع", filled = false) { vm.closeSetup() }
+                MBtn(S(R.string.a_328ddce5), filled = false) { vm.closeSetup() }
             }
         }
     }

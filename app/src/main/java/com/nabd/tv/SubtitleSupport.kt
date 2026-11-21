@@ -40,7 +40,7 @@ object SubtitleFiles {
         val decoded = SubtitleParser.decode(bytes, sub.encoding)
         val cues = SubtitleParser.parse(decoded.text, sub.name)
         SubtitleParseResult(cues, decoded.charset, null)
-    }.getOrElse { SubtitleParseResult(emptyList(), sub.encoding, it.message ?: "تعذّر قراءة ملف الترجمة") }
+    }.getOrElse { SubtitleParseResult(emptyList(), sub.encoding, it.message ?: S(R.string.a_6972e282)) }
 
     /** Re-reads the same file with another encoding (used after the user fixes mojibake). */
     fun reDecode(sub: ExternalSubtitle, encoding: String): SubtitleParseResult =
@@ -63,9 +63,9 @@ data class SubtitleParseResult(val cues: List<SubCue>, val charset: String, val 
 
 /** Subtitle colours offered by the player (ARGB). */
 val SUBTITLE_COLORS = listOf(
-    "أبيض" to 0xFFFFFFFF.toInt(),
-    "أصفر" to 0xFFFFE066.toInt(),
-    "سماوي" to 0xFF7FE3FF.toInt(),
-    "أخضر" to 0xFF9CFF9C.toInt(),
-    "وردي" to 0xFFFFB3D9.toInt()
+    S(R.string.a_ec42045b) to 0xFFFFFFFF.toInt(),
+    S(R.string.a_62b07216) to 0xFFFFE066.toInt(),
+    S(R.string.a_567fd777) to 0xFF7FE3FF.toInt(),
+    S(R.string.a_a6b07639) to 0xFF9CFF9C.toInt(),
+    S(R.string.a_836d81cd) to 0xFFFFB3D9.toInt()
 )

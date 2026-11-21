@@ -45,7 +45,7 @@ class NabdWidget : AppWidgetProvider() {
                 views.setViewVisibility(R.id.widget_progress, View.VISIBLE)
                 intent = WatchNext.resumeIntent(ctx, item.url)
             } else {
-                views.setTextViewText(R.id.widget_title, "افتح التطبيق")
+                views.setTextViewText(R.id.widget_title, S(R.string.a_ff8f97a9))
                 views.setViewVisibility(R.id.widget_progress, View.GONE)
                 intent = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName) ?: Intent()
             }

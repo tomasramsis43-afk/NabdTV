@@ -182,7 +182,7 @@ private fun Episodes(vm: AppViewModel, s: Channel) {
         itemsIndexed(eps, key = { _, e -> e.url }) { idx, e ->
             val h = vm.historyByUrl[e.url]
             Focusable(
-                onClick = { vm.playEpisode(s, e) }, modifier = Modifier.fillMaxWidth(),
+                onClick = { vm.playEpisode(s, e) }, modifier = Modifier.fillMaxWidth().animateItem(),
                 focusRequester = if (idx == target) epFocus else null, zoom = 1.02f
             ) {
                 EpisodeCard(e, h, vm.info?.backdrop ?: s.logo, LocalDevice.current.tv)

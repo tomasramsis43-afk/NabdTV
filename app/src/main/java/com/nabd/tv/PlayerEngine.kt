@@ -279,10 +279,10 @@ private fun trackLabel(f: Format, index: Int): String {
     val extras = ArrayList<String>()
     if (!lang.isNullOrBlank()) extras += lang
     if (f.label != null && f.label != lang) extras += f.label!!
-    if (f.channelCount > 0) extras += if (f.channelCount == 1) "أحادي" else "${f.channelCount} قنوات"
+    if (f.channelCount > 0) extras += if (f.channelCount == 1) S(R.string.a_42e49f89) else S(R.string.x_channels_n, f.channelCount)
     if (f.sampleRate > 0) extras += "${f.sampleRate / 1000} kHz"
     if (f.bitrate > 0) extras += "${f.bitrate / 1000} kbps"
-    if (extras.isEmpty()) extras += "مسار ${index + 1}"
+    if (extras.isEmpty()) extras += S(R.string.x_track_n, index + 1)
     return extras.joinToString(" · ")
 }
 
@@ -290,25 +290,25 @@ fun languageName(code: String?): String? {
     if (code.isNullOrBlank()) return null
     val c = code.trim().lowercase()
     return when (c) {
-        "ar", "ara" -> "العربية"
-        "en", "eng" -> "الإنجليزية"
-        "fr", "fra", "fre" -> "الفرنسية"
-        "tr", "tur" -> "التركية"
-        "es", "spa" -> "الإسبانية"
-        "de", "deu", "ger" -> "الألمانية"
-        "it", "ita" -> "الإيطالية"
-        "ru", "rus" -> "الروسية"
-        "hi", "hin" -> "الهندية"
-        "ur", "urd" -> "الأردية"
-        "fa", "fas", "per" -> "الفارسية"
-        "ku", "kur" -> "الكردية"
-        "sv" -> "السويدية"
-        "nl" -> "الهولندية"
-        "pt" -> "البرتغالية"
-        "ja" -> "اليابانية"
-        "ko" -> "الكورية"
-        "zh" -> "الصينية"
-        "und" -> "غير محددة"
+        "ar", "ara" -> S(R.string.a_9970632f)
+        "en", "eng" -> S(R.string.a_10c4fe32)
+        "fr", "fra", "fre" -> S(R.string.a_3c43e065)
+        "tr", "tur" -> S(R.string.a_3c806cbc)
+        "es", "spa" -> S(R.string.a_af7387d1)
+        "de", "deu", "ger" -> S(R.string.a_a21349c4)
+        "it", "ita" -> S(R.string.a_1848f666)
+        "ru", "rus" -> S(R.string.a_22a237c7)
+        "hi", "hin" -> S(R.string.a_cdba8a77)
+        "ur", "urd" -> S(R.string.a_54d58b07)
+        "fa", "fas", "per" -> S(R.string.a_1cd4382e)
+        "ku", "kur" -> S(R.string.a_63f834ac)
+        "sv" -> S(R.string.a_af29ee5d)
+        "nl" -> S(R.string.a_4a1b8ff8)
+        "pt" -> S(R.string.a_67944c77)
+        "ja" -> S(R.string.a_85a0d36c)
+        "ko" -> S(R.string.a_7655ccb9)
+        "zh" -> S(R.string.a_00dc9c86)
+        "und" -> S(R.string.a_3bba7511)
         else -> c
     }
 }
@@ -376,12 +376,12 @@ fun playbackStats(p: ExoPlayer): String {
     val textTracks = p.textTracks()
     return buildString {
         append("${v?.width ?: 0}×${v?.height ?: 0} · $fps fps · $kbps kbps\n")
-        append("الفيديو: ${v?.codecs ?: "-"} · ${hdrLabel(v)}\n")
-        append("الصوت: ${a?.codecs ?: "-"} · ${a?.channelCount ?: 0}ch · ${a?.sampleRate?.div(1000) ?: 0} kHz · $abr kbps\n")
-        append("المسارات: صوت ${audioTracks.size} · ترجمة ${textTracks.size}\n")
-        append("بافر ${p.totalBufferedDuration / 1000}s · ${if (p.isPlaying) "يعمل" else "متوقف"} · ${p.playbackParameters.speed}x\n")
-        append("إطارات معروضة $decoded · مفقودة $dropped")
-        if (Build.VERSION.SDK_INT >= 29) append("\n${if (p.isCurrentMediaItemLive) "بث مباشر" else "VOD"} · تأخير الصوت ${AudioDelayBus.ms}ms")
+        append(S(R.string.x_st_video, v?.codecs ?: "-", hdrLabel(v)))
+        append(S(R.string.x_st_audio, a?.codecs ?: "-", a?.channelCount ?: 0, a?.sampleRate?.div(1000) ?: 0, abr))
+        append(S(R.string.x_st_tracks, audioTracks.size, textTracks.size))
+        append(S(R.string.x_st_buffer, p.totalBufferedDuration / 1000, S(if (p.isPlaying) R.string.x_playing else R.string.x_paused), p.playbackParameters.speed))
+        append(S(R.string.x_st_frames, decoded, dropped))
+        if (Build.VERSION.SDK_INT >= 29) append(S(R.string.x_st_live, if (p.isCurrentMediaItemLive) S(R.string.x_live_word) else "VOD", AudioDelayBus.ms))
     }
 }
 

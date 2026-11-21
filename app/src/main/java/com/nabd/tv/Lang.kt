@@ -21,7 +21,11 @@ object Lang {
 
     private fun prefs(ctx: Context) = ctx.applicationContext.getSharedPreferences("nabd_lang", Context.MODE_PRIVATE)
 
+    /** Application context for [S]; set once in [load]. */
+    lateinit var appCtx: Context; private set
+
     fun load(ctx: Context) {
+        appCtx = ctx.applicationContext
         code = prefs(ctx).getString("lang", "ar").takeIf { it == "ar" || it == "en" } ?: "ar"
     }
 
@@ -53,3 +57,9 @@ fun tr(@StringRes id: Int, vararg args: Any): String {
     val res = remember(ctx, code) { Lang.resources(ctx, code) }
     return if (args.isEmpty()) res.getString(id) else res.getString(id, *args)
 }
+
+/**
+ * String resource in the selected language from any context (composable, click handler, ViewModel).
+ * It reads [Lang.code], so composables that call it re-render when the language is switched.
+ */
+fun S(@StringRes id: Int, vararg args: Any): String = Lang.str(Lang.appCtx, id, *args)

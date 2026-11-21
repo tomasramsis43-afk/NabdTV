@@ -56,6 +56,9 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
+/** Marker for "buffering / loading": drives the spinner, is never shown as text. */
+const val STATUS_LOADING = "\u0000loading"
+
 /**
  * Professional player screen.
  *
@@ -164,15 +167,15 @@ fun PlayerScreen(vm: AppViewModel) {
         player.setSubtitlesEnabled(false)   // avoid double subtitles with Media3's renderer
         ui.settingsRev++
         vm.say(
-            if (res.cues.isEmpty()) res.error ?: "لم يتم العثور على ترجمة في الملف"
-            else "تم تحميل ${res.cues.size} سطر ترجمة"
+            if (res.cues.isEmpty()) res.error ?: S(R.string.a_1122e8b1)
+            else S(R.string.x_subs_loaded, res.cues.size)
         )
     }
 
     val subPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         val copied = SubtitleFiles.copy(ctx, uri, chRef.value.url)
-        if (copied == null) vm.say("تعذّر قراءة ملف الترجمة") else applyExternalSubtitle(copied)
+        if (copied == null) vm.say(S(R.string.a_6972e282)) else applyExternalSubtitle(copied)
     }
 
     val actions = remember(player, rKey, seriesKey, subPicker) {
@@ -225,29 +228,29 @@ fun PlayerScreen(vm: AppViewModel) {
             resetZoom = { ui.zoom = 1f; ui.panX = 0f; ui.panY = 0f; hud("🔍 100%") },
             rotate = { ui.rotation = (ui.rotation + 90) % 360; hud("↻ ${ui.rotation}°") },
             resetTransform = { ui.zoom = 1f; ui.panX = 0f; ui.panY = 0f; ui.rotation = 0; hud("↺") },
-            setLoop = { on -> ui.loop = on; ui.settingsRev++; hud(if (on) "🔁 تكرار" else "🔁 إيقاف التكرار") },
+            setLoop = { on -> ui.loop = on; ui.settingsRev++; hud(if (on) S(R.string.a_4fcdcb8e) else S(R.string.a_33dc780a)) },
             setPointA = {
                 ui.abStart = player.currentPosition
                 if (ui.abEnd <= ui.abStart) ui.abEnd = -1L
                 hud("A · ${fmtTime(ui.abStart)}")
             },
             setPointB = {
-                if (ui.abStart < 0) vm.say("حدد النقطة A أولاً")
-                else if (player.currentPosition <= ui.abStart) vm.say("يجب أن تكون B بعد A")
+                if (ui.abStart < 0) vm.say(S(R.string.a_da7f36ee))
+                else if (player.currentPosition <= ui.abStart) vm.say(S(R.string.a_5bce9aef))
                 else { ui.abEnd = player.currentPosition; hud("B · ${fmtTime(ui.abEnd)}") }
             },
-            clearAb = { ui.abStart = -1L; ui.abEnd = -1L; hud("تم مسح A–B") },
+            clearAb = { ui.abStart = -1L; ui.abEnd = -1L; hud(S(R.string.a_3acb3f5d)) },
             setSleep = { minutes ->
-                if (minutes <= 0) { vm.sleepAt = 0L; ui.sleepEnd = false; vm.say("تم إلغاء المؤقت") }
+                if (minutes <= 0) { vm.sleepAt = 0L; ui.sleepEnd = false; vm.say(S(R.string.a_c125a5f3)) }
                 else {
                     vm.sleepAt = System.currentTimeMillis() + minutes * 60_000L
                     ui.sleepEnd = false
-                    vm.say("سيتوقف التشغيل بعد $minutes دقيقة")
+                    vm.say(S(R.string.x_sleep_after, minutes))
                 }
                 ui.settingsRev++
             },
-            setSleepEnd = { ui.sleepEnd = true; vm.sleepAt = 0L; vm.say("سيتوقف بعد انتهاء المحتوى الحالي"); ui.settingsRev++ },
-            cancelSleep = { ui.sleepEnd = false; vm.sleepAt = 0L; vm.say("تم إلغاء المؤقت"); ui.settingsRev++ },
+            setSleepEnd = { ui.sleepEnd = true; vm.sleepAt = 0L; vm.say(S(R.string.a_3771c6cb)); ui.settingsRev++ },
+            cancelSleep = { ui.sleepEnd = false; vm.sleepAt = 0L; vm.say(S(R.string.a_c125a5f3)); ui.settingsRev++ },
             toggleLock = {
                 ui.locked = !ui.locked
                 ui.overlay = !ui.locked
@@ -256,12 +259,12 @@ fun PlayerScreen(vm: AppViewModel) {
             },
             enterPip = {
                 val ok = (act as? MainActivity)?.enterPip() == true
-                if (!ok) vm.say("الجهاز لا يدعم النافذة العائمة")
+                if (!ok) vm.say(S(R.string.a_31203a04))
             },
             hideControls = { ui.overlay = false },
-            openChannels = { if (live) { ui.panel = true; ui.ping++ } else vm.say("قائمة القنوات متاحة في البث المباشر فقط") },
+            openChannels = { if (live) { ui.panel = true; ui.ping++ } else vm.say(S(R.string.a_115f09a4)) },
             loadSubtitle = { subPicker.launch(arrayOf("*/*")) },
-            removeSubtitle = { clearSubtitleFile(); vm.say("تمت إزالة الترجمة الخارجية") },
+            removeSubtitle = { clearSubtitleFile(); vm.say(S(R.string.a_0b2e99bd)) },
             selectSubtitle = { index ->
                 val track = ui.textTracks.getOrNull(index) ?: return@PlayerActions
                 if (ui.extSub != null) clearSubtitleFile()
@@ -284,7 +287,7 @@ fun PlayerScreen(vm: AppViewModel) {
                     ui.extError = res.error
                 }
                 ui.settingsRev++
-                vm.say(if (enc == "auto") "كشف الترميز تلقائياً" else "تم تغيير الترميز إلى $enc")
+                vm.say(if (enc == "auto") S(R.string.a_6316a65b) else S(R.string.x_enc_changed, enc))
             },
             setSubtitleDelay = { ms ->
                 store.subDelayMs = ms.coerceIn(-10_000, 10_000)
@@ -303,12 +306,12 @@ fun PlayerScreen(vm: AppViewModel) {
                 player.selectTrack(C.TRACK_TYPE_AUDIO, track); ui.tracksRev++
                 val saved = seriesKey != null && track.language.isNotBlank()
                 if (saved) store.setSeriesAudioLang(seriesKey!!, track.language)   // remembered for the next episodes
-                hud("🔊 ${track.label}" + if (saved) " · محفوظ للمسلسل" else "")
+                hud("🔊 ${track.label}" + if (saved) S(R.string.a_53712cf7) else "")
             },
             clearAudioOverride = {
                 player.clearTrackOverride(C.TRACK_TYPE_AUDIO)
                 seriesKey?.let { store.setSeriesAudioLang(it, "") }
-                hud("🔊 تلقائي")
+                hud(S(R.string.a_410e1499))
             },
             setAudioDelay = { ms ->
                 store.audioDelayMs = ms.coerceIn(-2_000, 2_000)
@@ -359,21 +362,21 @@ fun PlayerScreen(vm: AppViewModel) {
                     player.playWhenReady = false
                     player.stop()
                 }
-                ui.status = "جارٍ إعادة بناء المحرك..."
+                ui.status = S(R.string.a_f0a1bbc7)
                 epoch++
                 ui.ping++
             },
             retry = {
                 retries = 0; altUsed = false
-                ui.error = null; ui.errorDetail = ""; ui.status = "جارٍ التحميل..."
+                ui.error = null; ui.errorDetail = ""; ui.status = STATUS_LOADING
                 player.prepare(); player.playWhenReady = true
                 ui.ping++
             },
             openExternal = {
                 runCatching {
                     val i = Intent(Intent.ACTION_VIEW, Uri.parse(chRef.value.url)).setType("video/*")
-                    ctx.startActivity(Intent.createChooser(i, "فتح بواسطة").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                }.onFailure { vm.say("لا يوجد مشغّل مناسب على الجهاز") }
+                    ctx.startActivity(Intent.createChooser(i, S(R.string.a_a332848d)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                }.onFailure { vm.say(S(R.string.a_34286b07)) }
             },
             interact = { ui.overlay = true; ui.ping++ },
             changed = { ui.settingsRev++ },
@@ -416,7 +419,7 @@ fun PlayerScreen(vm: AppViewModel) {
         val ag = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO && it.length > 0 }
         if (ag.isNotEmpty() && ag.none { it.isSelected }) {
             val f = runCatching { ag.first().getTrackFormat(0) }.getOrNull()
-            hud("⚠ لا يوجد مفكّك لصوت هذا الفيلم (" + (f?.sampleMimeType?.substringAfter('/') ?: f?.codecs ?: "?") + "))")
+            hud(S(R.string.a_ff88db6d) + (f?.sampleMimeType?.substringAfter('/') ?: f?.codecs ?: "?") + "))")
         }
     }
 
@@ -523,20 +526,20 @@ fun PlayerScreen(vm: AppViewModel) {
                         retries++
                         // Retrying at once hammers a provider that is already refusing (503 / connection limit): back off.
                         val wait = if (code != null) retries * 2_000L else 0L
-                        if (wait > 0) ui.status = "السيرفر مشغول، إعادة المحاولة..."
+                        if (wait > 0) ui.status = S(R.string.a_1e15c4e2)
                         retryHandler.postDelayed({ runCatching { player.prepare() } }, wait)
                     }
                     !altUsed && alternate != null -> {
                         altUsed = true; retries = 0
                         player.setMediaItem(mediaItemFor(alternate)); player.prepare(); player.playWhenReady = true
-                        ui.status = "تجربة مصدر بديل..."
+                        ui.status = S(R.string.a_64ba4488)
                     }
                     else -> {
                         vm.health.markFailure(url)
-                        if (live && vm.failover()) ui.status = "تحويل تلقائي لمصدر بديل..."
+                        if (live && vm.failover()) ui.status = S(R.string.a_fb546072)
                         else {
-                            ui.error = "تعذّر تشغيل هذا المحتوى"
-                            if (code == 503 || code == 429) ui.error = "السيرفر مشغول أو وصلت للحد الأقصى من الاتصالات"
+                            ui.error = S(R.string.a_ade6c5da)
+                            if (code == 503 || code == 429) ui.error = S(R.string.a_8ebc053f)
                             ui.errorDetail = (code?.let { "HTTP $it" } ?: error.errorCodeName) +
                                 (error.cause?.message?.let { " · $it" } ?: "")
                             ui.status = ""
@@ -547,7 +550,7 @@ fun PlayerScreen(vm: AppViewModel) {
 
             override fun onPlaybackStateChanged(state: Int) {
                 when (state) {
-                    Player.STATE_BUFFERING -> ui.status = "جارٍ التحميل..."
+                    Player.STATE_BUFFERING -> ui.status = STATUS_LOADING
                     Player.STATE_READY -> {
                         ui.status = ""
                         retries = 0
@@ -562,7 +565,7 @@ fun PlayerScreen(vm: AppViewModel) {
                             val seconds = LiveRewind.pending
                             LiveRewind.pending = 0
                             if (player.isCurrentMediaItemSeekable) player.seekTo((player.currentPosition - seconds * 1000L).coerceAtLeast(0L))
-                            else vm.say("المزوّد لا يدعم الرجوع في هذه القناة")
+                            else vm.say(S(R.string.a_8aa1f737))
                         }
                         if (live) {
                             vm.health.markSuccess(chUrl, System.currentTimeMillis() - startedAt)
@@ -586,7 +589,7 @@ fun PlayerScreen(vm: AppViewModel) {
                                 }
                             }
                         } else if (live) {
-                            ui.status = "انتهى البث أو انقطع الاتصال"
+                            ui.status = S(R.string.a_59bb3584)
                         }
                     }
                 }
@@ -604,7 +607,7 @@ fun PlayerScreen(vm: AppViewModel) {
     LaunchedEffect(ch.url, player) {
         retries = 0; altUsed = false
         ui.error = null; ui.errorDetail = ""; ui.nextEp = null; ui.ended = false
-        ui.hudText = ""; ui.resumeAt = -1L; ui.status = "جارٍ التحميل..."
+        ui.hudText = ""; ui.resumeAt = -1L; ui.status = STATUS_LOADING
         pendingResume = -1L
         startedAt = System.currentTimeMillis()
 
@@ -799,7 +802,7 @@ fun PlayerScreen(vm: AppViewModel) {
             ui.sheet != null -> { ui.sheet = null; ui.sheetRev++; runCatching { rootFocus.requestFocus() } }
             ui.showJump -> ui.showJump = false
             ui.panel -> { ui.panel = false; runCatching { rootFocus.requestFocus() } }
-            ui.locked -> { ui.lockHint = true; hud("🔒 الشاشة مقفولة، اضغط 🔓 لفتح القفل") }
+            ui.locked -> { ui.lockHint = true; hud(S(R.string.a_8d3dacb8)) }
             vod && ui.overlay && dev.tv -> { ui.overlay = false; runCatching { rootFocus.requestFocus() } }
             else -> vm.stop()
         }
@@ -867,7 +870,7 @@ fun PlayerScreen(vm: AppViewModel) {
                 Key.DirectionRight -> { scrub(1); ui.overlay = true; ui.ping++; return true }
                 Key.DirectionUp, Key.DirectionDown -> { ui.overlay = true; ui.ping++; return true }
                 Key.DirectionCenter, Key.Enter -> {
-                    if (showSkip) { player.seekTo(introEnd); hud("⏭ تم تخطي المقدمة") } else actions.togglePlay()
+                    if (showSkip) { player.seekTo(introEnd); hud(S(R.string.a_53d04dc8)) } else actions.togglePlay()
                     ui.overlay = true; ui.ping++; return true
                 }
                 else -> {}
@@ -897,7 +900,7 @@ fun PlayerScreen(vm: AppViewModel) {
                 ui.ping++; true
             }
             Key.DirectionCenter, Key.Enter -> {
-                if (showSkip) { player.seekTo(introEnd); hud("⏭ تم تخطي المقدمة") }
+                if (showSkip) { player.seekTo(introEnd); hud(S(R.string.a_53d04dc8)) }
                 else actions.togglePlay()
                 true
             }
@@ -1057,7 +1060,7 @@ fun PlayerScreen(vm: AppViewModel) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("🔒 ${if (ui.lockHint) "اضغط لفتح القفل" else "الشاشة مقفولة"}", color = Color.White, fontSize = 15.sp)
+                Text("🔒 ${S(if (ui.lockHint) R.string.x_lock_hint else R.string.x_locked)}", color = Color.White, fontSize = 15.sp)
                 PlayerRoundButton("🔓", size = 34) { actions.toggleLock() }
             }
         }
@@ -1073,9 +1076,9 @@ fun PlayerScreen(vm: AppViewModel) {
             Box(
                 Modifier.align(Alignment.BottomEnd).padding(horizontal = 24.dp, vertical = 150.dp)
                     .background(OverlayScrimStrong, RoundedCornerShape(12.dp))
-                    .clickable { player.seekTo(introEnd); hud("⏭ تم تخطي المقدمة") }
+                    .clickable { player.seekTo(introEnd); hud(S(R.string.a_53d04dc8)) }
                     .padding(horizontal = 18.dp, vertical = 12.dp)
-            ) { Text("⏭ تخطي المقدمة  (OK)", color = Accent, fontSize = 15.sp) }
+            ) { Text(S(R.string.a_0b73fbca), color = Accent, fontSize = 15.sp) }
         }
 
         GestureHud(feedback, Modifier.align(Alignment.Center))
@@ -1087,7 +1090,7 @@ fun PlayerScreen(vm: AppViewModel) {
             )
         }
 
-        if (ui.status == "جارٍ التحميل..." && !vm.inPip && ui.error == null) {
+        if (ui.status == STATUS_LOADING && !vm.inPip && ui.error == null) {
             androidx.compose.material3.CircularProgressIndicator(
                 Modifier.align(Alignment.Center).size(46.dp), color = Accent, strokeWidth = 3.dp
             )
@@ -1129,7 +1132,7 @@ fun PlayerScreen(vm: AppViewModel) {
                     )
                 }
                 if (live) {
-                    Text("🔴 مباشر", fontSize = 12.sp, color = Color(0xFFFF8A8F),
+                    Text(S(R.string.a_76ad5744), fontSize = 12.sp, color = Color(0xFFFF8A8F),
                         modifier = Modifier.background(Color(0x66000000), RoundedCornerShape(8.dp)).padding(8.dp))
                     Spacer(Modifier.width(8.dp))
                 }
@@ -1188,7 +1191,7 @@ fun PlayerScreen(vm: AppViewModel) {
                                     Box(Modifier.fillMaxHeight().fillMaxWidth(pct).background(Accent))
                                 }
                                 Text(
-                                    "${hm(now.start)} - ${hm(now.stop)}" + (next?.let { " · التالي: ${it.title}" } ?: ""),
+                                    "${hm(now.start)} - ${hm(now.stop)}" + (next?.let { " · " + S(R.string.x_next_prog, it.title) } ?: ""),
                                     fontSize = 12.sp, color = OverlayText, maxLines = 1
                                 )
                             }
@@ -1215,10 +1218,10 @@ fun PlayerScreen(vm: AppViewModel) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (live) {
-                        PlayerButton("☰ القنوات") { actions.openChannels() }
+                        PlayerButton(S(R.string.a_97646aab)) { actions.openChannels() }
                         PlayerButton("⏪ 30") { rewindLive(vm, player, chRef.value.url, 30); ui.ping++ }
                         if (player.isCurrentMediaItemLive && player.currentLiveOffset > 8_000L) {
-                            PlayerButton("🔴 مباشر") { player.seekToDefaultPosition(); ui.ping++ }
+                            PlayerButton(S(R.string.a_76ad5744)) { player.seekToDefaultPosition(); ui.ping++ }
                         }
                     } else {
                         PlayerButton("⏮", enabled = vm.hasPreviousEpisode(chRef.value)) { actions.prevEpisode() }
@@ -1232,14 +1235,14 @@ fun PlayerScreen(vm: AppViewModel) {
                         PlayerButton("⏭", enabled = vm.hasNextEpisode(chRef.value)) { actions.nextEpisode() }
                     }
                     PlayerButton(if (am.isStreamMute(AudioManager.STREAM_MUSIC)) "🔇" else "🔊") { actions.toggleMute() }
-                    if (!live && vm.episodes.any { it.url == chRef.value.url }) PlayerButton("📺 الحلقات") { openSheet(PlayerTab.Episodes) }
-                    PlayerButton("💬 ترجمة", active = ui.subOn) { openSheet(PlayerTab.Subtitles) }
-                    PlayerButton("🎧 صوت", active = store.audioBoost) { openSheet(PlayerTab.Audio) }
-                    PlayerButton(if (ui.speed == 1f) "⏱ السرعة" else "⏱ ${ui.speed}x", active = ui.speed != 1f) { openSheet(PlayerTab.Playback) }
+                    if (!live && vm.episodes.any { it.url == chRef.value.url }) PlayerButton(S(R.string.a_88259e6d)) { openSheet(PlayerTab.Episodes) }
+                    PlayerButton(S(R.string.a_b75445ac), active = ui.subOn) { openSheet(PlayerTab.Subtitles) }
+                    PlayerButton(S(R.string.a_1b377a5e), active = store.audioBoost) { openSheet(PlayerTab.Audio) }
+                    PlayerButton(if (ui.speed == 1f) S(R.string.a_3f4a4d97) else "⏱ ${ui.speed}x", active = ui.speed != 1f) { openSheet(PlayerTab.Playback) }
                     PlayerButton("⛶ ${ui.aspect.label.substringBefore(' ')}") { openSheet(PlayerTab.Display) }
                     PlayerButton("🔁", active = ui.loop) { actions.setLoop(!ui.loop) }
-                    if (dev.touch) PlayerButton("🔒 قفل") { actions.toggleLock() }
-                    PlayerButton("⚙ خيارات") { openSheet(PlayerTab.Playback) }
+                    if (dev.touch) PlayerButton(S(R.string.a_b82b4db1)) { actions.toggleLock() }
+                    PlayerButton(S(R.string.a_c01ec84a)) { openSheet(PlayerTab.Playback) }
                     PlayerButton("📊") { ui.stats = !ui.stats }
                 }
             }
@@ -1257,13 +1260,13 @@ fun PlayerScreen(vm: AppViewModel) {
                 horizontalAlignment = Alignment.End
             ) {
                 Text(
-                    if (store.autoNext && !ui.sleepEnd) "الحلقة التالية خلال 5 ثوانٍ: ${ep.num}"
-                    else "الحلقة التالية: ${ep.num}",
+                    if (store.autoNext && !ui.sleepEnd) S(R.string.x_next_ep_5, ep.num)
+                    else S(R.string.x_next_ep, ep.num),
                     color = Color.White, fontSize = 14.sp)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MBtn("تشغيل الآن", modifier = Modifier.focusRequester(nextFocus)) { ui.nextEp = null; vm.playNext() }
-                    MBtn("إلغاء", filled = false) { ui.nextEp = null }
+                    MBtn(S(R.string.a_501e36f0), modifier = Modifier.focusRequester(nextFocus)) { ui.nextEp = null; vm.playNext() }
+                    MBtn(S(R.string.a_e776b020), filled = false) { ui.nextEp = null }
                 }
             }
         }
@@ -1274,12 +1277,12 @@ fun PlayerScreen(vm: AppViewModel) {
                     .border(1.dp, OverlayLine, RoundedCornerShape(18.dp)).padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("انتهى المحتوى", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                Text(S(R.string.a_05fc16d5), color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MBtn("إعادة", modifier = Modifier.focusRequester(endFocus)) { actions.restart() }
-                    if (vm.hasNextEpisode(chRef.value)) MBtn("الحلقة التالية") { vm.playNext() }
-                    MBtn("خروج", filled = false) { vm.stop() }
+                    MBtn(S(R.string.a_ba89cfd4), modifier = Modifier.focusRequester(endFocus)) { actions.restart() }
+                    if (vm.hasNextEpisode(chRef.value)) MBtn(S(R.string.a_938cb270)) { vm.playNext() }
+                    MBtn(S(R.string.a_a8bdc009), filled = false) { vm.stop() }
                 }
             }
         }
@@ -1336,17 +1339,17 @@ fun PlayerScreen(vm: AppViewModel) {
                     onSaveIntro = {
                         seriesKey?.let { k ->
                             store.setIntroEnd(k, player.currentPosition)
-                            vm.say("سيظهر زر تخطي المقدمة في حلقات هذا المسلسل")
+                            vm.say(S(R.string.a_8b16f482))
                         }
                     },
-                    onClearIntro = { seriesKey?.let { vm.store.setIntroEnd(it, 0L); vm.say("تم مسح المقدمة") } },
+                    onClearIntro = { seriesKey?.let { vm.store.setIntroEnd(it, 0L); vm.say(S(R.string.a_3ede4634)) } },
                     onRewindLive = { sec -> rewindLive(vm, player, chRef.value.url, sec) },
                     onLiveEdge = { player.seekToDefaultPosition(); player.playWhenReady = true; ui.ping++ },
                     onAlternatives = {
                         val alts = vm.alternativesOf(chRef.value)
-                        if (alts.isEmpty()) vm.say("لا توجد مصادر بديلة لهذه القناة")
+                        if (alts.isEmpty()) vm.say(S(R.string.a_174d0794))
                         else vm.menu = com.nabd.tv.MenuRequest(
-                            "مصادر بديلة",
+                            S(R.string.a_e33cb38d),
                             alts.map { a -> (a.name + " · " + vm.health.state(a.url).name) to { vm.useAlternative(a) } }
                         )
                     }

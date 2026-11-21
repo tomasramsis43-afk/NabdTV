@@ -218,6 +218,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val cont = history.filter { it.kind != Kind.Live && !it.finished && it.progress > 0.02f && parental.visible(histChannel(it)) }
             .take(20).map { histChannel(it) }
         if (cont.isNotEmpty()) out += Shelf(tx(R.string.shelf_continue), cont)
+        // Favourites: only what the user actually starred (any kind), already filtered by parental rules.
+        val favItems = all.filter { it.url in favs && parental.visible(it) }.take(40)
+        if (favItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_fav), favItems)
+        // Recommended: unwatched movies/series from the categories of the last things the user watched, best rated first.
+        val watched = history.filter { it.kind != Kind.Live }
+        val seen = watched.map { it.url }.toHashSet()
+        val liked = watched.take(8).map { it.group }.filter { it.isNotBlank() }.toHashSet()
+        if (liked.isNotEmpty()) {
+            val rec = VmLogic.topRated((movieList + seriesList).filter { it.group in liked && it.url !in seen }, 20)
+            if (rec.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_recommended), rec)
+        }
         fun top(l: List<Channel>) = VmLogic.topRated(l, 10)
         val topM = top(movieList)
         if (topM.isNotEmpty()) out += Shelf(tx(R.string.shelf_top_movies), topM, ranked = true)
@@ -227,6 +238,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (newMovies.isNotEmpty()) out += Shelf(tx(R.string.shelf_new_movies), newMovies)
         val newSeries = seriesList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { seriesList.take(30) }
         if (newSeries.isNotEmpty()) out += Shelf(tx(R.string.shelf_new_series), newSeries)
+        val doneItems = history.filter { it.kind != Kind.Live && it.finished && parental.visible(histChannel(it)) }.take(20).map { histChannel(it) }
+        if (doneItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_recent), doneItems)
         out
     }
 
@@ -270,7 +283,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { while (true) { kotlinx.coroutines.delay(20 * 60_000L); checkUpdate(false) } }
     }
 
-    private fun friendly(e: Exception): String = VmLogic.friendlyError(e)
+    private fun friendly(e: Exception): String = when (e) {
+        is java.net.UnknownHostException -> tx(R.string.x_err_unknown_host)
+        is java.net.SocketTimeoutException -> tx(R.string.x_err_timeout)
+        is java.net.ConnectException -> tx(R.string.x_err_refused)
+        is IllegalArgumentException -> tx(R.string.x_err_bad_address, e.message ?: "")
+        is org.json.JSONException -> tx(R.string.x_err_json)
+        else -> e.message ?: tx(R.string.x_err_unknown)
+    }
+
+    private fun recordMsg(scheduled: Boolean, clash: Boolean): String = when {
+        !scheduled -> tx(R.string.x_rec_already)
+        clash -> tx(R.string.x_rec_clash)
+        else -> tx(R.string.x_rec_ok)
+    }
 
     fun load(force: Boolean) {
         viewModelScope.launch {
@@ -778,7 +804,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Local report of the channels that failed most often, for the settings screen. */
     fun problemReport(): List<String> = store.worstHealth(15).map { (u, r) ->
         val name = all.firstOrNull { it.url == u }?.name ?: u.takeLast(30)
-        VmLogic.problemLine(name, r.state == Health.Dead, r.failures)
+        tx(R.string.x_problem_line, name, tx(if (r.state == Health.Dead) R.string.x_word_dead else R.string.x_word_slow), r.failures)
     }
 
 
@@ -852,7 +878,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /* ───────── recording / reminders ───────── */
     fun record(c: Channel, p: Prog) {
         val clash = recCtl.schedule(c, p)
-        say(VmLogic.recordMessage(clash != null, clash == true))
+        say(recordMsg(clash != null, clash == true))
     }
 
     fun autoRecord(c: Channel, p: Prog) {

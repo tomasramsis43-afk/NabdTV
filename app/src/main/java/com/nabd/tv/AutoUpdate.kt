@@ -40,7 +40,7 @@ object Notifier {
     fun show(ctx: Context, id: Int, title: String, text: String, pi: PendingIntent?) {
         if (Build.VERSION.SDK_INT >= 26) {
             (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-                .createNotificationChannel(NotificationChannel(CH, "التحديثات", NotificationManager.IMPORTANCE_DEFAULT))
+                .createNotificationChannel(NotificationChannel(CH, S(R.string.a_fb56732c), NotificationManager.IMPORTANCE_DEFAULT))
         }
         val b = NotificationCompat.Builder(ctx, CH)
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
@@ -68,7 +68,7 @@ object AutoUpdate {
         if (UpdatePrefs.lastTried(ctx) == rel.build && System.currentTimeMillis() - UpdatePrefs.triedAt(ctx) < 3 * 3600_000L) return false
         UpdatePrefs.setTried(ctx, rel.build)
         if (Build.VERSION.SDK_INT >= 26 && !ctx.packageManager.canRequestPackageInstalls()) {
-            Notifier.show(ctx, 7001, "تحديث جديد ${rel.tag}", "اسمح لـ Nabd TV بالتثبيت من الإعدادات لتفعيل التحديث التلقائي", Notifier.openApp(ctx))
+            Notifier.show(ctx, 7001, S(R.string.x_upd_new, rel.tag), S(R.string.a_a2b12612), Notifier.openApp(ctx))
             return false
         }
         val apk = Updater.download(ctx, http, rel) { }
@@ -109,13 +109,13 @@ class InstallResultReceiver : BroadcastReceiver() {
                 confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 if (AppState.foreground) runCatching { ctx.startActivity(confirm) }
                 else Notifier.show(
-                    ctx, 7001, "تحديث جاهز للتثبيت", "اضغط للتأكيد",
+                    ctx, 7001, S(R.string.a_96ad1eb5), S(R.string.a_20ff208f),
                     PendingIntent.getActivity(ctx, 7, confirm, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
                 )
             }
             PackageInstaller.STATUS_SUCCESS -> Unit      // Android restarts the process with the new version
             else -> Notifier.show(
-                ctx, 7001, "تعذّر التحديث", i.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "حاول مرة أخرى من الإعدادات",
+                ctx, 7001, S(R.string.a_522e8c2f), i.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: S(R.string.a_2d8b14ae),
                 Notifier.openApp(ctx)
             )
         }
@@ -126,6 +126,6 @@ class InstallResultReceiver : BroadcastReceiver() {
 class PackageReplacedReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, i: Intent) {
         runCatching { NotificationManagerCompat.from(ctx).cancel(7001) }
-        Notifier.show(ctx, 7002, "تم تحديث Nabd TV", "الإصدار ${Updater.currentName(ctx)} جاهز، اضغط للفتح", Notifier.openApp(ctx))
+        Notifier.show(ctx, 7002, S(R.string.a_690bdaaa), S(R.string.x_upd_done_body, Updater.currentName(ctx)), Notifier.openApp(ctx))
     }
 }
