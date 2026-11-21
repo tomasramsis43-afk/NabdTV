@@ -1,6 +1,9 @@
 name: Logo source probe
 on:
   workflow_dispatch:
+  push:
+    branches: [feature/title-logos]
+    paths: [tools/logo_probe.py, .github/workflows/logo-probe.yml]
 jobs:
   probe:
     runs-on: ubuntu-latest
