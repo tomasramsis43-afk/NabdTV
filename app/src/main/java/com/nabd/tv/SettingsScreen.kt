@@ -499,7 +499,7 @@ private fun AccountPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
     }
     Group("معلومات الأفلام") {
         Row2("مفتاح TMDB (اختياري)", if (s.tmdbKey.isBlank()) "—" else "••••") {
-            vm.prompt = PromptRequest("مفتاح TMDB API", s.tmdbKey) { v -> upd { s.tmdbKey = v } }
+            vm.prompt = PromptRequest("مفتاح TMDB API", s.tmdbKey, secret = true) { v -> upd { s.tmdbKey = v } }
         }
     }
     Group("مزامنة Trakt") {
@@ -528,7 +528,13 @@ private fun ProfilePage(vm: AppViewModel, upd: (() -> Unit) -> Unit) {
             }
         }
         vm.profileList.filter { it.id != "main" }.forEach { pr ->
-            Row2("حذف: ${pr.name}") { vm.deleteProfile(pr.id); upd {} }
+            Row2("حذف: ${pr.name}") {
+                // Deleting a profile drops its favourites and history: ask first.
+                vm.menu = MenuRequest("حذف الملف «${pr.name}»؟", listOf(
+                    "نعم، احذف" to { vm.deleteProfile(pr.id); upd {} },
+                    "إلغاء" to { }
+                ))
+            }
         }
     }
     Note("لكل ملف مفضلاته وسجل مشاهدته وإعداداته الخاصة.")
