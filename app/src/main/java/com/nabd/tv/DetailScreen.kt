@@ -185,17 +185,43 @@ private fun Episodes(vm: AppViewModel, s: Channel) {
                 onClick = { vm.playEpisode(s, e) }, modifier = Modifier.fillMaxWidth(),
                 focusRequester = if (idx == target) epFocus else null, zoom = 1.02f
             ) {
-                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            "حلقة ${e.num}" + if (e.title.isNotBlank()) " — ${e.title}" else "",
-                            fontSize = 14.sp, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis
-                        )
-                        if (e.plot.isNotBlank()) Text(e.plot, fontSize = 12.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    if (h != null) Text(if (h.finished) "✓" else "${(h.progress * 100).toInt()}%", color = Accent, fontSize = 12.sp)
-                }
+                EpisodeCard(e, h, vm.info?.backdrop ?: s.logo, LocalDevice.current.tv)
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun EpisodeCard(e: Episode, h: HistoryEntry?, fallback: String?, tv: Boolean) {
+    val real = !e.image.isNullOrBlank()
+    Row(
+        Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(
+            Modifier.width(if (tv) 230.dp else 150.dp).aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(10.dp)).background(SurfHigh)
+        ) {
+            AsyncImage(
+                model = if (real) e.image else fallback, contentDescription = null,
+                contentScale = ContentScale.Crop, alpha = if (real) 1f else 0.45f,
+                modifier = Modifier.fillMaxSize()
+            )
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Scrim.copy(alpha = 0.8f)))))
+            Text("▶", color = Color.White, fontSize = 18.sp, modifier = Modifier.align(Alignment.Center))
+            if (h != null && h.progress > 0f) Box(
+                Modifier.align(Alignment.BottomStart).fillMaxWidth(h.progress).height(3.dp).background(Accent)
+            )
+        }
+        Column(Modifier.weight(1f)) {
+            Text("م${e.season} ح${e.num}", fontSize = 11.sp, color = Accent, fontWeight = FontWeight.Bold)
+            Text(
+                e.title.ifBlank { "حلقة ${e.num}" }, fontSize = 14.sp, color = Ink, maxLines = 1,
+                overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold
+            )
+            if (e.plot.isNotBlank()) Text(e.plot, fontSize = 12.sp, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (h?.finished == true) Text("✓ تمت المشاهدة", fontSize = 11.sp, color = Accent)
         }
     }
 }
