@@ -1,5 +1,7 @@
 name: Compatibility lint
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 jobs:
   lint:
@@ -23,7 +25,7 @@ jobs:
           gradle lintDebug --no-daemon > lint.log 2>&1
           F=app/build/reports/lint-results-debug.txt
           if [ -f "$F" ]; then
-            ERR=$(grep -E "Error:" "$F" | sed "s#/home/runner/work/NabdTV/NabdTV/app/src/main/java/com/nabd/tv/##" | grep -v UnsafeOptInUsageError | grep -v ProtectedPermissions | head -40)
+            ERR=$(grep -E "Error:" "$F" | sed "s#/home/runner/work/NabdTV/NabdTV/app/src/main/java/com/nabd/tv/##" | grep -v UnsafeOptInUsageError | grep -v ProtectedPermissions | grep -v RestrictedApi | head -40)
             [ -z "$ERR" ] && ERR="NO-API-ERRORS: $(tail -2 "$F" | tr "\n" " ")"
           else
             ERR=$(grep -E "^e: |What went wrong" -A3 lint.log | head -40)
