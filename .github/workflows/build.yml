@@ -56,6 +56,13 @@ jobs:
         run: |
           cp app/build/outputs/apk/debug/app-debug.apk NabdTV-debug.apk
           gh release create "v2.0.${{ github.run_number }}" NabdTV-debug.apk --title "NabdTV v2.0.${{ github.run_number }}" --notes "Debug APK"
+      - name: Publish preview APK as pre-release (i18n branch only; never touches main or "latest")
+        if: github.ref == 'refs/heads/i18n/strings-extraction'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk NabdTV-debug.apk
+          gh release create "preview-i18n-${{ github.run_number }}" NabdTV-debug.apk --prerelease --target "${{ github.sha }}" --title "NabdTV preview (i18n + episode cards) #${{ github.run_number }}" --notes "Preview build from branch i18n/strings-extraction. Not the stable release."
       - name: Verify release build (R8 / shrink) - does not block the debug release
         continue-on-error: true
         env:
