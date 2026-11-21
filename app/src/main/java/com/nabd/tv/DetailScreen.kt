@@ -180,7 +180,7 @@ private fun Episodes(vm: AppViewModel, s: Channel) {
     }
     LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         itemsIndexed(eps, key = { _, e -> e.url }) { idx, e ->
-            val h = vm.store.historyOf(e.url)
+            val h = vm.historyByUrl[e.url]
             Focusable(
                 onClick = { vm.playEpisode(s, e) }, modifier = Modifier.fillMaxWidth(),
                 focusRequester = if (idx == target) epFocus else null, zoom = 1.02f
