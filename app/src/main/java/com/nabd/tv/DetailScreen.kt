@@ -108,8 +108,8 @@ fun DetailScreen(vm: AppViewModel) {
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.Bottom) {
                         Text(
-                            c.name, fontSize = if (narrow) 22.sp else if (d.tv) 34.sp else 28.sp,
-                            lineHeight = if (d.tv) 40.sp else 33.sp,
+                            c.name, fontSize = if (narrow) 18.sp else if (d.tv) 26.sp else 22.sp,
+                            lineHeight = if (d.tv) 32.sp else 28.sp,
                             fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis
                         )
                         Spacer(Modifier.height(8.dp))
