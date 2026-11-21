@@ -656,7 +656,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val k = "${c.url}:$n"
         if (!stillsRequested.add(k)) return
         viewModelScope.launch {
-            val m = repo.tmdbStills(c.name, n)
+            val m = repo.episodeStills(c.name, n)
             if (m.isEmpty()) { stillsRequested.remove(k); return@launch }
             if (detail?.url != c.url) return@launch
             episodes = episodes.map { e -> if (e.season == n) m[e.num]?.let { e.copy(image = it) } ?: e else e }
