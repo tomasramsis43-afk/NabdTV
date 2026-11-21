@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -91,12 +92,20 @@ fun IconBtn(ic: Ic, onClick: () -> Unit, modifier: Modifier = Modifier, tint: Co
 /** Glass search pill. On touch devices it can fill the available width; on TV it stays compact until used. */
 @Composable
 fun SearchField(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, fillWidth: Boolean = false) {
-    var focused by remember { mutableStateOf(false) }
     val d = LocalDevice.current
+    // TV: landing on the field with the D-pad only highlights it; typing (keyboard) starts when OK is pressed.
+    val remote = d.tv
+    var fieldFocused by remember { mutableStateOf(false) }
+    var pillFocused by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf(!remote) }
+    val inputFocus = remember { FocusRequester() }
+    val focused = fieldFocused || pillFocused
+    LaunchedEffect(editing) { if (remote && editing) runCatching { inputFocus.requestFocus() } }
     val w by animateDpAsState(if (focused || value.isNotEmpty()) 230.dp else 130.dp, tween(160), label = "searchW")
     val shape = RoundedCornerShape(Radius.pill)
     Row(
         (if (fillWidth) modifier.fillMaxWidth() else modifier.width(w)).height(d.control)
+            .then(if (remote) Modifier.onFocusChanged { pillFocused = it.isFocused }.clickable { editing = true } else Modifier)
             .glass(shape, focused = focused).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -108,7 +117,10 @@ fun SearchField(value: String, onChange: (String) -> Unit, modifier: Modifier = 
                 value = value, onValueChange = onChange, singleLine = true,
                 textStyle = TextStyle(color = Ink, fontSize = 14.sp),
                 cursorBrush = SolidColor(Accent),
-                modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused }
+                modifier = Modifier.fillMaxWidth()
+                    .focusRequester(inputFocus)
+                    .focusProperties { canFocus = editing }
+                    .onFocusChanged { fieldFocused = it.isFocused; if (remote && !it.isFocused) editing = false }
             )
         }
         if (value.isNotEmpty()) {
