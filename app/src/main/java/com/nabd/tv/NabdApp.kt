@@ -61,7 +61,12 @@ object CrashLog {
         }
     }
 
-    private fun isCrashProcess() = runCatching { android.app.Application.getProcessName().endsWith(":crash") }.getOrDefault(false)
+    private fun isCrashProcess() = runCatching { processName().endsWith(":crash") }.getOrDefault(false)
+
+    /** Application.getProcessName needs API 28; older devices read the name from /proc. */
+    private fun processName(): String =
+        if (android.os.Build.VERSION.SDK_INT >= 28) android.app.Application.getProcessName()
+        else java.io.File("/proc/self/cmdline").readText().trim { it == '\u0000' || it.isWhitespace() }
 
     fun read(ctx: android.content.Context): String = runCatching { file(ctx).takeIf { it.exists() }?.readText() }.getOrNull().orEmpty()
     fun clear(ctx: android.content.Context) { runCatching { file(ctx).delete() } }
