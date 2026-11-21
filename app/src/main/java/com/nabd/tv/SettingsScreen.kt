@@ -332,10 +332,11 @@ private fun langLabel(code: String): String = when (code) {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun AppearancePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
+    val cx = LocalContext.current
     Group("السمة") {
         Toggle("الوضع الداكن", vm.darkPref) { vm.setDark(it) }
-        Row2("شاشة البداية", Tab.valueOf(s.startSection).label) {
-            vm.menu = MenuRequest("شاشة البداية", Tab.entries.map { t -> t.label to { upd { s.startSection = t.name } } })
+        Row2("شاشة البداية", tr(Tab.valueOf(s.startSection).labelRes)) {
+            vm.menu = MenuRequest("شاشة البداية", Tab.entries.map { t -> Lang.str(cx, t.labelRes) to { upd { s.startSection = t.name } } })
         }
     }
     Group("كيف يعمل التصميم") {
