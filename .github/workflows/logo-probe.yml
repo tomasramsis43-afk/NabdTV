@@ -1,0 +1,10 @@
+name: Logo source probe
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install pillow >/dev/null 2>&1 || true
+      - run: python3 tools/logo_probe.py
