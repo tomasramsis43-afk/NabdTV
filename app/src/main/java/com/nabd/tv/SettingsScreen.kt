@@ -1,5 +1,7 @@
 package com.nabd.tv
 
+import androidx.annotation.StringRes
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -38,21 +40,25 @@ import kotlinx.coroutines.delay
  * contains the options of that area, grouped in readable blocks. Every option that existed before
  * is still reachable — nothing was dropped in the redesign.
  */
-enum class SettingsPage(val title: String, val subtitle: String, val icon: Ic) {
-    Appearance("المظهر والتصميم", "الوضع الداكن وشاشة البداية", Ic.Palette),
-    Display("الصورة والعرض", "نسبة العرض ومعدل التحديث وفك الترميز", Ic.Display),
-    Audio("الصوت", "اللغة المفضلة وتزامن الصوت", Ic.Speaker),
-    Subtitles("الترجمة واللغات", "الشكل والحجم والترميز و OpenSubtitles", Ic.Subtitles),
-    Playback("التشغيل والمشغل", "السرعة والاستئناف والتكرار", Ic.Play),
-    Network("الشبكة والاتصال", "السيرفر والفحص وصحة الروابط", Ic.Wifi),
-    Account("الحساب والاشتراك", "المزوّد و Trakt و TMDB", Ic.User),
-    Profiles("الملفات الشخصية", "إضافة وتبديل وحذف الملفات", Ic.Profiles),
-    Parental("الرقابة الأبوية", "الرمز والتصنيفات والحد اليومي", Ic.Lock),
-    Notifications("الإشعارات", "الحلقات الجديدة وتحديث التطبيق", Ic.Bell),
-    Storage("التخزين والبيانات", "النسخ الاحتياطي والاستيراد والسجل", Ic.Storage),
-    Language("اللغة والمنطقة", "لغات الصوت والترجمة والترميز", Ic.Globe),
-    Remote("الريموت والتحكم", "أزرار التلفاز والإيماءات والتنقل", Ic.Remote),
-    About("معلومات التطبيق والدعم", "الإصدار والتحديث والتشخيص", Ic.Info)
+enum class SettingsPage(@StringRes val titleRes: Int,@StringRes val subtitleRes: Int, val icon: Ic) {
+    Appearance(R.string.a_734eab8e, R.string.a_c9f86b2e, Ic.Palette),
+    Display(R.string.a_cfa8a51c, R.string.a_ff5ac2c0, Ic.Display),
+    Audio(R.string.a_beb4436d, R.string.a_303d962a, Ic.Speaker),
+    Subtitles(R.string.a_f6f51585, R.string.a_77824275, Ic.Subtitles),
+    Playback(R.string.a_57724931, R.string.a_e65601c8, Ic.Play),
+    Network(R.string.a_d2fa6377, R.string.a_86da2afe, Ic.Wifi),
+    Account(R.string.a_4ee8db59, R.string.a_5f193832, Ic.User),
+    Profiles(R.string.a_ace4080f, R.string.a_841628fb, Ic.Profiles),
+    Parental(R.string.a_a601855f, R.string.a_19a98677, Ic.Lock),
+    Notifications(R.string.a_0eb7129e, R.string.a_234f00e6, Ic.Bell),
+    Storage(R.string.a_2ab8654b, R.string.a_db13484a, Ic.Storage),
+    Language(R.string.a_c34e6191, R.string.a_d0f404df, Ic.Globe),
+    Remote(R.string.a_e7ebeee3, R.string.a_5f1c0bbb, Ic.Remote),
+    About(R.string.a_859c31b9, R.string.a_8b616260, Ic.Info);
+
+    val title: String get() = S(titleRes)
+    val subtitle: String get() = S(subtitleRes)
+
 }
 
 private fun accentFor(p: SettingsPage): Color = when (p) {

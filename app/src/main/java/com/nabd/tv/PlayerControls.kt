@@ -5,6 +5,8 @@
 
 package com.nabd.tv
 
+import androidx.annotation.StringRes
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,14 +37,17 @@ import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
 
 /** Tabs of the in-player settings panel. */
-enum class PlayerTab(val label: String) {
-    Playback("التشغيل"),
-    Episodes("الحلقات"),
-    Audio("الصوت"),
-    Subtitles("الترجمة"),
-    Display("الصورة"),
-    Gestures("الإيماءات"),
-    Info("معلومات")
+enum class PlayerTab(@StringRes val labelRes: Int) {
+    Playback(R.string.a_0ee01a2d),
+    Episodes(R.string.a_daa79e1c),
+    Audio(R.string.a_beb4436d),
+    Subtitles(R.string.a_5eae4421),
+    Display(R.string.a_80e8bb66),
+    Gestures(R.string.a_3b703102),
+    Info(R.string.a_a60aac04);
+
+    val label: String get() = S(labelRes)
+
 }
 
 /** Everything the player HUD needs, kept in one observable holder so the video surface never recomposes. */
