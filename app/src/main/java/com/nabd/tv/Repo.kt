@@ -464,6 +464,60 @@ class Repo(private val ctx: Context, val store: Store) {
         } catch (_: Exception) { emptyMap() }
     }
 
+    /* ───────────── TVmaze episode stills (free, no API key) ───────────── */
+
+    private val tvmazeIds = HashMap<String, Int>()
+    private val tvmazeMiss = HashSet<String>()
+    private val tvmazeEps = HashMap<Int, Map<Pair<Int, Int>, String>>()
+
+    /**
+     * Real episode images for one season from TVmaze (https://api.tvmaze.com), keyed by episode number.
+     * The show is accepted only when its TVmaze name equals the provider title (exact match after normalising),
+     * so an image is never attached to the wrong series. One request per show (all seasons) is cached.
+     */
+    suspend fun tvmazeStills(title: String, season: Int): Map<Int, String> = withContext(Dispatchers.IO) {
+        if (season <= 0) return@withContext emptyMap()
+        val clean = title.replace(Regex("""[\[(].*?[\])]"""), " ").replace(Regex("""\s+"""), " ").trim()
+        val want = norm(clean)
+        if (want.isEmpty()) return@withContext emptyMap()
+        fun getArr(url: String): JSONArray? = http.newCall(Request.Builder().url(url).build()).execute().use { r ->
+            if (r.isSuccessful) JSONArray(r.body!!.string()) else null
+        }
+        try {
+            if (synchronized(tvmazeIds) { want in tvmazeMiss }) return@withContext emptyMap()
+            val id = synchronized(tvmazeIds) { tvmazeIds[want] } ?: run {
+                val res = getArr("https://api.tvmaze.com/search/shows?q=${Uri.encode(clean)}")
+                var found: Int? = null
+                if (res != null) for (i in 0 until minOf(res.length(), 5)) {
+                    val sh = res.getJSONObject(i).optJSONObject("show") ?: continue
+                    if (norm(str(sh, "name")) == want) { found = sh.optInt("id"); break }
+                }
+                // Cache hits and confirmed misses; a failed request (res == null) is retried later.
+                synchronized(tvmazeIds) { if (found != null) tvmazeIds[want] = found else if (res != null) tvmazeMiss.add(want) }
+                found
+            } ?: return@withContext emptyMap()
+            val all = synchronized(tvmazeEps) { tvmazeEps[id] } ?: run {
+                val eps = getArr("https://api.tvmaze.com/shows/$id/episodes") ?: return@withContext emptyMap()
+                val m = HashMap<Pair<Int, Int>, String>()
+                for (i in 0 until eps.length()) {
+                    val e = eps.getJSONObject(i)
+                    val img = e.optJSONObject("image") ?: continue
+                    val url = str(img, "original").ifBlank { str(img, "medium") }
+                    if (url.isNotBlank()) m[e.optInt("season") to e.optInt("number")] = url.replace("http://", "https://")
+                }
+                synchronized(tvmazeEps) { tvmazeEps[id] = m }
+                m
+            }
+            all.filterKeys { it.first == season }.mapKeys { it.key.second }
+        } catch (_: Exception) { emptyMap() }
+    }
+
+    /** Episode stills for a season: TVmaze (no key needed); TMDB fills in only when the user entered a TMDB key. */
+    suspend fun episodeStills(title: String, season: Int): Map<Int, String> {
+        val tmdb = if (store.tmdbKey.isNotBlank()) tmdbStills(title, season) else emptyMap()
+        return tmdb + tvmazeStills(title, season)
+    }
+
     /* ───────────── Health probe ───────────── */
 
     private fun looksLike(buf: ByteArray, n: Int): String {
