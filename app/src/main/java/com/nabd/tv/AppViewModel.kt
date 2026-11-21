@@ -829,7 +829,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val clash = Recorder.conflicts(store, p.start, p.stop).isNotEmpty()
         val r = Recorder.schedule(ctx, store, c, p)
         recordings = store.recordings()
-        say(when { r == null -> "مجدول مسبقاً"; clash -> "تمت الجدولة، لكنه يتعارض مع تسجيل آخر"; else -> "تمت جدولة التسجيل" })
+        say(VmLogic.recordMessage(r != null, clash))
     }
 
     fun autoRecord(c: Channel, p: Prog) {

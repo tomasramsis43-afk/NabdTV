@@ -56,4 +56,11 @@ object VmLogic {
     /** Daily viewing limit: only enforced when a limit and a PIN exist and the PIN has not been entered. */
     fun limitReached(limitMinutes: Int, hasPin: Boolean, unlocked: Boolean, watchedSeconds: Long): Boolean =
         limitMinutes > 0 && hasPin && !unlocked && watchedSeconds >= limitMinutes * 60L
+
+    /** Toast shown after trying to schedule a recording. [scheduled] = false means it already existed. */
+    fun recordMessage(scheduled: Boolean, clash: Boolean): String = when {
+        !scheduled -> "مجدول مسبقاً"
+        clash -> "تمت الجدولة، لكنه يتعارض مع تسجيل آخر"
+        else -> "تمت جدولة التسجيل"
+    }
 }

@@ -84,3 +84,9 @@ class VmLogicTimeTest {
         assertEquals(false, VmLogic.limitReached(60, true, true, 99999))
     }
 }
+
+class VmLogicRecordTest {
+    @Test fun alreadyScheduledWinsOverClash() = assertEquals("مجدول مسبقاً", VmLogic.recordMessage(false, true))
+    @Test fun clashIsReportedButStillScheduled() = assertEquals("تمت الجدولة، لكنه يتعارض مع تسجيل آخر", VmLogic.recordMessage(true, true))
+    @Test fun plainSuccess() = assertEquals("تمت جدولة التسجيل", VmLogic.recordMessage(true, false))
+}
