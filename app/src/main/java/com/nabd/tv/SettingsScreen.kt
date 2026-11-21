@@ -1,4 +1,4 @@
-﻿package com.nabd.tv
+package com.nabd.tv
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
@@ -135,13 +135,13 @@ private fun Dashboard(
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Column(Modifier.weight(1f)) {
-                Text("الإعدادات", fontSize = if (d.tv) 30.sp else 24.sp, fontWeight = FontWeight.Bold, color = Ink)
+                Text(S(R.string.a_90b6c869), fontSize = if (d.tv) 30.sp else 24.sp, fontWeight = FontWeight.Bold, color = Ink)
                 Text(
-                    "كل ما يخص تجربة المشاهدة، منظم في مجموعات",
+                    S(R.string.a_8983b03b),
                     fontSize = 12.sp, color = TextSecondary, modifier = Modifier.padding(top = 2.dp)
                 )
             }
-            MBtn("رجوع", filled = false) { onBack() }
+            MBtn(S(R.string.a_328ddce5), filled = false) { onBack() }
         }
         Spacer(Modifier.height(16.dp))
         LazyVerticalGrid(
@@ -218,7 +218,7 @@ private fun PageView(
             Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            MBtn("رجوع", filled = false) { onBack() }
+            MBtn(S(R.string.a_328ddce5), filled = false) { onBack() }
             Box(
                 Modifier.size(if (d.tv) 42.dp else 36.dp).clip(RoundedCornerShape(11.dp))
                     .background(tint.copy(alpha = 0.16f)),
@@ -311,7 +311,7 @@ private fun Row2(
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun Toggle(label: String, on: Boolean, onChange: (Boolean) -> Unit) =
-    Row2(label, if (on) "مفعّل" else "متوقف") { onChange(!on) }
+    Row2(label, if (on) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)) { onChange(!on) }
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -323,7 +323,7 @@ private fun Note(text: String) {
 }
 
 private fun langLabel(code: String): String = when (code) {
-    "ar" -> "العربية"; "en" -> "الإنجليزية"; "fr" -> "الفرنسية"; "tr" -> "التركية"; "es" -> "الإسبانية"
+    "ar" -> S(R.string.a_9970632f); "en" -> S(R.string.a_10c4fe32); "fr" -> S(R.string.a_3c43e065); "tr" -> S(R.string.a_3c806cbc); "es" -> S(R.string.a_af7387d1)
     else -> code
 }
 
@@ -333,69 +333,69 @@ private fun langLabel(code: String): String = when (code) {
 @Composable
 private fun AppearancePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
     val cx = LocalContext.current
-    Group("السمة") {
-        Toggle("الوضع الداكن", vm.darkPref) { vm.setDark(it) }
-        Row2("شاشة البداية", tr(Tab.valueOf(s.startSection).labelRes)) {
-            vm.menu = MenuRequest("شاشة البداية", Tab.entries.map { t -> Lang.str(cx, t.labelRes) to { upd { s.startSection = t.name } } })
+    Group(S(R.string.a_768ba958)) {
+        Toggle(S(R.string.a_3318a3c3), vm.darkPref) { vm.setDark(it) }
+        Row2(S(R.string.a_ca5c3624), tr(Tab.valueOf(s.startSection).labelRes)) {
+            vm.menu = MenuRequest(S(R.string.a_ca5c3624), Tab.entries.map { t -> Lang.str(cx, t.labelRes) to { upd { s.startSection = t.name } } })
         }
     }
-    Group("كيف يعمل التصميم") {
-        Note("الواجهة مبنية للوضع الداكن. ألوان كل عنوان تُستخرج من بوستره وتظهر في مساحة العرض الرئيسية وأزرارها فقط، بينما تبقى خلفية التطبيق داكنة وثابتة ومريحة للعين.")
+    Group(S(R.string.a_ad4583d2)) {
+        Note(S(R.string.a_580ff642))
     }
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun DisplayPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
-    Group("الصورة") {
-        Row2("نسبة العرض الافتراضية", AspectMode.of(s.defaultAspect).label) {
-            vm.menu = MenuRequest("نسبة العرض", AspectMode.entries.map { a -> a.label to { upd { s.defaultAspect = a.name } } })
+    Group(S(R.string.a_80e8bb66)) {
+        Row2(S(R.string.a_5b84a796), AspectMode.of(s.defaultAspect).label) {
+            vm.menu = MenuRequest(S(R.string.a_06160737), AspectMode.entries.map { a -> a.label to { upd { s.defaultAspect = a.name } } })
         }
-        Row2("مطابقة معدل تحديث الشاشة", when (s.afrMode) { "off" -> "إيقاف"; "switch" -> "تبديل وضع الشاشة"; else -> "تلقائي" }) {
-            vm.menu = MenuRequest("مطابقة معدل التحديث", listOf(
-                "إيقاف" to "off",
-                "تلقائي (افتراضي)" to "seamless",
-                "تبديل وضع الشاشة (للتلفاز)" to "switch"
+        Row2(S(R.string.a_326e8081), when (s.afrMode) { "off" -> S(R.string.a_0a390cb7); "switch" -> S(R.string.a_2d19b33b); else -> S(R.string.a_bbf6d1eb) }) {
+            vm.menu = MenuRequest(S(R.string.a_198c2624), listOf(
+                S(R.string.a_0a390cb7) to "off",
+                S(R.string.a_5a20ebd4) to "seamless",
+                S(R.string.a_5da14665) to "switch"
             ).map { (label, v) -> label to { upd { s.afrMode = v } } })
         }
-        Row2("اتجاه الشاشة في المشغّل", OrientationPref.of(s.playerOrientation).label) {
-            vm.menu = MenuRequest("اتجاه الشاشة", OrientationPref.entries.map { p -> p.label to { upd { s.playerOrientation = p.name } } })
+        Row2(S(R.string.a_101bb468), OrientationPref.of(s.playerOrientation).label) {
+            vm.menu = MenuRequest(S(R.string.a_7fba6576), OrientationPref.entries.map { p -> p.label to { upd { s.playerOrientation = p.name } } })
         }
     }
-    Group("الأداء وفك الترميز") {
-        Row2("تفضيل فك الترميز", DecoderMode.of(s.decoderMode).label) {
-            vm.menu = MenuRequest("فك الترميز", DecoderMode.entries.map { m -> m.label to { upd { s.decoderMode = m.name } } })
+    Group(S(R.string.a_8d771a1c)) {
+        Row2(S(R.string.a_5cfcffb9), DecoderMode.of(s.decoderMode).label) {
+            vm.menu = MenuRequest(S(R.string.a_e032dd98), DecoderMode.entries.map { m -> m.label to { upd { s.decoderMode = m.name } } })
         }
-        Row2("مخزن المؤقت", BufferProfile.of(s.bufferProfile).label) {
-            vm.menu = MenuRequest("مخزن المؤقت", BufferProfile.entries.map { p ->
+        Row2(S(R.string.a_2d31f780), BufferProfile.of(s.bufferProfile).label) {
+            vm.menu = MenuRequest(S(R.string.a_2d31f780), BufferProfile.entries.map { p ->
                 "${p.label} — ${p.detail}" to { upd { s.bufferProfile = p.name } }
             })
         }
     }
-    Note("الخيارات المتاحة هي أوضاع العرض والترميز التي يدعمها المشغّل على هذا الجهاز.")
+    Note(S(R.string.a_56e719f3))
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun AudioPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
-    Group("الصوت") {
-        Row2("لغة الصوت المفضلة", langLabel(s.prefAudioLang)) {
-            vm.menu = MenuRequest("لغة الصوت", listOf("ar", "en", "fr", "tr", "es").map { l -> langLabel(l) to { upd { s.prefAudioLang = l } } })
+    Group(S(R.string.a_beb4436d)) {
+        Row2(S(R.string.a_6b558ffd), langLabel(s.prefAudioLang)) {
+            vm.menu = MenuRequest(S(R.string.a_31c39c9d), listOf("ar", "en", "fr", "tr", "es").map { l -> langLabel(l) to { upd { s.prefAudioLang = l } } })
         }
-        Row2("تزامن الصوت", "${s.audioDelayMs} ms") {
-            vm.menu = MenuRequest("تأخير الصوت", listOf(-500, -300, -200, -100, -50, 0, 50, 100, 200, 300, 500).map { v ->
-                (if (v == 0) "بدون تأخير" else if (v > 0) "تأخير $v ms" else "تقديم ${-v} ms") to { upd { s.audioDelayMs = v } }
+        Row2(S(R.string.a_1b6dc5bc), "${s.audioDelayMs} ms") {
+            vm.menu = MenuRequest(S(R.string.a_5ca15333), listOf(-500, -300, -200, -100, -50, 0, 50, 100, 200, 300, 500).map { v ->
+                (if (v == 0) S(R.string.a_5d9f1039) else if (v > 0) "تأخير $v ms" else "تقديم ${-v} ms") to { upd { s.audioDelayMs = v } }
             })
         }
     }
-    Group("التوافق") {
-        Row2("مخزن المؤقت", BufferProfile.of(s.bufferProfile).label) {
-            vm.menu = MenuRequest("مخزن المؤقت", BufferProfile.entries.map { p ->
+    Group(S(R.string.a_f6191aae)) {
+        Row2(S(R.string.a_2d31f780), BufferProfile.of(s.bufferProfile).label) {
+            vm.menu = MenuRequest(S(R.string.a_2d31f780), BufferProfile.entries.map { p ->
                 "${p.label} — ${p.detail}" to { upd { s.bufferProfile = p.name } }
             })
         }
-        Row2("تفضيل فك الترميز", DecoderMode.of(s.decoderMode).label) {
-            vm.menu = MenuRequest("فك الترميز", DecoderMode.entries.map { m -> m.label to { upd { s.decoderMode = m.name } } })
+        Row2(S(R.string.a_5cfcffb9), DecoderMode.of(s.decoderMode).label) {
+            vm.menu = MenuRequest(S(R.string.a_e032dd98), DecoderMode.entries.map { m -> m.label to { upd { s.decoderMode = m.name } } })
         }
     }
 }
@@ -403,43 +403,43 @@ private fun AudioPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun SubtitlePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
-    Group("اللغة والترميز") {
-        Row2("لغة الترجمة المفضلة", langLabel(s.prefSubLang)) {
-            vm.menu = MenuRequest("لغة الترجمة", listOf("ar", "en", "fr", "tr", "es").map { l -> langLabel(l) to { upd { s.prefSubLang = l } } })
+    Group(S(R.string.a_bb8d46f9)) {
+        Row2(S(R.string.a_17ea7fb2), langLabel(s.prefSubLang)) {
+            vm.menu = MenuRequest(S(R.string.a_9eb26ff7), listOf("ar", "en", "fr", "tr", "es").map { l -> langLabel(l) to { upd { s.prefSubLang = l } } })
         }
-        Row2("ترميز ملف الترجمة", if (s.subEncoding == "auto") "تلقائي" else s.subEncoding) {
-            vm.menu = MenuRequest("ترميز الترجمة", SubtitleParser.ENCODINGS.map { e ->
-                (if (e == "auto") "تلقائي (كشف BOM/UTF-8/عربي)" else e) to { upd { s.subEncoding = e } }
+        Row2(S(R.string.a_00c8bd7a), if (s.subEncoding == "auto") S(R.string.a_bbf6d1eb) else s.subEncoding) {
+            vm.menu = MenuRequest(S(R.string.a_2701fb15), SubtitleParser.ENCODINGS.map { e ->
+                (if (e == "auto") S(R.string.a_f8616546) else e) to { upd { s.subEncoding = e } }
             })
         }
-        Row2("تأخير الترجمة الخارجية", "${s.subDelayMs} ms") {
-            vm.menu = MenuRequest("تأخير الترجمة", listOf(-1000, -500, -250, -100, -50, 0, 50, 100, 250, 500, 1000).map { v ->
-                (if (v == 0) "بدون تأخير" else if (v > 0) "تأخير $v ms" else "تقديم ${-v} ms") to { upd { s.subDelayMs = v } }
+        Row2(S(R.string.a_d3f7183d), "${s.subDelayMs} ms") {
+            vm.menu = MenuRequest(S(R.string.a_80dd0013), listOf(-1000, -500, -250, -100, -50, 0, 50, 100, 250, 500, 1000).map { v ->
+                (if (v == 0) S(R.string.a_5d9f1039) else if (v > 0) "تأخير $v ms" else "تقديم ${-v} ms") to { upd { s.subDelayMs = v } }
             })
         }
     }
-    Group("الشكل") {
-        Row2("لون الترجمة", if (s.subColor == 0xFFFFFFFF.toInt()) "أبيض" else "أصفر") {
+    Group(S(R.string.a_1d4f0efa)) {
+        Row2(S(R.string.a_32a44b18), if (s.subColor == 0xFFFFFFFF.toInt()) S(R.string.a_ec42045b) else S(R.string.a_62b07216)) {
             upd { s.subColor = if (s.subColor == 0xFFFFFFFF.toInt()) 0xFFFFE066.toInt() else 0xFFFFFFFF.toInt() }
         }
-        Toggle("خلفية للترجمة", s.subBackground) { upd { s.subBackground = it } }
-        Row2("حجم الترجمة", "${(s.subSize * 100).toInt()}%") {
-            vm.menu = MenuRequest("حجم الترجمة", (5..14).map { v -> "$v%" to { upd { s.subSize = v / 100f } } })
+        Toggle(S(R.string.a_8ab83264), s.subBackground) { upd { s.subBackground = it } }
+        Row2(S(R.string.a_1acfde50), "${(s.subSize * 100).toInt()}%") {
+            vm.menu = MenuRequest(S(R.string.a_1acfde50), (5..14).map { v -> "$v%" to { upd { s.subSize = v / 100f } } })
         }
-        Row2("موضع الترجمة", "${(s.subPosition * 100).toInt()}% من الأسفل") {
-            vm.menu = MenuRequest("موضع الترجمة", listOf(4, 8, 12, 18, 24, 32).map { v -> "$v%" to { upd { s.subPosition = v / 100f } } })
+        Row2(S(R.string.a_b8ffdfa3), "${(s.subPosition * 100).toInt()}% من الأسفل") {
+            vm.menu = MenuRequest(S(R.string.a_b8ffdfa3), listOf(4, 8, 12, 18, 24, 32).map { v -> "$v%" to { upd { s.subPosition = v / 100f } } })
         }
-        Toggle("حدود وظل للترجمة", s.subOutline) { upd { s.subOutline = it } }
+        Toggle(S(R.string.a_6471ac58), s.subOutline) { upd { s.subOutline = it } }
     }
-    Group("ترجمة من الإنترنت (OpenSubtitles)") {
-        Row2("مفتاح API", if (s.osKey.isBlank()) "—" else "••••") {
-            vm.prompt = PromptRequest("مفتاح OpenSubtitles API", s.osKey, secret = true) { v -> upd { s.osKey = v } }
+    Group(S(R.string.a_d4a99514)) {
+        Row2(S(R.string.a_28dd6cac), if (s.osKey.isBlank()) "—" else "••••") {
+            vm.prompt = PromptRequest(S(R.string.a_98cebfb2), s.osKey, secret = true) { v -> upd { s.osKey = v } }
         }
-        Row2("اسم المستخدم", s.osUser.ifBlank { "—" }) {
-            vm.prompt = PromptRequest("اسم مستخدم OpenSubtitles", s.osUser) { v -> upd { s.osUser = v } }
+        Row2(S(R.string.a_794f68a2), s.osUser.ifBlank { "—" }) {
+            vm.prompt = PromptRequest(S(R.string.a_9887f559), s.osUser) { v -> upd { s.osUser = v } }
         }
-        Row2("كلمة المرور", if (s.osPass.isBlank()) "—" else "••••") {
-            vm.prompt = PromptRequest("كلمة مرور OpenSubtitles", "", secret = true) { v -> upd { s.osPass = v } }
+        Row2(S(R.string.a_7ba22cf7), if (s.osPass.isBlank()) "—" else "••••") {
+            vm.prompt = PromptRequest(S(R.string.a_3860b4d0), "", secret = true) { v -> upd { s.osPass = v } }
         }
     }
 }
@@ -447,84 +447,84 @@ private fun SubtitlePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun PlaybackPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
-    Group("التشغيل") {
-        Row2("السرعة الافتراضية", if (s.defaultSpeed == 1f) "عادية" else "${s.defaultSpeed}x") {
-            vm.menu = MenuRequest("سرعة التشغيل", PLAYER_SPEEDS.map { v ->
-                (if (v == 1f) "عادية (1x)" else "${v}x") to { upd { s.defaultSpeed = v } }
+    Group(S(R.string.a_0ee01a2d)) {
+        Row2(S(R.string.a_350c3a32), if (s.defaultSpeed == 1f) S(R.string.a_e7331441) else "${s.defaultSpeed}x") {
+            vm.menu = MenuRequest(S(R.string.a_6bc0cff3), PLAYER_SPEEDS.map { v ->
+                (if (v == 1f) S(R.string.a_ebca19a0) else "${v}x") to { upd { s.defaultSpeed = v } }
             })
         }
-        Row2("خطوة التقديم والإرجاع", "${s.seekInterval} ثانية") {
-            vm.menu = MenuRequest("خطوة البحث", SEEK_INTERVALS.map { v -> "$v ثانية" to { upd { s.seekInterval = v } } })
+        Row2(S(R.string.a_608dc8b8), "${s.seekInterval} ثانية") {
+            vm.menu = MenuRequest(S(R.string.a_6d0922bc), SEEK_INTERVALS.map { v -> "$v ثانية" to { upd { s.seekInterval = v } } })
         }
-        Row2("استئناف المشاهدة", ResumeMode.of(s.resumeMode).label) {
-            vm.menu = MenuRequest("استئناف المشاهدة", ResumeMode.entries.map { m -> m.label to { upd { s.resumeMode = m.name } } })
+        Row2(S(R.string.a_fab55504), ResumeMode.of(s.resumeMode).label) {
+            vm.menu = MenuRequest(S(R.string.a_fab55504), ResumeMode.entries.map { m -> m.label to { upd { s.resumeMode = m.name } } })
         }
-        Row2("إزاحة وقت الإعادة (ساعات)", "${s.catchupOffsetHours}") {
-            vm.menu = MenuRequest("إزاحة الوقت", (-3..3).map { h -> "$h" to { upd { s.catchupOffsetHours = h } } })
+        Row2(S(R.string.a_6cd46606), "${s.catchupOffsetHours}") {
+            vm.menu = MenuRequest(S(R.string.a_e751abc5), (-3..3).map { h -> "$h" to { upd { s.catchupOffsetHours = h } } })
         }
     }
-    Group("السلوك") {
-        Toggle("حفظ موضع المشاهدة", s.rememberPosition) { upd { s.rememberPosition = it } }
-        Toggle("تشغيل الحلقة التالية تلقائياً", s.autoNext) { upd { s.autoNext = it } }
-        Toggle("تكرار المحتوى افتراضياً", s.loopByDefault) { upd { s.loopByDefault = it } }
-        Toggle("تحميل مسبق للقناة التالية (HLS فقط)", s.prefetchNext) { upd { s.prefetchNext = it } }
+    Group(S(R.string.a_abf7e07a)) {
+        Toggle(S(R.string.a_f6631716), s.rememberPosition) { upd { s.rememberPosition = it } }
+        Toggle(S(R.string.a_954384b8), s.autoNext) { upd { s.autoNext = it } }
+        Toggle(S(R.string.a_add97070), s.loopByDefault) { upd { s.loopByDefault = it } }
+        Toggle(S(R.string.a_02217646), s.prefetchNext) { upd { s.prefetchNext = it } }
     }
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun NetworkPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
-    Group("المصدر") {
-        Row2(if (vm.diagBusy) "جارٍ فحص الحساب..." else "فحص الحساب والاتصالات") { if (!vm.diagBusy) vm.runDiag() }
-        Row2("تحديث الحساب من السيرفر") { vm.refreshAccount() }
-        Row2("تغيير السيرفر / الاشتراك") { vm.openSetup() }
+    Group(S(R.string.a_7a466b92)) {
+        Row2(if (vm.diagBusy) S(R.string.a_bf15efb7) else S(R.string.a_61809fbd)) { if (!vm.diagBusy) vm.runDiag() }
+        Row2(S(R.string.a_5b5ad423)) { vm.refreshAccount() }
+        Row2(S(R.string.a_b20500e6)) { vm.openSetup() }
         vm.diag?.let { Note(it) }
     }
-    Group("صحة الروابط") {
-        Toggle("إخفاء الروابط الميتة تلقائياً", s.hideDead) { upd { s.hideDead = it; vm.clearHealth() } }
-        Toggle("دمج القنوات المكررة (HD / FHD / SD)", s.mergeDuplicates) { upd { s.mergeDuplicates = it; vm.listsChanged() } }
-        Row2(vm.healthStatus?.let { "جارٍ الفحص $it" } ?: "فحص المفضلة الآن") { vm.checkHealth(true) }
-        Row2("فحص التصنيف الحالي (حتى 150)") { vm.checkHealth(false) }
-        Row2("مسح نتائج الفحص") { vm.clearHealth(); upd {} }
+    Group(S(R.string.a_df75cf66)) {
+        Toggle(S(R.string.a_6a5e5b61), s.hideDead) { upd { s.hideDead = it; vm.clearHealth() } }
+        Toggle(S(R.string.a_9f355a70), s.mergeDuplicates) { upd { s.mergeDuplicates = it; vm.listsChanged() } }
+        Row2(vm.healthStatus?.let { "جارٍ الفحص $it" } ?: S(R.string.a_ba526b66)) { vm.checkHealth(true) }
+        Row2(S(R.string.a_0bd6ec14)) { vm.checkHealth(false) }
+        Row2(S(R.string.a_a7ab598d)) { vm.clearHealth(); upd {} }
     }
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun AccountPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
-    Group("المزوّد") {
-        Row2("نوع الاشتراك", if (vm.hasXtream) "Xtream Codes" else "قائمة M3U")
-        Row2("السيرفر", runCatching { java.net.URI(vm.savedUrl).host }.getOrNull()?.takeIf { it.isNotBlank() } ?: "—")
-        Row2("تحديث بيانات الحساب") { vm.refreshAccount() }
-        Row2("تغيير السيرفر / الاشتراك") { vm.openSetup() }
+    Group(S(R.string.a_19471ecc)) {
+        Row2(S(R.string.a_a6f38e32), if (vm.hasXtream) "Xtream Codes" else S(R.string.a_57ccaa8d))
+        Row2(S(R.string.a_7e8da771), runCatching { java.net.URI(vm.savedUrl).host }.getOrNull()?.takeIf { it.isNotBlank() } ?: "—")
+        Row2(S(R.string.a_a750061f)) { vm.refreshAccount() }
+        Row2(S(R.string.a_b20500e6)) { vm.openSetup() }
     }
-    Group("معلومات الأفلام") {
-        Row2("مفتاح TMDB (اختياري)", if (s.tmdbKey.isBlank()) "—" else "••••") {
-            vm.prompt = PromptRequest("مفتاح TMDB API", s.tmdbKey, secret = true) { v -> upd { s.tmdbKey = v } }
+    Group(S(R.string.a_37b75114)) {
+        Row2(S(R.string.a_e9f10589), if (s.tmdbKey.isBlank()) "—" else "••••") {
+            vm.prompt = PromptRequest(S(R.string.a_32f8a730), s.tmdbKey, secret = true) { v -> upd { s.tmdbKey = v } }
         }
     }
-    Group("مزامنة Trakt") {
+    Group(S(R.string.a_d244a8a4)) {
         Row2("Client ID", if (s.traktId.isBlank()) "—" else "••••") {
             vm.prompt = PromptRequest("Trakt Client ID", s.traktId) { v -> upd { s.traktId = v } }
         }
         Row2("Client Secret", if (s.traktSecret.isBlank()) "—" else "••••") {
             vm.prompt = PromptRequest("Trakt Client Secret", "", secret = true) { v -> upd { s.traktSecret = v } }
         }
-        if (Trakt.linked(s)) Row2("الحساب", "مربوط ✓ (اضغط لفك الربط)") { vm.traktUnlink() }
-        else Row2("ربط الحساب", "غير مربوط") { vm.traktLink() }
+        if (Trakt.linked(s)) Row2(S(R.string.a_0fd1ce3a), S(R.string.a_fbe1a233)) { vm.traktUnlink() }
+        else Row2(S(R.string.a_e6537128), S(R.string.a_060fb9f4)) { vm.traktLink() }
     }
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun ProfilePage(vm: AppViewModel, upd: (() -> Unit) -> Unit) {
-    Group("الملفات الشخصية") {
-        Row2("الملف الحالي", vm.profile.name + if (vm.profile.kids) " (أطفال)" else "") { vm.openProfiles() }
-        Row2("إضافة ملف") {
-            vm.prompt = PromptRequest("اسم الملف", "") { n ->
+    Group(S(R.string.a_ace4080f)) {
+        Row2(S(R.string.a_7ae8d996), vm.profile.name + if (vm.profile.kids) S(R.string.a_204b9073) else "") { vm.openProfiles() }
+        Row2(S(R.string.a_fafed82e)) {
+            vm.prompt = PromptRequest(S(R.string.a_1a2b479a), "") { n ->
                 if (n.isNotBlank()) vm.menu = MenuRequest(n.trim(), listOf(
-                    "ملف عادي" to { vm.addProfile(n, false); upd {} },
-                    "ملف أطفال" to { vm.addProfile(n, true); upd {} }
+                    S(R.string.a_1600cda7) to { vm.addProfile(n, false); upd {} },
+                    S(R.string.a_f6141f05) to { vm.addProfile(n, true); upd {} }
                 ))
             }
         }
@@ -532,52 +532,52 @@ private fun ProfilePage(vm: AppViewModel, upd: (() -> Unit) -> Unit) {
             Row2("حذف: ${pr.name}") {
                 // Deleting a profile drops its favourites and history: ask first.
                 vm.menu = MenuRequest("حذف الملف «${pr.name}»؟", listOf(
-                    "نعم، احذف" to { vm.deleteProfile(pr.id); upd {} },
-                    "إلغاء" to { }
+                    S(R.string.a_494feab7) to { vm.deleteProfile(pr.id); upd {} },
+                    S(R.string.a_e776b020) to { }
                 ))
             }
         }
     }
-    Note("لكل ملف مفضلاته وسجل مشاهدته وإعداداته الخاصة.")
+    Note(S(R.string.a_76665c67))
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun ParentalPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
-    Group("الرمز السري") {
-        Row2(if (s.hasPin) "تغيير الرمز السري" else "تعيين رمز سري") {
+    Group(S(R.string.a_64d8acb6)) {
+        Row2(if (s.hasPin) S(R.string.a_4100db18) else S(R.string.a_24f46537)) {
             val set = {
-                vm.prompt = PromptRequest("الرمز الجديد (4–6 أرقام)", "", secret = true) { c ->
-                    if (c.length in 4..6 && c.all { it.isDigit() }) upd { vm.setPin(c) } else vm.say("الرمز يجب أن يكون 4–6 أرقام")
+                vm.prompt = PromptRequest(S(R.string.a_d6723b7e), "", secret = true) { c ->
+                    if (c.length in 4..6 && c.all { it.isDigit() }) upd { vm.setPin(c) } else vm.say(S(R.string.a_724a2256))
                 }
             }
-            if (s.hasPin) vm.requirePin("أدخل الرمز الحالي") { set() } else set()
+            if (s.hasPin) vm.requirePin(S(R.string.a_7094a57a)) { set() } else set()
         }
-        if (s.hasPin) Row2("إلغاء الرمز السري") { vm.clearPin(); upd {} }
-        if (s.hasPin) Row2("قفل الآن") { vm.lockNow(); vm.say("تم القفل") }
+        if (s.hasPin) Row2(S(R.string.a_33f45dba)) { vm.clearPin(); upd {} }
+        if (s.hasPin) Row2(S(R.string.a_9c81af58)) { vm.lockNow(); vm.say(S(R.string.a_8c9ad634)) }
     }
-    Group("المحتوى") {
-        Row2("أقصى مستوى مسموح", when (s.parentalLevel) {
-            Maturity.Kids -> "أطفال"; Maturity.Teen -> "عام (بدون محتوى البالغين)"; Maturity.Adult -> "الكل"
+    Group(S(R.string.a_1711387d)) {
+        Row2(S(R.string.a_ee5c76c8), when (s.parentalLevel) {
+            Maturity.Kids -> S(R.string.a_babe43c8); Maturity.Teen -> S(R.string.a_4e681301); Maturity.Adult -> S(R.string.a_11fdef2d)
         }) {
-            vm.menu = MenuRequest("أقصى مستوى", listOf(
-                "أطفال فقط" to { vm.setLevel(Maturity.Kids); upd {} },
-                "عام (بدون محتوى البالغين)" to { vm.setLevel(Maturity.Teen); upd {} },
-                "الكل" to { vm.setLevel(Maturity.Adult); upd {} }
+            vm.menu = MenuRequest(S(R.string.a_7d47ce12), listOf(
+                S(R.string.a_f92e3bc7) to { vm.setLevel(Maturity.Kids); upd {} },
+                S(R.string.a_4e681301) to { vm.setLevel(Maturity.Teen); upd {} },
+                S(R.string.a_11fdef2d) to { vm.setLevel(Maturity.Adult); upd {} }
             ))
         }
-        Toggle("إخفاء المقفل من القوائم", s.hideLocked) { upd { s.hideLocked = it; vm.lockNow() } }
-        Row2("حد المشاهدة اليومي", if (s.limitMinutes == 0) "بدون" else "${s.limitMinutes} د") {
-            vm.requirePin("أدخل الرمز السري") {
-                vm.menu = MenuRequest("الحد اليومي", listOf(0, 60, 120, 180, 240).map { m ->
-                    (if (m == 0) "بدون حد" else "$m دقيقة") to { upd { s.limitMinutes = m } }
+        Toggle(S(R.string.a_ed1dafca), s.hideLocked) { upd { s.hideLocked = it; vm.lockNow() } }
+        Row2(S(R.string.a_8492be05), if (s.limitMinutes == 0) S(R.string.a_4a46afc8) else "${s.limitMinutes} د") {
+            vm.requirePin(S(R.string.a_24a4b868)) {
+                vm.menu = MenuRequest(S(R.string.a_9d379939), listOf(0, 60, 120, 180, 240).map { m ->
+                    (if (m == 0) S(R.string.a_7b9dba3c) else "$m دقيقة") to { upd { s.limitMinutes = m } }
                 })
             }
         }
     }
-    Group("التصنيفات المخفية") {
-        Row2("إظهار كل التصنيفات المخفية", "${s.hiddenGroups.size}") { vm.unhideAllGroups(); upd {} }
-        Row2("إظهار كل القنوات المخفية", "${s.hiddenChannels.size}") { vm.unhideAllChannels(); upd {} }
+    Group(S(R.string.a_d2effde4)) {
+        Row2(S(R.string.a_fa8509bf), "${s.hiddenGroups.size}") { vm.unhideAllGroups(); upd {} }
+        Row2(S(R.string.a_21100b97), "${s.hiddenChannels.size}") { vm.unhideAllChannels(); upd {} }
     }
 }
 
@@ -585,12 +585,12 @@ private fun ParentalPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) 
 @Composable
 private fun NotificationPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
     val ctx = LocalContext.current
-    Group("المحتوى") {
-        Toggle("تحديث تلقائي في الخلفية", s.autoRefresh) { upd { s.autoRefresh = it } }
-        Toggle("إشعار عند نزول حلقات جديدة للمسلسلات المفضلة", s.notifyNewEpisodes) { upd { s.notifyNewEpisodes = it } }
+    Group(S(R.string.a_1711387d)) {
+        Toggle(S(R.string.a_69934be2), s.autoRefresh) { upd { s.autoRefresh = it } }
+        Toggle(S(R.string.a_ee5a6d49), s.notifyNewEpisodes) { upd { s.notifyNewEpisodes = it } }
     }
-    Group("التطبيق") {
-        Toggle("تحديث تلقائي عند صدور إصدار جديد", UpdatePrefs.auto(ctx)) {
+    Group(S(R.string.a_6d0ff9f6)) {
+        Toggle(S(R.string.a_0562016b), UpdatePrefs.auto(ctx)) {
             upd { UpdatePrefs.setAuto(ctx, it); UpdateWorker.sync(ctx) }
         }
     }
@@ -600,18 +600,18 @@ private fun NotificationPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Un
 @Composable
 private fun StoragePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
     val cx = LocalContext.current
-    Group("النسخ الاحتياطي") {
-        Row2("نسخ المفضلة والإعدادات إلى الحافظة") {
+    Group(S(R.string.a_a1d8f99b)) {
+        Row2(S(R.string.a_17fd2870)) {
             val cm = cx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
             cm.setPrimaryClip(android.content.ClipData.newPlainText("nabd-backup", s.exportBackup()))
-            vm.say("تم النسخ. الصقها في جهاز آخر عبر \"استيراد\". تنبيه: تتضمن روابط سجل المشاهدة، فلا تشاركها")
+            vm.say(S(R.string.a_5a06deb7))
         }
         val saveFile = androidx.activity.compose.rememberLauncherForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")
         ) { uri ->
             if (uri != null) {
                 val ok = runCatching { cx.contentResolver.openOutputStream(uri)?.use { it.write(s.exportBackup().toByteArray()) } != null }.getOrDefault(false)
-                vm.say(if (ok) "تم حفظ النسخة الاحتياطية (مع تقدّم المشاهدة)" else "تعذّر حفظ الملف")
+                vm.say(if (ok) S(R.string.a_f4145a16) else S(R.string.a_e756a616))
             }
         }
         val openFile = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -619,24 +619,24 @@ private fun StoragePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
         ) { uri ->
             if (uri != null) {
                 val txt = runCatching { cx.contentResolver.openInputStream(uri)?.use { String(it.readBytes()) }.orEmpty() }.getOrDefault("")
-                if (s.importBackup(txt)) { vm.say("تم الاستيراد"); vm.listsChanged(); upd {} } else vm.say("الملف ليس نسخة احتياطية صالحة")
+                if (s.importBackup(txt)) { vm.say(S(R.string.a_b5a34c2f)); vm.listsChanged(); upd {} } else vm.say(S(R.string.a_52b8074d))
             }
         }
-        Row2("حفظ نسخة احتياطية في ملف (مع التقدّم)") { saveFile.launch("nabd-backup.json") }
-        Row2("استيراد نسخة احتياطية من ملف") { openFile.launch(arrayOf("*/*")) }
-        Row2("استيراد من الحافظة") {
+        Row2(S(R.string.a_082388b1)) { saveFile.launch("nabd-backup.json") }
+        Row2(S(R.string.a_51998df2)) { openFile.launch(arrayOf("*/*")) }
+        Row2(S(R.string.a_36364a37)) {
             val cm = cx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
             val txt = cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString().orEmpty()
-            if (s.importBackup(txt)) { vm.say("تم الاستيراد"); upd {} } else vm.say("الحافظة لا تحتوي نسخة صالحة")
+            if (s.importBackup(txt)) { vm.say(S(R.string.a_b5a34c2f)); upd {} } else vm.say(S(R.string.a_f9cba5ac))
         }
     }
-    Group("البيانات") {
-        Row2("مسح سجل المشاهدة والتوصيات", "${vm.history.size}") { vm.clearHistory(); upd {} }
-        Row2("مسح نتائج فحص الروابط") { vm.clearHealth(); upd {} }
+    Group(S(R.string.a_114dc15a)) {
+        Row2(S(R.string.a_8e9f9ea5), "${vm.history.size}") { vm.clearHistory(); upd {} }
+        Row2(S(R.string.a_542cd645)) { vm.clearHealth(); upd {} }
     }
-    Group("التنظيم") {
-        Row2("كلمات تُحذف من أسماء التصنيفات", s.filterWords.ifBlank { "—" }) {
-            vm.prompt = PromptRequest("كلمات مفصولة بفاصلة", s.filterWords) { v -> upd { s.filterWords = v }; vm.say("تم الحفظ") }
+    Group(S(R.string.a_4d84d17d)) {
+        Row2(S(R.string.a_9acfc6b6), s.filterWords.ifBlank { "—" }) {
+            vm.prompt = PromptRequest(S(R.string.a_d2e082b6), s.filterWords) { v -> upd { s.filterWords = v }; vm.say(S(R.string.a_f286f2fd)) }
         }
     }
 }
@@ -645,84 +645,84 @@ private fun StoragePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
 @Composable
 private fun LanguagePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
     val appCtx = androidx.compose.ui.platform.LocalContext.current.applicationContext
-    Group("لغة الواجهة · Interface language") {
-        Row2("اللغة · Language", if (Lang.code == "ar") "العربية" else "English") {
-            vm.menu = MenuRequest("اللغة · Language", listOf(
-                "العربية" to { Lang.set(appCtx, "ar") },
+    Group(S(R.string.a_8a62656e)) {
+        Row2(S(R.string.a_7f272eba), if (Lang.code == "ar") S(R.string.a_9970632f) else "English") {
+            vm.menu = MenuRequest(S(R.string.a_7f272eba), listOf(
+                S(R.string.a_9970632f) to { Lang.set(appCtx, "ar") },
                 "English" to { Lang.set(appCtx, "en") }
             ))
         }
     }
-    Group("اللغات المفضلة") {
-        Row2("لغة الصوت المفضلة", langLabel(s.prefAudioLang)) {
-            vm.menu = MenuRequest("لغة الصوت", listOf("ar", "en", "fr", "tr", "es").map { l -> langLabel(l) to { upd { s.prefAudioLang = l } } })
+    Group(S(R.string.a_076c8f81)) {
+        Row2(S(R.string.a_6b558ffd), langLabel(s.prefAudioLang)) {
+            vm.menu = MenuRequest(S(R.string.a_31c39c9d), listOf("ar", "en", "fr", "tr", "es").map { l -> langLabel(l) to { upd { s.prefAudioLang = l } } })
         }
-        Row2("لغة الترجمة المفضلة", langLabel(s.prefSubLang)) {
-            vm.menu = MenuRequest("لغة الترجمة", listOf("ar", "en", "fr", "tr", "es").map { l -> langLabel(l) to { upd { s.prefSubLang = l } } })
+        Row2(S(R.string.a_17ea7fb2), langLabel(s.prefSubLang)) {
+            vm.menu = MenuRequest(S(R.string.a_9eb26ff7), listOf("ar", "en", "fr", "tr", "es").map { l -> langLabel(l) to { upd { s.prefSubLang = l } } })
         }
-        Row2("ترميز ملف الترجمة", if (s.subEncoding == "auto") "تلقائي" else s.subEncoding) {
-            vm.menu = MenuRequest("ترميز الترجمة", SubtitleParser.ENCODINGS.map { e ->
-                (if (e == "auto") "تلقائي (كشف BOM/UTF-8/عربي)" else e) to { upd { s.subEncoding = e } }
+        Row2(S(R.string.a_00c8bd7a), if (s.subEncoding == "auto") S(R.string.a_bbf6d1eb) else s.subEncoding) {
+            vm.menu = MenuRequest(S(R.string.a_2701fb15), SubtitleParser.ENCODINGS.map { e ->
+                (if (e == "auto") S(R.string.a_f8616546) else e) to { upd { s.subEncoding = e } }
             })
         }
     }
-    Note("تُطبَّق هذه الاختيارات تلقائياً على المسارات المتاحة في المشغّل، ويمكن تغييرها لكل فيلم أثناء التشغيل.")
+    Note(S(R.string.a_ff51c5fb))
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun RemotePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
-    Group("أزرار التلفاز") {
-        Row2("زر أعلى/أسفل في ريموت التلفاز", UpDownAction.of(s.tvUpDown).label) {
-            vm.menu = MenuRequest("زر أعلى/أسفل", UpDownAction.entries.map { a -> a.label to { upd { s.tvUpDown = a.name } } })
+    Group(S(R.string.a_028a5860)) {
+        Row2(S(R.string.a_635631fb), UpDownAction.of(s.tvUpDown).label) {
+            vm.menu = MenuRequest(S(R.string.a_776ca067), UpDownAction.entries.map { a -> a.label to { upd { s.tvUpDown = a.name } } })
         }
-        Row2("خطوة التقديم والإرجاع", "${s.seekInterval} ثانية") {
-            vm.menu = MenuRequest("خطوة البحث", SEEK_INTERVALS.map { v -> "$v ثانية" to { upd { s.seekInterval = v } } })
-        }
-    }
-    Group("اللمس والإيماءات") {
-        Toggle("إيماءات اللمس", s.gesturesEnabled) { upd { s.gesturesEnabled = it } }
-        Row2("حساسية الإيماءات", "${s.gestureSensitivity}×") {
-            vm.menu = MenuRequest("حساسية الإيماءات", listOf(0.6f, 0.8f, 1f, 1.3f, 1.6f).map { v -> "$v×" to { upd { s.gestureSensitivity = v } } })
+        Row2(S(R.string.a_608dc8b8), "${s.seekInterval} ثانية") {
+            vm.menu = MenuRequest(S(R.string.a_6d0922bc), SEEK_INTERVALS.map { v -> "$v ثانية" to { upd { s.seekInterval = v } } })
         }
     }
-    Note("أثناء البث المباشر: أرقام الريموت تفتح رقم القناة مباشرة، و OK يفتح معلومات البرنامج، و CH+ / CH- للتنقل بين القنوات.")
+    Group(S(R.string.a_905e8b45)) {
+        Toggle(S(R.string.a_c17a4bc9), s.gesturesEnabled) { upd { s.gesturesEnabled = it } }
+        Row2(S(R.string.a_d9c7345c), "${s.gestureSensitivity}×") {
+            vm.menu = MenuRequest(S(R.string.a_d9c7345c), listOf(0.6f, 0.8f, 1f, 1.3f, 1.6f).map { v -> "$v×" to { upd { s.gestureSensitivity = v } } })
+        }
+    }
+    Note(S(R.string.a_e15dda94))
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun AboutPage(vm: AppViewModel, upd: (() -> Unit) -> Unit) {
     val ctx = LocalContext.current
-    Group("التطبيق") {
-        Row2("الإصدار الحالي", Updater.currentName(ctx))
-        Row2(if (vm.update != null) "تحديث إلى ${vm.update!!.tag}" else "بحث عن تحديث") {
+    Group(S(R.string.a_6d0ff9f6)) {
+        Row2(S(R.string.a_3560b6e8), Updater.currentName(ctx))
+        Row2(if (vm.update != null) "تحديث إلى ${vm.update!!.tag}" else S(R.string.a_967d497f)) {
             if (vm.update != null) vm.installUpdate() else vm.checkUpdate(true)
         }
-        Row2("الفحص التشخيصي للاتصال") { vm.runDiag() }
-        Row2("القنوات الأكثر تقطيعاً") {
+        Row2(S(R.string.a_1b4a0fe4)) { vm.runDiag() }
+        Row2(S(R.string.a_8f2ca978)) {
             val l = vm.problemReport()
-            if (l.isEmpty()) vm.say("لا توجد قنوات متعثرة حتى الآن") else vm.menu = MenuRequest("الأكثر تقطيعاً", l.map { it to { } })
+            if (l.isEmpty()) vm.say(S(R.string.a_21377cc3)) else vm.menu = MenuRequest(S(R.string.a_a641a761), l.map { it to { } })
         }
     }
-    Group("التشخيص") {
-        Row2("إرسال تقارير الأعطال إلى Sentry (اختياري)", if (vm.store.sentryDsn.isBlank()) "متوقف" else "مفعّل") {
-            vm.prompt = PromptRequest("Sentry DSN (اتركه فارغاً للإيقاف)", vm.store.sentryDsn) { v -> upd { vm.store.sentryDsn = v } }
+    Group(S(R.string.a_2c4cac88)) {
+        Row2(S(R.string.a_1717b495), if (vm.store.sentryDsn.isBlank()) S(R.string.a_bafc4458) else S(R.string.a_a41566d2)) {
+            vm.prompt = PromptRequest(S(R.string.a_d7a85b68), vm.store.sentryDsn) { v -> upd { vm.store.sentryDsn = v } }
         }
-        Row2("آخر أخطاء التطبيق") {
+        Row2(S(R.string.a_6c0e7c55)) {
             val t = CrashLog.read(ctx)
-            if (t.isBlank()) vm.say("لا توجد أخطاء مسجّلة") else vm.menu = MenuRequest("الأخطاء", listOf(
-                "مشاركة النص" to {
+            if (t.isBlank()) vm.say(S(R.string.a_737fd8ff)) else vm.menu = MenuRequest(S(R.string.a_27433d12), listOf(
+                S(R.string.a_39669a1e) to {
                     ctx.startActivity(android.content.Intent.createChooser(
                         android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
-                            .putExtra(android.content.Intent.EXTRA_TEXT, t), "مشاركة"
+                            .putExtra(android.content.Intent.EXTRA_TEXT, t), S(R.string.a_0196884e)
                     ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
                 },
-                "عرض السطور الأخيرة" to { vm.say(t.takeLast(300)) },
-                "مسح السجل" to { CrashLog.clear(ctx) }
+                S(R.string.a_3e85e97c) to { vm.say(t.takeLast(300)) },
+                S(R.string.a_a5967ab8) to { CrashLog.clear(ctx) }
             ))
         }
     }
-    Group("عن Nabd TV") {
-        Note("مشغّل IPTV يعمل بالكامل على الجهاز: قنوات مباشرة، أفلام، مسلسلات، دليل برامج، تسجيل، وملفات شخصية. لا يمر أي محتوى عبر سيرفر وسيط.")
+    Group(S(R.string.a_7d63544b)) {
+        Note(S(R.string.a_1afc009b))
     }
 }

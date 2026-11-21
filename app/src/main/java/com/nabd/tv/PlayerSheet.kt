@@ -1,4 +1,4 @@
-﻿@file:OptIn(
+@file:OptIn(
     androidx.tv.material3.ExperimentalTvMaterial3Api::class,
     androidx.media3.common.util.UnstableApi::class,
     androidx.compose.ui.ExperimentalComposeUiApi::class
@@ -105,28 +105,28 @@ fun PlayerSheet(
     /** Online subtitle search (OpenSubtitles): lists results, downloads the picked one and applies it. */
     fun searchOnlineSubtitles() {
         if (store.osKey.isBlank() || store.osUser.isBlank() || store.osPass.isBlank()) {
-            vm.say("أدخل مفتاح OpenSubtitles واسم المستخدم وكلمة المرور من الإعدادات"); return
+            vm.say(S(R.string.a_380a5c56)); return
         }
         val ep = vm.episodes.firstOrNull { it.url == ch.url }
         val title = OpenSubtitles.cleanQuery(if (ep != null) vm.detail?.name ?: ch.name else ch.name)
-        if (title.isBlank()) { vm.say("تعذّر تحديد اسم العمل للبحث"); return }
-        vm.say("جارٍ البحث عن ترجمة...")
+        if (title.isBlank()) { vm.say(S(R.string.a_5c745736)); return }
+        vm.say(S(R.string.a_fd4fff03))
         scope.launch {
             try {
                 val res = OpenSubtitles.search(vm.repo.http, store.osKey, title, ep?.season, ep?.num)
-                if (res.isEmpty()) { vm.say("لا توجد ترجمة لهذا العمل"); return@launch }
-                openChoice("نتائج OpenSubtitles", res.map { r ->
+                if (res.isEmpty()) { vm.say(S(R.string.a_993db7fa)); return@launch }
+                openChoice(S(R.string.a_c2e69bf5), res.map { r ->
                     SheetOption("[${r.lang}] ${r.label}  ·  ⬇ ${r.downloads}") {
-                        vm.say("جارٍ تحميل الترجمة...")
+                        vm.say(S(R.string.a_961f1e6d))
                         scope.launch {
                             try {
                                 val sub = OpenSubtitles.download(vm.repo.http, ctx, store.osKey, store.osUser, store.osPass, r.fileId, ch.url, title)
                                 actions.useSubtitle(sub)
-                            } catch (e: Exception) { vm.say(e.message ?: "تعذّر تحميل الترجمة") }
+                            } catch (e: Exception) { vm.say(e.message ?: S(R.string.a_c1eb83be)) }
                         }
                     }
                 })
-            } catch (e: Exception) { vm.say(e.message ?: "تعذّر البحث عن الترجمة") }
+            } catch (e: Exception) { vm.say(e.message ?: S(R.string.a_bf1b9e82)) }
         }
     }
 
@@ -164,7 +164,7 @@ fun PlayerSheet(
                 PlayerRoundButton("✕", size = 38) { onClose() }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("إعدادات المشغّل", fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+                    Text(S(R.string.a_30c78ed3), fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
                     Text(ch.name, fontSize = 12.sp, color = TextSecondary, maxLines = 1)
                 }
                 if (ui.stats) PlayerRoundButton("📊", size = 38, active = true) { ui.stats = false }
@@ -226,8 +226,8 @@ fun PlayerSheet(
                             val seasons = eps.map { it.season }.distinct().sorted()
                             var sSel by remember(ch.url) { mutableStateOf(eps.firstOrNull { it.url == ch.url }?.season ?: seasons.firstOrNull() ?: 1) }
                             if (seasons.size > 1) {
-                                SheetRow("الموسم", "الموسم $sSel") {
-                                    openChoice("اختر الموسم", seasons.map { n -> SheetOption("الموسم $n", n == sSel) { sSel = n } })
+                                SheetRow(S(R.string.a_68474436), "الموسم $sSel") {
+                                    openChoice(S(R.string.a_3a0a6b8a), seasons.map { n -> SheetOption("الموسم $n", n == sSel) { sSel = n } })
                                 }
                             }
                             SheetSection("حلقات الموسم $sSel")
@@ -235,8 +235,8 @@ fun PlayerSheet(
                                 val h = store.historyOf(e.url)
                                 val playingNow = e.url == ch.url
                                 val value = when {
-                                    playingNow -> "▶ يعمل الآن"
-                                    h?.finished == true -> "✓ شوهدت"
+                                    playingNow -> S(R.string.a_a55f903d)
+                                    h?.finished == true -> S(R.string.a_ccb8e152)
                                     h != null && h.progress > 0.02f -> "${(h.progress * 100).toInt()}%"
                                     else -> ""
                                 }
@@ -248,14 +248,14 @@ fun PlayerSheet(
                             }
                         }
                         PlayerTab.Playback -> {
-                            SheetSection("التحكم بالتشغيل")
-                            SheetRow("السرعة", if (ui.speed == 1f) "عادية" else "${ui.speed}x", detail = "تُحفظ كسرعة افتراضية للمحتوى القادم") {
-                                openChoice("سرعة التشغيل", PLAYER_SPEEDS.map { v ->
-                                    SheetOption(if (v == 1f) "عادية (1x)" else "${v}x", v == ui.speed) { actions.setSpeed(v) }
+                            SheetSection(S(R.string.a_73113273))
+                            SheetRow(S(R.string.a_1bcf7e91), if (ui.speed == 1f) S(R.string.a_e7331441) else "${ui.speed}x", detail = S(R.string.a_2dc3fc6b)) {
+                                openChoice(S(R.string.a_6bc0cff3), PLAYER_SPEEDS.map { v ->
+                                    SheetOption(if (v == 1f) S(R.string.a_ebca19a0) else "${v}x", v == ui.speed) { actions.setSpeed(v) }
                                 })
                             }
-                            SheetRow("خطوة التقديم والإرجاع", "${store.seekInterval} ثانية") {
-                                openChoice("خطوة البحث", SEEK_INTERVALS.map { v ->
+                            SheetRow(S(R.string.a_608dc8b8), "${store.seekInterval} ثانية") {
+                                openChoice(S(R.string.a_6d0922bc), SEEK_INTERVALS.map { v ->
                                     SheetOption("$v ثانية", v == store.seekInterval) {
                                         store.seekInterval = v
                                         ui.seekInterval = v
@@ -263,177 +263,177 @@ fun PlayerSheet(
                                     }
                                 })
                             }
-                            SheetRow("الانتقال إلى وقت محدد", fmtTime(ui.position)) { ui.showJump = true; onClose() }
-                            SheetRow("إعادة من البداية") { actions.restart(); onClose() }
-                            SheetRow("تكرار المحتوى", if (ui.loop) "مفعّل" else "متوقف") { actions.setLoop(!ui.loop) }
+                            SheetRow(S(R.string.a_3c6411ea), fmtTime(ui.position)) { ui.showJump = true; onClose() }
+                            SheetRow(S(R.string.a_59fd59df)) { actions.restart(); onClose() }
+                            SheetRow(S(R.string.a_896dada2), if (ui.loop) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)) { actions.setLoop(!ui.loop) }
 
-                            SheetSection("سلوك التشغيل")
-                            SheetRow("تشغيل الحلقة التالية تلقائياً", if (store.autoNext) "مفعّل" else "متوقف") {
+                            SheetSection(S(R.string.a_79e08935))
+                            SheetRow(S(R.string.a_954384b8), if (store.autoNext) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)) {
                                 store.autoNext = !store.autoNext; actions.changed()
                             }
-                            SheetRow("استئناف المشاهدة", ResumeMode.of(store.resumeMode).label) {
-                                openChoice("استئناف المشاهدة", ResumeMode.entries.map { m ->
+                            SheetRow(S(R.string.a_fab55504), ResumeMode.of(store.resumeMode).label) {
+                                openChoice(S(R.string.a_fab55504), ResumeMode.entries.map { m ->
                                     SheetOption(m.label, m.name == store.resumeMode) {
                                         store.resumeMode = m.name; actions.changed()
                                     }
                                 })
                             }
                             val sleepLabel = when {
-                                ui.sleepEnd -> "بعد انتهاء المحتوى"
+                                ui.sleepEnd -> S(R.string.a_db02b041)
                                 vm.sleepAt > 0 -> "${((vm.sleepAt - System.currentTimeMillis()).coerceAtLeast(0) / 60000L) + 1} د متبقية"
-                                else -> "متوقف"
+                                else -> S(R.string.a_bafc4458)
                             }
-                            SheetRow("مؤقت النوم", sleepLabel) {
-                                openChoice("إيقاف التشغيل بعد", listOf(15, 30, 45, 60, 90, 120).map { m ->
+                            SheetRow(S(R.string.a_9fa87337), sleepLabel) {
+                                openChoice(S(R.string.a_558d3a2f), listOf(15, 30, 45, 60, 90, 120).map { m ->
                                     SheetOption("$m دقيقة") { actions.setSleep(m) }
                                 } + listOf(
-                                    SheetOption("بعد انتهاء المحتوى الحالي") { actions.setSleepEnd() },
-                                    SheetOption("إلغاء المؤقت") { actions.cancelSleep() }
+                                    SheetOption(S(R.string.a_29efb0ed)) { actions.setSleepEnd() },
+                                    SheetOption(S(R.string.a_2b71fd45)) { actions.cancelSleep() }
                                 ))
                             }
 
                             if (live) {
-                                SheetSection("البث المباشر")
-                                SheetRow("العودة إلى البث المباشر") { onLiveEdge(); onClose() }
-                                SheetRow("قائمة القنوات") { actions.openChannels(); onClose() }
-                                SheetRow("المفضلة", if (ch.url in vm.favs) "★ مضافة" else "إضافة") { vm.toggleFav(ch) }
-                                SheetRow("مصادر بديلة", "${vm.alternativesOf(ch).size}") { onAlternatives(); onClose() }
-                                if (!LocalDevice.current.touch) SheetRow("زر أعلى/أسفل", UpDownAction.of(store.tvUpDown).label) {
-                                    openChoice("زر أعلى/أسفل", UpDownAction.entries.map { a ->
+                                SheetSection(S(R.string.a_ac845696))
+                                SheetRow(S(R.string.a_2327fe5f)) { onLiveEdge(); onClose() }
+                                SheetRow(S(R.string.a_2630c6fd)) { actions.openChannels(); onClose() }
+                                SheetRow(S(R.string.a_e2f83e37), if (ch.url in vm.favs) S(R.string.a_08f544ec) else S(R.string.a_5e3a3fdf)) { vm.toggleFav(ch) }
+                                SheetRow(S(R.string.a_e33cb38d), "${vm.alternativesOf(ch).size}") { onAlternatives(); onClose() }
+                                if (!LocalDevice.current.touch) SheetRow(S(R.string.a_776ca067), UpDownAction.of(store.tvUpDown).label) {
+                                    openChoice(S(R.string.a_776ca067), UpDownAction.entries.map { a ->
                                         SheetOption(a.label, a.name == store.tvUpDown) { store.tvUpDown = a.name; actions.changed() }
                                     })
                                 }
                             } else if (canSaveIntro) {
-                                SheetSection("المسلسل")
-                                SheetRow("حفظ نهاية المقدمة هنا", if (introEnd > 0) fmtTime(introEnd) else "—") { onSaveIntro() }
-                                SheetRow("مسح المقدمة المحفوظة", enabled = introEnd > 0) { onClearIntro() }
+                                SheetSection(S(R.string.a_ab8a01be))
+                                SheetRow(S(R.string.a_021a0268), if (introEnd > 0) fmtTime(introEnd) else "—") { onSaveIntro() }
+                                SheetRow(S(R.string.a_f9d5783a), enabled = introEnd > 0) { onClearIntro() }
                             }
                         }
 
                         PlayerTab.Audio -> {
-                            SheetSection("الصوت")
-                            SheetRow("تعزيز الصوت (+8 dB)", if (store.audioBoost) "مفعّل" else "متوقف") { actions.toggleAudioBoost() }
-                            SheetRow("مسار الصوت", "${ui.audioTracks.size} مسار", detail = ui.audioTracks.firstOrNull()?.label.orEmpty()) {
-                                val items = listOf(SheetOption("تلقائي (حسب اللغة المفضلة)") { actions.clearAudioOverride() }) +
+                            SheetSection(S(R.string.a_beb4436d))
+                            SheetRow(S(R.string.a_ba704975), if (store.audioBoost) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)) { actions.toggleAudioBoost() }
+                            SheetRow(S(R.string.a_e9952d72), "${ui.audioTracks.size} مسار", detail = ui.audioTracks.firstOrNull()?.label.orEmpty()) {
+                                val items = listOf(SheetOption(S(R.string.a_4cdfdadb)) { actions.clearAudioOverride() }) +
                                     ui.audioTracks.mapIndexed { i, t ->
                                         SheetOption(t.label, t.selected) { actions.setAudioTrack(t) }
                                     }
-                                if (items.size == 1) vm.say("لا توجد مسارات صوت متعددة في هذا البث") else openChoice("مسار الصوت", items)
+                                if (items.size == 1) vm.say(S(R.string.a_b767d344)) else openChoice(S(R.string.a_e9952d72), items)
                             }
                         }
 
                         PlayerTab.Subtitles -> {
-                            SheetSection("مصدر الترجمة")
-                            SheetRow("تفعيل الترجمة", if (ui.subOn) "مفعّل" else "متوقف") { actions.setSubtitlesEnabled(!ui.subOn) }
-                            SheetRow("ترجمة خارجية", ui.extSub?.name ?: "لم يتم تحميل ملف") { actions.loadSubtitle() }
-                            SheetRow("بحث عن ترجمة على الإنترنت", "OpenSubtitles", enabled = !live) { searchOnlineSubtitles() }
-                            SheetRow("إزالة الترجمة الخارجية", enabled = ui.extSub != null) { actions.removeSubtitle() }
+                            SheetSection(S(R.string.a_4a47a85a))
+                            SheetRow(S(R.string.a_dd37ba8a), if (ui.subOn) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)) { actions.setSubtitlesEnabled(!ui.subOn) }
+                            SheetRow(S(R.string.a_61151639), ui.extSub?.name ?: S(R.string.a_d5e96ebf)) { actions.loadSubtitle() }
+                            SheetRow(S(R.string.a_29531391), "OpenSubtitles", enabled = !live) { searchOnlineSubtitles() }
+                            SheetRow(S(R.string.a_04cd1f90), enabled = ui.extSub != null) { actions.removeSubtitle() }
                             ui.extError?.let { SheetInfo("خطأ: $it", danger = true) }
-                            SheetRow("مسار الترجمة المدمج", "${ui.textTracks.size} مسار") {
+                            SheetRow(S(R.string.a_c04d9164), "${ui.textTracks.size} مسار") {
                                 // The external file is dropped only when an embedded track is actually chosen, not when the list opens.
                                 val dropExternal = { if (ui.extSub != null) actions.removeSubtitle() }
-                                val items = listOf(SheetOption("إيقاف الترجمة") { actions.setSubtitlesEnabled(false) }) +
+                                val items = listOf(SheetOption(S(R.string.a_43de6b2e)) { actions.setSubtitlesEnabled(false) }) +
                                     ui.textTracks.mapIndexed { i, t ->
                                         SheetOption(t.label, t.selected) { dropExternal(); actions.selectSubtitle(i) }
                                     }
-                                if (items.size == 1) vm.say("لا توجد ترجمة مدمجة في هذا البث") else openChoice("الترجمة المدمجة", items)
+                                if (items.size == 1) vm.say(S(R.string.a_4b48bb9d)) else openChoice(S(R.string.a_5acd5081), items)
                             }
 
-                            SheetRow("تأخير الترجمة", "${store.subDelayMs} ms", enabled = ui.extSub != null) {
-                                openChoice("تأخير الترجمة", listOf(-1000, -500, -250, -100, -50, 0, 50, 100, 250, 500, 1000).map { v ->
+                            SheetRow(S(R.string.a_80dd0013), "${store.subDelayMs} ms", enabled = ui.extSub != null) {
+                                openChoice(S(R.string.a_80dd0013), listOf(-1000, -500, -250, -100, -50, 0, 50, 100, 250, 500, 1000).map { v ->
                                     SheetOption(
                                         when {
                                             v < 0 -> "تقديم ${-v} ms"
                                             v > 0 -> "تأخير $v ms"
-                                            else -> "بدون تأخير"
+                                            else -> S(R.string.a_5d9f1039)
                                         },
                                         v == store.subDelayMs
                                     ) { actions.setSubtitleDelay(v) }
                                 })
                             }
-                            SheetRow("ترميز الملف", if (store.subEncoding == "auto") "تلقائي" else store.subEncoding, enabled = ui.extSub != null) {
-                                openChoice("ترميز الترجمة", SubtitleParser.ENCODINGS.map { e ->
-                                    SheetOption(if (e == "auto") "تلقائي (كشف BOM/UTF-8/عربي)" else e, e == store.subEncoding) {
+                            SheetRow(S(R.string.a_ba44c449), if (store.subEncoding == "auto") S(R.string.a_bbf6d1eb) else store.subEncoding, enabled = ui.extSub != null) {
+                                openChoice(S(R.string.a_2701fb15), SubtitleParser.ENCODINGS.map { e ->
+                                    SheetOption(if (e == "auto") S(R.string.a_f8616546) else e, e == store.subEncoding) {
                                         actions.setSubtitleEncoding(e)
                                     }
                                 })
                             }
 
-                            SheetSection("المظهر")
-                            SheetRow("الحجم", "${(store.subSize * 100).roundToInt()}%") {
-                                openChoice("حجم الترجمة", (5..14).map { v ->
+                            SheetSection(S(R.string.a_583f0b73))
+                            SheetRow(S(R.string.a_be45eacd), "${(store.subSize * 100).roundToInt()}%") {
+                                openChoice(S(R.string.a_1acfde50), (5..14).map { v ->
                                     SheetOption("$v%", v == (store.subSize * 100).roundToInt()) {
                                         store.subSize = v / 100f; actions.changed()
                                     }
                                 })
                             }
-                            SheetRow("الموضع من الأسفل", "${(store.subPosition * 100).roundToInt()}%") {
-                                openChoice("موضع الترجمة", listOf(4, 8, 12, 18, 24, 32, 42).map { v ->
+                            SheetRow(S(R.string.a_96ad3946), "${(store.subPosition * 100).roundToInt()}%") {
+                                openChoice(S(R.string.a_b8ffdfa3), listOf(4, 8, 12, 18, 24, 32, 42).map { v ->
                                     SheetOption("$v%", v == (store.subPosition * 100).roundToInt()) {
                                         store.subPosition = v / 100f; actions.changed()
                                     }
                                 })
                             }
-                            SheetRow("اللون", SUBTITLE_COLORS.firstOrNull { it.second == store.subColor }?.first ?: "مخصص") {
-                                openChoice("لون الترجمة", SUBTITLE_COLORS.map { (name, argb) ->
+                            SheetRow(S(R.string.a_bd59217a), SUBTITLE_COLORS.firstOrNull { it.second == store.subColor }?.first ?: S(R.string.a_b5b126bd)) {
+                                openChoice(S(R.string.a_32a44b18), SUBTITLE_COLORS.map { (name, argb) ->
                                     SheetOption(name, argb == store.subColor) { store.subColor = argb; actions.changed() }
                                 })
                             }
                         }
 
                         PlayerTab.Display -> {
-                            SheetSection("الصورة")
-                            SheetRow("نسبة العرض", ui.aspect.label) {
-                                openChoice("نسبة العرض", AspectMode.entries.map { a ->
+                            SheetSection(S(R.string.a_80e8bb66))
+                            SheetRow(S(R.string.a_06160737), ui.aspect.label) {
+                                openChoice(S(R.string.a_06160737), AspectMode.entries.map { a ->
                                     SheetOption(a.label, a == ui.aspect) { actions.setAspect(a) }
                                 })
                             }
-                            SheetRow("تكبير الصورة", "${(ui.zoom * 100).roundToInt()}%") {
-                                openChoice("مستوى التكبير", listOf(100, 125, 150, 200, 250, 300, 400).map { v ->
+                            SheetRow(S(R.string.a_fa908227), "${(ui.zoom * 100).roundToInt()}%") {
+                                openChoice(S(R.string.a_4882b5dd), listOf(100, 125, 150, 200, 250, 300, 400).map { v ->
                                     SheetOption("$v%", v == (ui.zoom * 100).roundToInt()) {
                                         actions.resetZoom(); actions.zoomBy(v / 100f - 1f)
                                     }
                                 })
                             }
-                            SheetRow("إعادة ضبط الصورة") { actions.resetTransform() }
-                            SheetRow("اتجاه الشاشة", OrientationPref.of(store.playerOrientation).label) {
-                                openChoice("اتجاه الشاشة", OrientationPref.entries.map { p ->
+                            SheetRow(S(R.string.a_a696bee7)) { actions.resetTransform() }
+                            SheetRow(S(R.string.a_7fba6576), OrientationPref.of(store.playerOrientation).label) {
+                                openChoice(S(R.string.a_7fba6576), OrientationPref.entries.map { p ->
                                     SheetOption(p.label, p.name == store.playerOrientation) { setOrientation(p) }
                                 })
                             }
                         }
 
                         PlayerTab.Gestures -> {
-                            SheetSection("إيماءات اللمس (هاتف/تابلت)")
-                            SheetRow("تفعيل الإيماءات", if (store.gesturesEnabled) "مفعّل" else "متوقف") {
+                            SheetSection(S(R.string.a_70cb8e8b))
+                            SheetRow(S(R.string.a_c19bc5bf), if (store.gesturesEnabled) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)) {
                                 store.gesturesEnabled = !store.gesturesEnabled; actions.changed()
                             }
-                            SheetRow("سحب أفقي للبحث", onOff(store.gestureSeek)) {
+                            SheetRow(S(R.string.a_7041d2b3), onOff(store.gestureSeek)) {
                                 store.gestureSeek = !store.gestureSeek; actions.changed()
                             }
-                            SheetRow("سحب على اليسار للسطوع", onOff(store.gestureBrightness)) {
+                            SheetRow(S(R.string.a_55b21bbc), onOff(store.gestureBrightness)) {
                                 store.gestureBrightness = !store.gestureBrightness; actions.changed()
                             }
-                            SheetRow("سحب على اليمين للصوت", onOff(store.gestureVolume)) {
+                            SheetRow(S(R.string.a_02fd9a6f), onOff(store.gestureVolume)) {
                                 store.gestureVolume = !store.gestureVolume; actions.changed()
                             }
-                            SheetRow("نقرة مزدوجة للبحث/التشغيل", onOff(store.gestureDoubleTap)) {
+                            SheetRow(S(R.string.a_689528ae), onOff(store.gestureDoubleTap)) {
                                 store.gestureDoubleTap = !store.gestureDoubleTap; actions.changed()
                             }
                         }
 
                         PlayerTab.Info -> {
-                            SheetSection("حالة التشغيل")
+                            SheetSection(S(R.string.a_8f13bd83))
                             Box(
                                 Modifier.fillMaxWidth().background(Color(0x99101520), RoundedCornerShape(12.dp)).padding(12.dp)
                             ) {
-                                Text(ui.infoText.ifBlank { "جارٍ جمع المعلومات..." }, fontSize = 12.sp, color = Color(0xFFC9D3E4))
+                                Text(ui.infoText.ifBlank { S(R.string.a_b7cd9fda) }, fontSize = 12.sp, color = Color(0xFFC9D3E4))
                             }
                             Spacer(Modifier.height(6.dp))
-                            SheetRow("إظهار لوحة الإحصاءات فوق الفيديو", if (ui.stats) "مفعّل" else "متوقف") { ui.stats = !ui.stats }
-                            SheetSection("الأداء (يُعاد بناء المحرك عند التغيير)")
-                            SheetRow("مخزن المؤقت", BufferProfile.of(store.bufferProfile).label, detail = BufferProfile.of(store.bufferProfile).detail) {
-                                openChoice("مخزن المؤقت", BufferProfile.entries.map { p ->
+                            SheetRow(S(R.string.a_e4aa6ef3), if (ui.stats) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)) { ui.stats = !ui.stats }
+                            SheetSection(S(R.string.a_18afa9a3))
+                            SheetRow(S(R.string.a_2d31f780), BufferProfile.of(store.bufferProfile).label, detail = BufferProfile.of(store.bufferProfile).detail) {
+                                openChoice(S(R.string.a_2d31f780), BufferProfile.entries.map { p ->
                                     SheetOption(p.label, p.name == store.bufferProfile) {
                                         store.bufferProfile = p.name
                                         actions.changed()
@@ -441,8 +441,8 @@ fun PlayerSheet(
                                     }
                                 })
                             }
-                            SheetRow("تفضيل فك الترميز", DecoderMode.of(store.decoderMode).label, detail = "يفضّل البرمجي عند الحاجة، ومع تعطيل تلقائي للبديل عند غياب المُفكّك") {
-                                openChoice("فك الترميز", DecoderMode.entries.map { m ->
+                            SheetRow(S(R.string.a_5cfcffb9), DecoderMode.of(store.decoderMode).label, detail = S(R.string.a_285ed640)) {
+                                openChoice(S(R.string.a_e032dd98), DecoderMode.entries.map { m ->
                                     SheetOption(m.label, m.name == store.decoderMode) {
                                         store.decoderMode = m.name
                                         actions.changed()
@@ -450,10 +450,10 @@ fun PlayerSheet(
                                     }
                                 })
                             }
-                            SheetRow("إعادة المحاولة") { actions.retry(); onClose() }
+                            SheetRow(S(R.string.a_2e47b5f2)) { actions.retry(); onClose() }
 
-                            SheetRow("نافذة عائمة (PiP)") { actions.enterPip(); onClose() }
-                            SheetRow("فتح في مشغّل خارجي") { actions.openExternal(); onClose() }
+                            SheetRow(S(R.string.a_134bdb7d)) { actions.enterPip(); onClose() }
+                            SheetRow(S(R.string.a_9859e227)) { actions.openExternal(); onClose() }
                         }
                     }
                     Spacer(Modifier.height(24.dp))
@@ -464,7 +464,7 @@ fun PlayerSheet(
     }
 }
 
-private fun onOff(on: Boolean): String = if (on) "مفعّل" else "متوقف"
+private fun onOff(on: Boolean): String = if (on) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)
 
 @Composable
 private fun SheetSection(title: String) {
