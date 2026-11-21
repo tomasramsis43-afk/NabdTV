@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">Nabd TV</string>
+
+    <!-- Detail screen (movies and series) -->
+    <string name="detail_back">Back</string>
+    <string name="detail_type_series">Series</string>
+    <string name="detail_type_movie">Movie</string>
+    <string name="detail_play">▶ Play</string>
+    <string name="detail_resume">▶ Resume (%1$d min)</string>
+    <string name="detail_fav_on">★ In Favorites</string>
+    <string name="detail_fav_off">☆ Add to Favorites</string>
+    <string name="detail_cast">Cast: %1$s</string>
+    <string name="detail_episodes">Episodes</string>
+    <string name="detail_episode_count">%1$d episodes</string>
+    <string name="detail_season">Season %1$d</string>
+    <string name="detail_loading_eps">Loading episodes…</string>
+    <string name="detail_error">Error: %1$s</string>
+    <string name="detail_no_eps">No episodes found</string>
+    <string name="ep_label">S%1$02d E%2$02d</string>
+    <string name="ep_default_title">Episode %1$d</string>
+    <string name="ep_watched">✓ Watched</string>
+</resources>

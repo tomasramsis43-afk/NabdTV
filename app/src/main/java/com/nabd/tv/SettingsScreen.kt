@@ -637,6 +637,15 @@ private fun StoragePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun LanguagePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
+    val appCtx = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    Group("لغة الواجهة · Interface language") {
+        Row2("اللغة · Language", if (Lang.code == "ar") "العربية" else "English") {
+            vm.menu = MenuRequest("اللغة · Language", listOf(
+                "العربية" to { Lang.set(appCtx, "ar") },
+                "English" to { Lang.set(appCtx, "en") }
+            ))
+        }
+    }
     Group("اللغات المفضلة") {
         Row2("لغة الصوت المفضلة", langLabel(s.prefAudioLang)) {
             vm.menu = MenuRequest("لغة الصوت", listOf("ar", "en", "fr", "tr", "es").map { l -> langLabel(l) to { upd { s.prefAudioLang = l } } })

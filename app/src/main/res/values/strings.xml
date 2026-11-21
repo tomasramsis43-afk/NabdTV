@@ -1,3 +1,22 @@
 <resources>
     <string name="app_name">Nabd TV</string>
+
+    <!-- Detail screen (movies and series) — default language is Arabic -->
+    <string name="detail_back">رجوع</string>
+    <string name="detail_type_series">مسلسل</string>
+    <string name="detail_type_movie">فيلم</string>
+    <string name="detail_play">▶ تشغيل</string>
+    <string name="detail_resume">▶ استكمال (%1$d د)</string>
+    <string name="detail_fav_on">★ في المفضلة</string>
+    <string name="detail_fav_off">☆ مفضلة</string>
+    <string name="detail_cast">بطولة: %1$s</string>
+    <string name="detail_episodes">الحلقات</string>
+    <string name="detail_episode_count">%1$d حلقة</string>
+    <string name="detail_season">الموسم %1$d</string>
+    <string name="detail_loading_eps">جارٍ تحميل الحلقات...</string>
+    <string name="detail_error">خطأ: %1$s</string>
+    <string name="detail_no_eps">لا توجد حلقات</string>
+    <string name="ep_label">م%1$d ح%2$d</string>
+    <string name="ep_default_title">حلقة %1$d</string>
+    <string name="ep_watched">✓ تمت المشاهدة</string>
 </resources>

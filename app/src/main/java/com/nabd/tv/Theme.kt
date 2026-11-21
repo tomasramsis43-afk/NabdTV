@@ -32,7 +32,7 @@ fun AppTheme(content: @Composable () -> Unit) {
                     // The whole interface is Arabic, so it must read right-to-left even on a TV box
                     // that was set up with an English system locale. Screens that hold technical,
                     // directional content (player, setup, some VOD lists) opt back into LTR locally.
-                    androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Rtl,
+                    androidx.compose.ui.platform.LocalLayoutDirection provides (if (Lang.rtl) androidx.compose.ui.unit.LayoutDirection.Rtl else androidx.compose.ui.unit.LayoutDirection.Ltr),
                     content = content
                 )
             }

@@ -40,7 +40,7 @@ fun DetailScreen(vm: AppViewModel) {
     val d = LocalDevice.current
     val narrow = d.widthDp < 600
     val palette = rememberArtworkPalette(info?.backdrop ?: c.logo)
-    val typeLabel = if (isSeries) "مسلسل" else "فيلم"
+    val typeLabel = tr(if (isSeries) R.string.detail_type_series else R.string.detail_type_movie)
 
     Box(Modifier.fillMaxSize().appBackground()) {
         // Artwork fills the upper part and dissolves into the page — the title block never sits on busy pixels.
@@ -71,7 +71,7 @@ fun DetailScreen(vm: AppViewModel) {
 
         Column(Modifier.fillMaxSize().padding(start = d.pad, end = d.pad, top = 12.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                MBtn("رجوع", filled = false) { vm.closeDetail() }
+                MBtn(tr(R.string.detail_back), filled = false) { vm.closeDetail() }
                 Spacer(Modifier.weight(1f))
                 Text(
                     typeLabel, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White,
@@ -118,7 +118,7 @@ fun DetailScreen(vm: AppViewModel) {
                         if (info != null && info.cast.isNotBlank()) {
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "بطولة: ${info.cast}", fontSize = 11.5.sp, color = Color(0xFFAEB4C6),
+                                tr(R.string.detail_cast, info.cast), fontSize = 11.5.sp, color = Color(0xFFAEB4C6),
                                 maxLines = 1, overflow = TextOverflow.Ellipsis
                             )
                         }
@@ -128,10 +128,10 @@ fun DetailScreen(vm: AppViewModel) {
                 Row(horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (!isSeries) {
                         val h = vm.store.historyOf(c.url)
-                        val label = if (h != null && !h.finished && h.position > 10_000) "▶ استكمال (${h.position / 60000} د)" else "▶ تشغيل"
+                        val label = if (h != null && !h.finished && h.position > 10_000) tr(R.string.detail_resume, h.position / 60000) else tr(R.string.detail_play)
                         MBtn(label, tint = buttonTone(palette.primary), modifier = Modifier.focusRequester(playFocus)) { vm.play(c) }
                     }
-                    MBtn(if (c.url in vm.favs) "★ في المفضلة" else "☆ مفضلة", filled = false, tint = palette.accent) { vm.toggleFav(c) }
+                    MBtn(if (c.url in vm.favs) tr(R.string.detail_fav_on) else tr(R.string.detail_fav_off), filled = false, tint = palette.accent) { vm.toggleFav(c) }
                 }
                 Spacer(Modifier.height(12.dp))
             }
@@ -141,8 +141,8 @@ fun DetailScreen(vm: AppViewModel) {
                     Modifier.fillMaxWidth().padding(bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("الحلقات", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.weight(1f))
-                    if (vm.episodes.isNotEmpty()) Text("${vm.episodes.size} حلقة", fontSize = 12.sp, color = TextMuted)
+                    Text(tr(R.string.detail_episodes), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.weight(1f))
+                    if (vm.episodes.isNotEmpty()) Text(tr(R.string.detail_episode_count, vm.episodes.size), fontSize = 12.sp, color = TextMuted)
                 }
                 Column(Modifier.fillMaxWidth().weight(1f)) { Episodes(vm, c) }
             } else {
@@ -158,13 +158,13 @@ private fun Episodes(vm: AppViewModel, s: Channel) {
     val seasons = vm.episodes.map { it.season }.distinct()
     if (seasons.size > 1) {
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            seasons.forEach { n -> TabChip("الموسم $n", vm.season == n) { vm.selectSeason(n) } }
+            seasons.forEach { n -> TabChip(tr(R.string.detail_season, n), vm.season == n) { vm.selectSeason(n) } }
         }
         Spacer(Modifier.height(8.dp))
     }
-    if (vm.epLoading) Text("جارٍ تحميل الحلقات...", color = Accent)
-    vm.error?.let { Text("خطأ: $it", color = Danger, fontSize = 13.sp) }
-    if (!vm.epLoading && vm.episodes.isEmpty() && vm.error == null) Text("لا توجد حلقات", color = TextSecondary)
+    if (vm.epLoading) Text(tr(R.string.detail_loading_eps), color = Accent)
+    vm.error?.let { Text(tr(R.string.detail_error, it), color = Danger, fontSize = 13.sp) }
+    if (!vm.epLoading && vm.episodes.isEmpty() && vm.error == null) Text(tr(R.string.detail_no_eps), color = TextSecondary)
 
     val eps = vm.episodes.filter { it.season == vm.season }
     val target = eps.indexOfFirst { e -> vm.store.historyOf(e.url).let { it == null || !it.finished } }.coerceAtLeast(0)
@@ -215,13 +215,13 @@ private fun EpisodeCard(e: Episode, h: HistoryEntry?, fallback: String?, tv: Boo
             )
         }
         Column(Modifier.weight(1f)) {
-            Text("م${e.season} ح${e.num}", fontSize = 11.sp, color = Accent, fontWeight = FontWeight.Bold)
+            Text(tr(R.string.ep_label, e.season, e.num), fontSize = 11.sp, color = Accent, fontWeight = FontWeight.Bold)
             Text(
-                e.title.ifBlank { "حلقة ${e.num}" }, fontSize = 14.sp, color = Ink, maxLines = 1,
+                e.title.ifBlank { tr(R.string.ep_default_title, e.num) }, fontSize = 14.sp, color = Ink, maxLines = 1,
                 overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold
             )
             if (e.plot.isNotBlank()) Text(e.plot, fontSize = 12.sp, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (h?.finished == true) Text("✓ تمت المشاهدة", fontSize = 11.sp, color = Accent)
+            if (h?.finished == true) Text(tr(R.string.ep_watched), fontSize = 11.sp, color = Accent)
         }
     }
 }

@@ -12,6 +12,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 class NabdApp : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
+        Lang.load(this)
         CrashLog.install(this)
         CrashReporter.sendPendingAsync(this)
         UpdateWorker.sync(this)   // cancels the background updater unless the user enabled it
