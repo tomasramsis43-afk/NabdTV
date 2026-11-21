@@ -84,6 +84,12 @@ object Trakt {
     private fun iso(t: Long): String =
         SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date(t))
 
+    /** Trakt answers 200 even when it could not match the title; the miss is listed under "not_found". */
+    private fun notFound(body: String): Boolean = runCatching {
+        val nf = JSONObject(body).optJSONObject("not_found") ?: return@runCatching false
+        listOf("movies", "shows", "seasons", "episodes").any { (nf.optJSONArray(it)?.length() ?: 0) > 0 }
+    }.getOrDefault(false)
+
     private fun yearOf(name: String): Int? = Regex("\\b(19|20)\\d{2}\\b").find(name)?.value?.toIntOrNull()
 
     /** Marks a movie as watched (matched by title / year). */
@@ -92,8 +98,8 @@ object Trakt {
         refreshIfNeeded(http, store)
         val m = JSONObject().put("title", OpenSubtitles.cleanQuery(name)).put("watched_at", iso(at))
         yearOf(name)?.let { m.put("year", it) }
-        val (code, _) = call(http, store, "/sync/history", JSONObject().put("movies", JSONArray().put(m)), auth = true)
-        code in 200..299
+        val (code, body) = call(http, store, "/sync/history", JSONObject().put("movies", JSONArray().put(m)), auth = true)
+        code in 200..299 && !notFound(body)
     }
 
     /** Marks one episode as watched (show matched by title). */
@@ -104,7 +110,8 @@ object Trakt {
             val ep = JSONObject().put("number", episode).put("watched_at", iso(at))
             val s = JSONObject().put("number", season).put("episodes", JSONArray().put(ep))
             val sh = JSONObject().put("title", OpenSubtitles.cleanQuery(show)).put("seasons", JSONArray().put(s))
-            val (code, _) = call(http, store, "/sync/history", JSONObject().put("shows", JSONArray().put(sh)), auth = true)
-            code in 200..299
+            yearOf(show)?.let { sh.put("year", it) }
+            val (code, body) = call(http, store, "/sync/history", JSONObject().put("shows", JSONArray().put(sh)), auth = true)
+            code in 200..299 && !notFound(body)
         }
 }
