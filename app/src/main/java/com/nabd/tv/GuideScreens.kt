@@ -1,4 +1,4 @@
-﻿package com.nabd.tv
+package com.nabd.tv
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,7 +23,7 @@ fun GuideTab(vm: AppViewModel) {
     val channels = vm.guideChannels
     if (channels.isEmpty()) {
         Text(
-            if (vm.loading) "جارٍ تحميل الدليل..." else "لا توجد بيانات دليل. تأكد من رابط XMLTV أو حدّث القائمة.",
+            if (vm.loading) S(R.string.a_765cb680) else S(R.string.a_e70c23f6),
             color = TextSecondary, modifier = Modifier.padding(16.dp)
         )
         return
@@ -97,8 +97,8 @@ fun ProgrammeList(vm: AppViewModel, c: Channel, modifier: Modifier = Modifier) {
                             Text(p.title, fontSize = 15.sp, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             if (p.desc.isNotBlank()) Text(p.desc, fontSize = 12.sp, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
-                        if (live) Text("● الآن", color = Accent, fontSize = 12.sp)
-                        else if (past && c.hasCatchup) Text("↺ إعادة", color = Accent, fontSize = 12.sp)
+                        if (live) Text(S(R.string.a_0740b975), color = Accent, fontSize = 12.sp)
+                        else if (past && c.hasCatchup) Text(S(R.string.a_f7c96b71), color = Accent, fontSize = 12.sp)
                     }
                 }
             }
@@ -111,19 +111,19 @@ private fun programmeMenu(vm: AppViewModel, c: Channel, p: Prog) {
     val items = ArrayList<Pair<String, () -> Unit>>()
     when {
         now in p.start until p.stop -> {
-            items += "▶ مشاهدة الآن" to { vm.play(c, PlayMode.Live) }
-            if (c.hasCatchup) items += "↺ من البداية" to { vm.playCatchup(c, p) }
+            items += S(R.string.a_384b0e23) to { vm.play(c, PlayMode.Live) }
+            if (c.hasCatchup) items += S(R.string.a_e2994e5b) to { vm.playCatchup(c, p) }
         }
         p.stop <= now -> {
-            if (c.hasCatchup) items += "↺ مشاهدة الإعادة" to { vm.playCatchup(c, p) }
+            if (c.hasCatchup) items += S(R.string.a_0eaeed11) to { vm.playCatchup(c, p) }
         }
         else -> {
-            items += "⏺ تسجيل هذا البرنامج" to { vm.record(c, p) }
-            items += "⏺ تسجيل كل الحلقات (تلقائي)" to { vm.autoRecord(c, p) }
-            items += "🔔 ذكّرني قبل البدء" to { vm.remind(c, p) }
+            items += S(R.string.a_fa330f1d) to { vm.record(c, p) }
+            items += S(R.string.a_fd96d689) to { vm.autoRecord(c, p) }
+            items += S(R.string.a_40130fb7) to { vm.remind(c, p) }
         }
     }
-    if (items.isEmpty()) { vm.say("لا توجد إعادة لهذه القناة"); return }
+    if (items.isEmpty()) { vm.say(S(R.string.a_80413480)); return }
     vm.menu = MenuRequest(p.title, items)
 }
 
@@ -137,23 +137,23 @@ fun RecordingsTab(vm: AppViewModel) {
     Column {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("التسجيلات (${list.size})", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Ink)
-            MBtn("تحديث", filled = false) { vm.refreshRecordings() }
+            MBtn(S(R.string.a_4309a75e), filled = false) { vm.refreshRecordings() }
         }
-        if (list.isEmpty()) Text("لا توجد تسجيلات. من الدليل اختر برنامجاً قادماً ← تسجيل.", color = TextSecondary, modifier = Modifier.padding(top = 12.dp))
+        if (list.isEmpty()) Text(S(R.string.a_c987fb4c), color = TextSecondary, modifier = Modifier.padding(top = 12.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
             items(list, key = { it.id }) { r ->
                 val label = when (r.status) {
-                    RecStatus.Scheduled -> "مجدول"; RecStatus.Recording -> "● يسجّل"
-                    RecStatus.Done -> "جاهز"; RecStatus.Failed -> "فشل"; RecStatus.Cancelled -> ""
+                    RecStatus.Scheduled -> S(R.string.a_d4955673); RecStatus.Recording -> S(R.string.a_d060c27e)
+                    RecStatus.Done -> S(R.string.a_e1c009bc); RecStatus.Failed -> S(R.string.a_9fa00bdb); RecStatus.Cancelled -> ""
                 }
                 if (r.id == list.first().id) EntryPoint(vm, "rec", recFr)
                 Focusable(
                     focusRequester = if (r.id == list.first().id) recFr else null,
                     onClick = {
                         val items = ArrayList<Pair<String, () -> Unit>>()
-                        if (r.status == RecStatus.Done && r.file != null) items += "▶ تشغيل" to { vm.playRecording(r) }
-                        if (r.status == RecStatus.Scheduled || r.status == RecStatus.Recording) items += "إلغاء" to { vm.cancelRecording(r) }
-                        items += "حذف" to { vm.deleteRecording(r) }
+                        if (r.status == RecStatus.Done && r.file != null) items += S(R.string.a_d8cd9b5d) to { vm.playRecording(r) }
+                        if (r.status == RecStatus.Scheduled || r.status == RecStatus.Recording) items += S(R.string.a_e776b020) to { vm.cancelRecording(r) }
+                        items += S(R.string.a_2d2bbdc2) to { vm.deleteRecording(r) }
                         vm.menu = MenuRequest(r.title, items)
                     },
                     modifier = Modifier.fillMaxWidth()

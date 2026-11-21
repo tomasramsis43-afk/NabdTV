@@ -1,4 +1,4 @@
-﻿@file:kotlin.OptIn(
+@file:kotlin.OptIn(
     androidx.media3.common.util.UnstableApi::class,
     androidx.tv.material3.ExperimentalTvMaterial3Api::class
 )
@@ -466,13 +466,13 @@ fun ResumePrompt(position: Long, onResume: () -> Unit, onRestart: () -> Unit) {
                 .border(1.dp, OverlayLine, RoundedCornerShape(20.dp)).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("متابعة المشاهدة؟", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(S(R.string.a_bc5c351e), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Text("آخر موضع: ${fmtTime(position)}", color = OverlayText, fontSize = 14.sp)
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PlayerButton("▶ استكمال", focusRequester = focus) { onResume() }
-                PlayerButton("⟲ من البداية", active = false) { onRestart() }
+                PlayerButton(S(R.string.a_843aa9db), focusRequester = focus) { onResume() }
+                PlayerButton(S(R.string.a_8e8081c6), active = false) { onRestart() }
             }
         }
     }
@@ -494,7 +494,7 @@ fun PlayerErrorCard(
                 .border(1.dp, OverlayLine, RoundedCornerShape(20.dp)).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("تعذّر التشغيل", color = Color(0xFFFF8A8F), fontSize = 21.sp, fontWeight = FontWeight.Bold)
+            Text(S(R.string.a_c85d5a53), color = Color(0xFFFF8A8F), fontSize = 21.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Text(message, color = Color.White, fontSize = 14.sp, textAlign = TextAlign.Center)
             if (detail.isNotBlank()) {
@@ -503,9 +503,9 @@ fun PlayerErrorCard(
             }
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                PlayerButton("↻ إعادة المحاولة", focusRequester = focus) { onRetry() }
-                PlayerButton("مشغّل خارجي") { onExternal() }
-                PlayerButton("خروج") { onExit() }
+                PlayerButton(S(R.string.a_0a3e5278), focusRequester = focus) { onRetry() }
+                PlayerButton(S(R.string.a_43cf8ce4)) { onExternal() }
+                PlayerButton(S(R.string.a_a8bdc009)) { onExit() }
             }
         }
     }
@@ -536,21 +536,21 @@ fun TimeJumpDialog(current: Long, duration: Long, onJump: (Long) -> Unit, onDism
                 .clickable(enabled = false) {},
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("الانتقال إلى وقت محدد", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+            Text(S(R.string.a_3c6411ea), color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                TimeColumn("ساعات", h) { shift(0, it) }
+                TimeColumn(S(R.string.a_62c3bc6f), h) { shift(0, it) }
                 Text(":", color = Color.White, fontSize = 28.sp)
-                TimeColumn("دقائق", m) { shift(1, it) }
+                TimeColumn(S(R.string.a_a674ce42), m) { shift(1, it) }
                 Text(":", color = Color.White, fontSize = 28.sp)
-                TimeColumn("ثوانٍ", sec) { shift(2, it) }
+                TimeColumn(S(R.string.a_6588387b), sec) { shift(2, it) }
             }
             Spacer(Modifier.height(12.dp))
             Text("الوقت المطلوب: ${fmtTime(total)}", color = Accent, fontSize = 14.sp)
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                PlayerButton("انتقال", focusRequester = focus) { onJump(total); onDismiss() }
-                PlayerButton("إلغاء") { onDismiss() }
+                PlayerButton(S(R.string.a_ca9c7ff5), focusRequester = focus) { onJump(total); onDismiss() }
+                PlayerButton(S(R.string.a_e776b020)) { onDismiss() }
             }
         }
     }

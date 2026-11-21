@@ -70,8 +70,8 @@ fun rewindLive(vm: AppViewModel, player: ExoPlayer, url: String, sec: Int) {
         LiveRewind.pending = sec
         player.setMediaItem(MediaItem.fromUri(url.removeSuffix(".ts") + ".m3u8"))
         player.prepare(); player.playWhenReady = true
-        vm.say("جارٍ التحويل لنمط يدعم الرجوع...")
-    } else vm.say("هذه القناة لا تدعم الرجوع")
+        vm.say(S(R.string.a_2bbc14f2))
+    } else vm.say(S(R.string.a_32fe8f74))
 }
 
 /** Live diagnostics for the stats overlay. */

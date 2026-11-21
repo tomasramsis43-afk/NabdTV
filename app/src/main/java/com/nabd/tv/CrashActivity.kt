@@ -18,10 +18,10 @@ class CrashActivity : Activity() {
         super.onCreate(savedInstanceState)
         val trace = intent.getStringExtra("trace").orEmpty()
         val share = Button(this).apply {
-            text = "مشاركة نص الخطأ"
+            text = S(R.string.a_5015cf74)
             setOnClickListener {
                 startActivity(Intent.createChooser(
-                    Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, trace), "مشاركة"
+                    Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, trace), S(R.string.a_0196884e)
                 ))
             }
         }

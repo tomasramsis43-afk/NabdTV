@@ -36,7 +36,7 @@ object Trakt {
     }
 
     suspend fun deviceCode(http: OkHttpClient, store: Store): TraktDeviceCode = withContext(Dispatchers.IO) {
-        if (store.traktId.isBlank() || store.traktSecret.isBlank()) error("أدخل Client ID و Client Secret الخاصين بـ Trakt أولاً")
+        if (store.traktId.isBlank() || store.traktSecret.isBlank()) error(S(R.string.a_4df3672b))
         val (code, text) = call(http, store, "/oauth/device/code", JSONObject().put("client_id", store.traktId), auth = false)
         if (code != 200) error("تعذّر بدء الربط مع Trakt ($code)")
         val j = JSONObject(text)

@@ -32,7 +32,7 @@ object Updater {
     suspend fun check(ctx: Context, http: OkHttpClient): Release? = withContext(Dispatchers.IO) {
         val req = Request.Builder().url(API).header("User-Agent", "NabdTV").header("Accept", "application/vnd.github+json").build()
         http.newCall(req).execute().use { r ->
-            if (r.code == 404) error("تعذّر الوصول لصفحة الإصدارات (الريبو خاص أو لا توجد إصدارات)")
+            if (r.code == 404) error(S(R.string.a_4f740e77))
             if (!r.isSuccessful) error("HTTP ${r.code}")
             val o = JSONObject(r.body!!.string())
             val tag = o.optString("tag_name")
