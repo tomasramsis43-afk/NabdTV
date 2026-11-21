@@ -122,4 +122,25 @@
     <string name="menu_unlock">Unlock</string>
     <string name="menu_lock">Lock with PIN</string>
     <string name="menu_hide_group">Hide category</string>
+    <string name="a_08042201">Hide</string>
+    <string name="a_f2dde4fd">Show</string>
+    <string name="a_c56dfeff">Enter the M3U link</string>
+    <string name="a_ec479973">Enter the server, username and password</string>
+    <string name="a_322b1c4a">Scan the code with your phone</string>
+    <string name="a_e776b020">Cancel</string>
+    <string name="a_f3b7cf9e">Change subscription account</string>
+    <string name="a_99cf2726">Sign in to start watching</string>
+    <string name="a_e304a24a">M3U link</string>
+    <string name="a_55bf799f">Playlist link</string>
+    <string name="a_7dbbd516">Server address</string>
+    <string name="a_794f68a2">Username</string>
+    <string name="a_7ba22cf7">Password</string>
+    <string name="a_13b44d24">Connecting and loading channels...</string>
+    <string name="a_04218da9">Signing in...</string>
+    <string name="a_553a5561">Load playlist</string>
+    <string name="a_c9cbc8b2">Sign in</string>
+    <string name="a_381f2be4">Enter details from your phone (QR)</string>
+    <string name="a_5a679758">Checking...</string>
+    <string name="a_44f50601">Check connection and channels</string>
+    <string name="a_328ddce5">Back</string>
 </resources>

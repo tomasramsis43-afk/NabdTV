@@ -122,4 +122,25 @@
     <string name="menu_unlock">فك القفل</string>
     <string name="menu_lock">قفل بالرمز السري</string>
     <string name="menu_hide_group">إخفاء التصنيف</string>
+    <string name="a_08042201">إخفاء</string>
+    <string name="a_f2dde4fd">إظهار</string>
+    <string name="a_c56dfeff">اكتب رابط M3U</string>
+    <string name="a_ec479973">اكتب السيرفر واليوزر والباسورد</string>
+    <string name="a_322b1c4a">امسح الكود بالموبايل</string>
+    <string name="a_e776b020">إلغاء</string>
+    <string name="a_f3b7cf9e">تغيير حساب الاشتراك</string>
+    <string name="a_99cf2726">سجّل دخولك لبدء المشاهدة</string>
+    <string name="a_e304a24a">رابط M3U</string>
+    <string name="a_55bf799f">رابط القائمة</string>
+    <string name="a_7dbbd516">عنوان السيرفر</string>
+    <string name="a_794f68a2">اسم المستخدم</string>
+    <string name="a_7ba22cf7">كلمة المرور</string>
+    <string name="a_13b44d24">جارٍ الاتصال وتحميل القنوات...</string>
+    <string name="a_04218da9">جارٍ الدخول...</string>
+    <string name="a_553a5561">تحميل القائمة</string>
+    <string name="a_c9cbc8b2">دخول</string>
+    <string name="a_381f2be4">إدخال البيانات من الموبايل (QR)</string>
+    <string name="a_5a679758">جارٍ الفحص...</string>
+    <string name="a_44f50601">فحص الاتصال والقنوات</string>
+    <string name="a_328ddce5">رجوع</string>
 </resources>
