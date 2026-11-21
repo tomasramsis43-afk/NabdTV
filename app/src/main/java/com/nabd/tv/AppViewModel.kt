@@ -42,6 +42,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Localised string for non-composable code. */
     fun tx(@androidx.annotation.StringRes id: Int, vararg a: Any): String = Lang.str(ctx, id, *a)
     val store = Store(app)
+    init { Logos.enabled = store.titleLogos }
     val repo = Repo(app, store)
     val parental = Parental(store)
     val health = HealthChecker(repo, store)

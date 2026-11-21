@@ -673,4 +673,6 @@
     <string name="vm_prob_fails">فشل</string>
     <string name="cap_channels">القنوات</string>
     <string name="ep_number">الحلقة %1$d</string>
+
+    <string name="x_logos_toggle">شعارات العناوين الرسمية (ويكي ميديا)</string>
 </resources>
