@@ -42,11 +42,14 @@ object Lang {
     }
 
     /** Resources for [c], independent of the device locale. Arabic keeps Latin digits like the rest of the UI. */
-    fun resources(ctx: Context, c: String): Resources {
-        val cfg = android.content.res.Configuration(ctx.resources.configuration)
+    fun resources(ctx: Context, c: String): Resources = cache.getOrPut(c) {
+        // Built once per language: S() runs for hundreds of labels per recomposition, so it must not create a Context each time.
+        val cfg = android.content.res.Configuration(ctx.applicationContext.resources.configuration)
         cfg.setLocale(if (c == "ar") Locale.forLanguageTag("ar-u-nu-latn") else Locale.ENGLISH)
-        return ctx.createConfigurationContext(cfg).resources
+        ctx.applicationContext.createConfigurationContext(cfg).resources
     }
+
+    private val cache = java.util.concurrent.ConcurrentHashMap<String, Resources>()
 }
 
 /** String resource in the selected interface language. */
