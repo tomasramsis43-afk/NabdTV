@@ -659,4 +659,16 @@
     <string name="x_shelf_fav">المفضلة</string>
     <string name="x_shelf_recommended">مقترح لك</string>
     <string name="x_shelf_recent">شاهدتها مؤخراً</string>
+    <string name="vm_err_host">تعذّر الوصول للسيرفر (الاسم غير صحيح أو لا يوجد إنترنت)</string>
+    <string name="vm_err_timeout">انتهت مهلة الاتصال بالسيرفر</string>
+    <string name="vm_err_refused">السيرفر رفض الاتصال، تأكد من العنوان والبورت</string>
+    <string name="vm_err_bad_address">"العنوان غير صحيح: "</string>
+    <string name="vm_err_json">رد غير متوقع من السيرفر (الخدمة غير مفعّلة في اشتراكك أو الرد تالف)</string>
+    <string name="vm_err_unknown">خطأ غير معروف</string>
+    <string name="vm_rec_exists">مجدول مسبقاً</string>
+    <string name="vm_rec_clash">تمت الجدولة، لكنه يتعارض مع تسجيل آخر</string>
+    <string name="vm_rec_ok">تمت جدولة التسجيل</string>
+    <string name="vm_prob_dead">ميت</string>
+    <string name="vm_prob_slow">بطيء</string>
+    <string name="vm_prob_fails">فشل</string>
 </resources>

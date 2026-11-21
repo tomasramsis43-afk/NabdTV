@@ -659,4 +659,16 @@
     <string name="x_shelf_fav">My favorites</string>
     <string name="x_shelf_recommended">Recommended for you</string>
     <string name="x_shelf_recent">Recently watched</string>
+    <string name="vm_err_host">Could not reach the server (wrong name or no internet)</string>
+    <string name="vm_err_timeout">The server connection timed out</string>
+    <string name="vm_err_refused">The server refused the connection, check the address and port</string>
+    <string name="vm_err_bad_address">"Invalid address: "</string>
+    <string name="vm_err_json">Unexpected server reply (the service is not enabled in your subscription, or the reply is corrupted)</string>
+    <string name="vm_err_unknown">Unknown error</string>
+    <string name="vm_rec_exists">Already scheduled</string>
+    <string name="vm_rec_clash">Scheduled, but it clashes with another recording</string>
+    <string name="vm_rec_ok">Recording scheduled</string>
+    <string name="vm_prob_dead">dead</string>
+    <string name="vm_prob_slow">slow</string>
+    <string name="vm_prob_fails">failures</string>
 </resources>

@@ -14,14 +14,14 @@ object VmLogic {
         return if (i > 0) episodes.getOrNull(i - 1) else null
     }
 
-    /** Arabic, user-facing description of a network/parsing failure. */
-    fun friendlyError(e: Exception): String = when (e) {
-        is java.net.UnknownHostException -> "تعذّر الوصول للسيرفر (الاسم غير صحيح أو لا يوجد إنترنت)"
-        is java.net.SocketTimeoutException -> "انتهت مهلة الاتصال بالسيرفر"
-        is java.net.ConnectException -> "السيرفر رفض الاتصال، تأكد من العنوان والبورت"
-        is IllegalArgumentException -> "العنوان غير صحيح: " + (e.message ?: "")
-        is org.json.JSONException -> "رد غير متوقع من السيرفر (الخدمة غير مفعّلة في اشتراكك أو الرد تالف)"
-        else -> e.message ?: "خطأ غير معروف"
+    /** User-facing description of a network/parsing failure, in the selected language ([str] resolves a string resource). */
+    fun friendlyError(e: Exception, str: (Int) -> String = { S(it) }): String = when (e) {
+        is java.net.UnknownHostException -> str(R.string.vm_err_host)
+        is java.net.SocketTimeoutException -> str(R.string.vm_err_timeout)
+        is java.net.ConnectException -> str(R.string.vm_err_refused)
+        is IllegalArgumentException -> str(R.string.vm_err_bad_address) + (e.message ?: "")
+        is org.json.JSONException -> str(R.string.vm_err_json)
+        else -> e.message ?: str(R.string.vm_err_unknown)
     }
 
     /** Rating text ("7,5", " 8.1 ") as a number, or 0 when missing / not numeric. */
@@ -58,13 +58,13 @@ object VmLogic {
         limitMinutes > 0 && hasPin && !unlocked && watchedSeconds >= limitMinutes * 60L
 
     /** Toast shown after trying to schedule a recording. [scheduled] = false means it already existed. */
-    fun recordMessage(scheduled: Boolean, clash: Boolean): String = when {
-        !scheduled -> "مجدول مسبقاً"
-        clash -> "تمت الجدولة، لكنه يتعارض مع تسجيل آخر"
-        else -> "تمت جدولة التسجيل"
+    fun recordMessage(scheduled: Boolean, clash: Boolean, str: (Int) -> String = { S(it) }): String = when {
+        !scheduled -> str(R.string.vm_rec_exists)
+        clash -> str(R.string.vm_rec_clash)
+        else -> str(R.string.vm_rec_ok)
     }
 
     /** One line of the "problem channels" report. */
-    fun problemLine(name: String, dead: Boolean, failures: Int): String =
-        name + " — " + (if (dead) "ميت" else "بطيء") + " · " + failures + " فشل"
+    fun problemLine(name: String, dead: Boolean, failures: Int, str: (Int) -> String = { S(it) }): String =
+        name + " — " + str(if (dead) R.string.vm_prob_dead else R.string.vm_prob_slow) + " · " + failures + " " + str(R.string.vm_prob_fails)
 }

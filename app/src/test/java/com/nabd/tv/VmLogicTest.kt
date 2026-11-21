@@ -4,6 +4,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
+/** Stands in for string-resource lookup on the JVM: returns a marker per resource id. */
+private fun stub(id: Int): String = "#$id"
+
 class VmLogicTest {
     private val eps = listOf(
         Episode(1, 1, "a", "u1"), Episode(1, 2, "b", "u2"), Episode(1, 3, "c", "u3")
@@ -25,9 +28,10 @@ class VmLogicTest {
     }
 
     @Test fun friendlyErrorMapsNetworkFailures() {
-        assertEquals("انتهت مهلة الاتصال بالسيرفر", VmLogic.friendlyError(java.net.SocketTimeoutException()))
-        assertEquals("خطأ غير معروف", VmLogic.friendlyError(RuntimeException()))
-        assertEquals("boom", VmLogic.friendlyError(RuntimeException("boom")))
+        assertEquals(stub(R.string.vm_err_timeout), VmLogic.friendlyError(java.net.SocketTimeoutException(), ::stub))
+        assertEquals(stub(R.string.vm_err_unknown), VmLogic.friendlyError(RuntimeException(), ::stub))
+        assertEquals("boom", VmLogic.friendlyError(RuntimeException("boom"), ::stub))
+        assertEquals(stub(R.string.vm_err_bad_address) + "x", VmLogic.friendlyError(IllegalArgumentException("x"), ::stub))
     }
 }
 
@@ -86,14 +90,14 @@ class VmLogicTimeTest {
 }
 
 class VmLogicRecordTest {
-    @Test fun alreadyScheduledWinsOverClash() = assertEquals("مجدول مسبقاً", VmLogic.recordMessage(false, true))
-    @Test fun clashIsReportedButStillScheduled() = assertEquals("تمت الجدولة، لكنه يتعارض مع تسجيل آخر", VmLogic.recordMessage(true, true))
-    @Test fun plainSuccess() = assertEquals("تمت جدولة التسجيل", VmLogic.recordMessage(true, false))
+    @Test fun alreadyScheduledWinsOverClash() = assertEquals(stub(R.string.vm_rec_exists), VmLogic.recordMessage(false, true, ::stub))
+    @Test fun clashIsReportedButStillScheduled() = assertEquals(stub(R.string.vm_rec_clash), VmLogic.recordMessage(true, true, ::stub))
+    @Test fun plainSuccess() = assertEquals(stub(R.string.vm_rec_ok), VmLogic.recordMessage(true, false, ::stub))
 }
 
 class VmLogicProblemTest {
     @Test fun deadAndSlowLines() {
-        assertEquals("X — ميت · 3 فشل", VmLogic.problemLine("X", true, 3))
-        assertEquals("Y — بطيء · 1 فشل", VmLogic.problemLine("Y", false, 1))
+        assertEquals("X — " + stub(R.string.vm_prob_dead) + " · 3 " + stub(R.string.vm_prob_fails), VmLogic.problemLine("X", true, 3, ::stub))
+        assertEquals("Y — " + stub(R.string.vm_prob_slow) + " · 1 " + stub(R.string.vm_prob_fails), VmLogic.problemLine("Y", false, 1, ::stub))
     }
 }
