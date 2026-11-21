@@ -570,4 +570,6 @@
     <string name="a_5f1c0bbb">أزرار التلفاز والإيماءات والتنقل</string>
     <string name="a_859c31b9">معلومات التطبيق والدعم</string>
     <string name="a_8b616260">الإصدار والتحديث والتشخيص</string>
+    <string name="ratio_16_9">16:9</string>
+    <string name="ratio_4_3">4:3</string>
 </resources>

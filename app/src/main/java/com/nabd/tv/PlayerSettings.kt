@@ -43,8 +43,8 @@ enum class AspectMode(@StringRes val labelRes: Int) {
     Smart(R.string.a_72429e55),
     Fill(R.string.a_57b70fa3),
     Stretch(R.string.a_77fa7c87),
-    Ratio16x9("16:9"),
-    Ratio4x3("4:3"),
+    Ratio16x9(R.string.ratio_16_9),
+    Ratio4x3(R.string.ratio_4_3),
     Crop(R.string.a_1afb1274);
 
     val label: String get() = S(labelRes)

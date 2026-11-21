@@ -570,4 +570,6 @@
     <string name="a_5f1c0bbb">TV buttons, gestures and navigation</string>
     <string name="a_859c31b9">App info and support</string>
     <string name="a_8b616260">Version, updates and diagnostics</string>
+    <string name="ratio_16_9">16:9</string>
+    <string name="ratio_4_3">4:3</string>
 </resources>
