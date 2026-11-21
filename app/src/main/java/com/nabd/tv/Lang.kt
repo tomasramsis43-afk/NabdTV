@@ -31,6 +31,12 @@ object Lang {
         code = c
     }
 
+    /** Non-composable lookup (ViewModel, services). Reads [code], so derived state re-evaluates on switch. */
+    fun str(ctx: Context, @StringRes id: Int, vararg args: Any): String {
+        val r = resources(ctx, code)
+        return if (args.isEmpty()) r.getString(id) else r.getString(id, *args)
+    }
+
     /** Resources for [c], independent of the device locale. Arabic keeps Latin digits like the rest of the UI. */
     fun resources(ctx: Context, c: String): Resources {
         val cfg = android.content.res.Configuration(ctx.resources.configuration)

@@ -31,9 +31,9 @@ fun ProfilesScreen(vm: AppViewModel) {
         Modifier.fillMaxSize().appBackground().padding(if (LocalDevice.current.tv) 32.dp else 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
     ) {
-        Text("من يشاهد؟", fontSize = if (LocalDevice.current.tv) 32.sp else 26.sp, fontWeight = FontWeight.Bold, color = Ink)
+        Text(tr(R.string.who_watching), fontSize = if (LocalDevice.current.tv) 32.sp else 26.sp, fontWeight = FontWeight.Bold, color = Ink)
         Text(
-            "لكل ملف مفضلاته وسجل مشاهدته وإعداداته الخاصة",
+            tr(R.string.profiles_hint),
             fontSize = 12.5.sp, color = TextSecondary, textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 6.dp)
         )
@@ -54,12 +54,12 @@ fun ProfilesScreen(vm: AppViewModel) {
                         }
                         Spacer(Modifier.height(10.dp))
                         Text(p.name, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Ink, maxLines = 1)
-                        if (p.kids) Text("أطفال", fontSize = 12.sp, color = Accent)
+                        if (p.kids) Text(tr(R.string.kids), fontSize = 12.sp, color = Accent)
                     }
                 }
             }
         }
         Spacer(Modifier.height(24.dp))
-        MBtn("رجوع", filled = false) { vm.switchProfile(vm.profile.id) }
+        MBtn(tr(R.string.detail_back), filled = false) { vm.switchProfile(vm.profile.id) }
     }
 }

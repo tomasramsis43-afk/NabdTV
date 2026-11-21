@@ -43,7 +43,7 @@ fun Overlays(vm: AppViewModel) {
                 visualTransformation = if (pr.secret) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None
             )
             Spacer(Modifier.height(10.dp))
-            MBtn("حفظ") { vm.prompt = null; pr.onOk(text) }
+            MBtn(tr(R.string.dlg_save)) { vm.prompt = null; pr.onOk(text) }
         }
     }
 }
@@ -59,11 +59,11 @@ fun PinDialog(title: String, onDismiss: () -> Unit, verify: (String) -> Boolean)
             singleLine = true, visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.NumberPassword)
         )
-        if (wrong) Text("رمز خاطئ", color = Danger, fontSize = 13.sp)
+        if (wrong) Text(tr(R.string.dlg_wrong_pin), color = Danger, fontSize = 13.sp)
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            MBtn("تأكيد") { if (!verify(code)) { wrong = true; code = "" } }
-            MBtn("إلغاء", filled = false) { onDismiss() }
+            MBtn(tr(R.string.dlg_confirm)) { if (!verify(code)) { wrong = true; code = "" } }
+            MBtn(tr(R.string.dlg_cancel), filled = false) { onDismiss() }
         }
     }
 }

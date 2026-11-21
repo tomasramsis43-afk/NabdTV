@@ -59,10 +59,10 @@ fun AppBar(vm: AppViewModel, d: Device) {
             voice.launch(
                 Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                     .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ar")
-                    .putExtra(RecognizerIntent.EXTRA_PROMPT, "قل اسم القناة أو الفيلم أو المسلسل")
+                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE, Lang.code)
+                    .putExtra(RecognizerIntent.EXTRA_PROMPT, vm.tx(R.string.voice_prompt))
             )
-        }.onFailure { vm.say("البحث الصوتي غير مدعوم على هذا الجهاز") }
+        }.onFailure { vm.say(vm.tx(R.string.voice_unsupported)) }
     }
 
     Column(Modifier.fillMaxWidth().padding(horizontal = d.pad, vertical = if (d.tv) 8.dp else 6.dp)) {
@@ -149,7 +149,7 @@ private fun SectionBar(
         items(tabs.size) { i ->
             val t = tabs[i]
             SectionItem(
-                label = t.label,
+                label = tr(t.labelRes),
                 selected = vm.tab == t,
                 tv = d.tv,
                 focusRequester = reqs.getValue(t),

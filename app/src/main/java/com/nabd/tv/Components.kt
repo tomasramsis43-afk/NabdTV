@@ -103,7 +103,7 @@ fun SearchField(value: String, onChange: (String) -> Unit, modifier: Modifier = 
         NIcon(Ic.Search, TextSecondary, 18.dp)
         Spacer(Modifier.width(8.dp))
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-            if (value.isEmpty()) Text("بحث...", color = TextSecondary, fontSize = 13.sp, maxLines = 1)
+            if (value.isEmpty()) Text(tr(R.string.search_hint), color = TextSecondary, fontSize = 13.sp, maxLines = 1)
             BasicTextField(
                 value = value, onValueChange = onChange, singleLine = true,
                 textStyle = TextStyle(color = Ink, fontSize = 14.sp),

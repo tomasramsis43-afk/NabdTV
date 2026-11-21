@@ -14,8 +14,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 enum class Screen { Setup, Profiles, Main, Player, Detail, MultiView, Settings }
-enum class Tab(val label: String) {
-    Home("الرئيسية"), Live("مباشر"), Movies("أفلام"), Series("مسلسلات"), Guide("الدليل"), Recordings("التسجيلات")
+enum class Tab(@androidx.annotation.StringRes val labelRes: Int) {
+    Home(R.string.tab_home), Live(R.string.tab_live), Movies(R.string.tab_movies), Series(R.string.tab_series), Guide(R.string.tab_guide), Recordings(R.string.tab_recordings)
 }
 enum class PlayMode { Live, Vod, Catchup, Recording }
 
@@ -38,6 +38,9 @@ fun kindOf(c: Channel): Kind = when {
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val ctx: Application = app
+
+    /** Localised string for non-composable code. */
+    fun tx(@androidx.annotation.StringRes id: Int, vararg a: Any): String = Lang.str(ctx, id, *a)
     val store = Store(app)
     val repo = Repo(app, store)
     val parental = Parental(store)
@@ -155,7 +158,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun groupLabel(g: String): String =
-        if (g.startsWith("★") || g.startsWith("◷") || g.startsWith("◆") || g.startsWith("🆕") || g == GROUP_ALL) g
+        if (g == GROUP_ALL) tx(R.string.group_all) else if (g == GROUP_FAV) tx(R.string.group_fav)
+        else if (g == GROUP_RECENT) tx(R.string.group_recent) else if (g == GROUP_NEW) tx(R.string.group_new)
+        else if (g.startsWith("★") || g.startsWith("◷") || g.startsWith("◆") || g.startsWith("🆕")) g
         else (if (g in store.pinnedGroups) "📌 " else "") + Classifier.cleanGroup(g, store.filterList) +
             (if (g in store.lockedGroups) " 🔒" else "")
 
@@ -212,16 +217,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val out = ArrayList<Shelf>()
         val cont = history.filter { it.kind != Kind.Live && !it.finished && it.progress > 0.02f && parental.visible(histChannel(it)) }
             .take(20).map { histChannel(it) }
-        if (cont.isNotEmpty()) out += Shelf("استكمال المشاهدة", cont)
+        if (cont.isNotEmpty()) out += Shelf(tx(R.string.shelf_continue), cont)
         fun top(l: List<Channel>) = VmLogic.topRated(l, 10)
         val topM = top(movieList)
-        if (topM.isNotEmpty()) out += Shelf("الأفلام الأعلى تقييماً", topM, ranked = true)
+        if (topM.isNotEmpty()) out += Shelf(tx(R.string.shelf_top_movies), topM, ranked = true)
         val topS = top(seriesList)
-        if (topS.isNotEmpty()) out += Shelf("المسلسلات الأعلى تقييماً", topS, ranked = true)
+        if (topS.isNotEmpty()) out += Shelf(tx(R.string.shelf_top_series), topS, ranked = true)
         val newMovies = movieList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { movieList.take(30) }
-        if (newMovies.isNotEmpty()) out += Shelf("أحدث الأفلام", newMovies)
+        if (newMovies.isNotEmpty()) out += Shelf(tx(R.string.shelf_new_movies), newMovies)
         val newSeries = seriesList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { seriesList.take(30) }
-        if (newSeries.isNotEmpty()) out += Shelf("أحدث المسلسلات", newSeries)
+        if (newSeries.isNotEmpty()) out += Shelf(tx(R.string.shelf_new_series), newSeries)
         out
     }
 
@@ -308,7 +313,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         } catch (e: Exception) {
             if (!silent) error = friendly(e)
         } catch (e: OutOfMemoryError) {
-            if (!silent) error = "الذاكرة لا تكفي لتحميل قائمة بهذا الحجم"
+            if (!silent) error = tx(R.string.err_oom)
         } finally {
             vodActive.remove(t)
             vodBusy--; vodLoading = vodBusy > 0
@@ -351,7 +356,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Re-reads everything from the provider: account status, channels, movies, series and the guide. */
     fun refreshAccount() {
         viewModelScope.launch {
-            say("جارٍ تحديث الحساب من السيرفر...")
+            say(tx(R.string.msg_refreshing))
             val info = repo.accountInfo()
             if (info != null) say(info)
             load(true)
@@ -387,7 +392,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openSetup() { back = Screen.Main; screen = Screen.Setup }
     fun closeSetup() { if (all.isNotEmpty()) screen = Screen.Main }
-    fun openSettings() { if (profile.kids) requirePin("أدخل الرمز السري") { screen = Screen.Settings } else screen = Screen.Settings }
+    fun openSettings() { if (profile.kids) requirePin(tx(R.string.pin_enter)) { screen = Screen.Settings } else screen = Screen.Settings }
     fun closeSettings() { restoreFocus = true; screen = Screen.Main; bump() }
 
     var diag by mutableStateOf<String?>(null); private set
@@ -395,7 +400,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun runDiag() {
         viewModelScope.launch {
             diagBusy = true; diag = null
-            diag = try { repo.diagnose() } catch (e: Exception) { "فشل الفحص: ${e.message}" }
+            diag = try { repo.diagnose() } catch (e: Exception) { tx(R.string.diag_failed, e.message ?: "") }
             diagBusy = false
         }
     }
@@ -412,7 +417,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         store.addWatched(sec)
         if (limitReached() && screen == Screen.Player) {
             stop()
-            pin = PinRequest("انتهى وقت المشاهدة اليوم. أدخل الرمز السري للمتابعة") { }
+            pin = PinRequest(tx(R.string.pin_time_limit)) { }
         }
     }
 
@@ -425,8 +430,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             else -> liveList
         }
         val picks = (recs.shuffled().take(3) + pool.shuffled().take(5)).distinctBy { it.url }.take(6)
-        if (picks.isEmpty()) { say("لا توجد اقتراحات بعد"); return }
-        menu = MenuRequest("ماذا أشاهد؟", picks.map { c -> (if (kindOf(c) == Kind.Live) "📺 " else "🎬 ") + c.name to { open(c) } })
+        if (picks.isEmpty()) { say(tx(R.string.no_suggestions)); return }
+        menu = MenuRequest(tx(R.string.what_to_watch), picks.map { c -> (if (kindOf(c) == Kind.Live) "📺 " else "🎬 ") + c.name to { open(c) } })
     }
 
     /* ───────── in-app update ───────── */
@@ -439,9 +444,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 update = Updater.check(ctx, repo.http)
                 if (!manual && update != null && UpdatePrefs.auto(ctx) && screen != Screen.Player && !PlaybackBus.active) installUpdate(auto = true)
-                if (manual) say(if (update == null) "أنت على آخر إصدار" else "يوجد إصدار جديد ${update!!.tag}")
+                if (manual) say(if (update == null) tx(R.string.up_to_date) else tx(R.string.new_version, update!!.tag))
             } catch (e: Exception) {
-                if (manual) say("تعذّر فحص التحديث: ${e.message}")
+                if (manual) say(tx(R.string.update_check_failed, e.message ?: ""))
             }
         }
     }
@@ -450,7 +455,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val rel = update ?: return
         if (updateProgress != null) return
         if (auto && android.os.Build.VERSION.SDK_INT >= 26 && !ctx.packageManager.canRequestPackageInstalls()) {
-            say("لتفعيل التحديث التلقائي: اسمح للتطبيق بالتثبيت من الإعدادات"); return
+            say(tx(R.string.update_allow_install)); return
         }
         viewModelScope.launch {
             try {
@@ -459,10 +464,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     ?: Updater.download(ctx, repo.http, rel) { updateProgress = it }
                 pendingApk = f
                 updateProgress = null
-                if (!Updater.install(ctx, f)) say("اسمح للتطبيق بالتثبيت ثم اضغط تحديث مرة أخرى")
+                if (!Updater.install(ctx, f)) say(tx(R.string.update_allow_retry))
             } catch (e: Exception) {
                 updateProgress = null
-                say("فشل التنزيل: ${e.message}")
+                say(tx(R.string.download_failed, e.message ?: ""))
             }
         }
     }
@@ -480,11 +485,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         setXtream(f["host"]!!, f["user"]!!, f["pass"]!!); "ok"
                     } else null
                 }
-                if (ok != null) { stopPairing(); say("وصلت البيانات من الموبايل") } else say("البيانات المرسلة ناقصة")
+                if (ok != null) { stopPairing(); say(tx(R.string.pair_received)) } else say(tx(R.string.pair_incomplete))
             }
         }
         val u = srv.start()
-        if (u == null) { say("تعذّر بدء الإعداد: تأكد أن الجهاز على شبكة Wi-Fi"); return }
+        if (u == null) { say(tx(R.string.pair_failed)); return }
         pairing = srv; pairingUrl = u
     }
 
@@ -509,7 +514,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Leaving a kids profile needs the PIN (when one is set), so a child cannot hop to an adult profile. */
     fun switchProfile(id: String) {
         if (id == profile.id) { screen = Screen.Main; return }
-        if (profile.kids && store.hasPin && !parental.unlocked) pin = PinRequest("أدخل الرمز للتبديل") { doSwitch(id) }
+        if (profile.kids && store.hasPin && !parental.unlocked) pin = PinRequest(tx(R.string.pin_switch)) { doSwitch(id) }
         else doSwitch(id)
     }
 
@@ -518,19 +523,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun addProfile(name: String, kids: Boolean) { store.addProfile(name, kids); profileList = store.profiles() }
 
     fun deleteProfile(id: String) {
-        requirePin("أدخل الرمز السري") { store.deleteProfile(id); reloadProfileState() }
+        requirePin(tx(R.string.pin_enter)) { store.deleteProfile(id); reloadProfileState() }
     }
 
     /* ───────── parental control ───────── */
     private fun guard(c: Channel, go: () -> Unit) {
-        if (parental.needsPin(c)) pin = PinRequest("أدخل الرمز السري") { go() } else go()
+        if (parental.needsPin(c)) pin = PinRequest(tx(R.string.pin_enter)) { go() } else go()
     }
 
     fun submitPin(code: String): Boolean {
         val req = pin ?: return false
         if (!parental.unlock(code)) {
             val w = parental.lockoutSeconds()
-            if (w > 0) say("محاولات كثيرة خاطئة. حاول بعد $w ثانية")
+            if (w > 0) say(tx(R.string.pin_throttled, w))
             return false
         }
         pin = null; bump(); req.onOk()
@@ -543,13 +548,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun setPin(code: String) { store.setPin(code); bump() }
-    fun clearPin() { requirePin("أدخل الرمز لإلغائه") { store.clearPin(); parental.lock(); bump() } }
-    fun setLevel(m: Maturity) { requirePin("أدخل الرمز السري") { store.parentalLevel = m; bump() } }
+    fun clearPin() { requirePin(tx(R.string.pin_clear)) { store.clearPin(); parental.lock(); bump() } }
+    fun setLevel(m: Maturity) { requirePin(tx(R.string.pin_enter)) { store.parentalLevel = m; bump() } }
     fun lockNow() { parental.lock(); bump() }
 
     fun toggleGroupLock(g: String) {
-        if (!store.hasPin) { say("عيّن رمزاً سرياً أولاً من الإعدادات"); return }
-        requirePin("أدخل الرمز السري") {
+        if (!store.hasPin) { say(tx(R.string.pin_set_first)); return }
+        requirePin(tx(R.string.pin_enter)) {
             store.lockedGroups = if (g in store.lockedGroups) store.lockedGroups - g else store.lockedGroups + g
             bump()
         }
@@ -560,7 +565,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun hideGroup(g: String) {
-        requirePin("أدخل الرمز السري") { store.hiddenGroups = store.hiddenGroups + g; if (group == g) group = GROUP_ALL; bump() }
+        requirePin(tx(R.string.pin_enter)) { store.hiddenGroups = store.hiddenGroups + g; if (group == g) group = GROUP_ALL; bump() }
     }
 
     fun unhideAllGroups() { store.hiddenGroups = emptySet(); bump() }
@@ -574,14 +579,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshRecs()
     }
 
-    fun hideChannel(c: Channel) { store.hiddenChannels = store.hiddenChannels + c.url; bump(); say("تم إخفاء القناة") }
+    fun hideChannel(c: Channel) { store.hiddenChannels = store.hiddenChannels + c.url; bump(); say(tx(R.string.channel_hidden)) }
     fun unhideAllChannels() { store.hiddenChannels = emptySet(); bump() }
 
     fun addToCustomGroup(name: String, c: Channel) {
         val m = LinkedHashMap(store.customGroups())
         m[name] = (m[name] ?: emptyList()) + c.url
         store.saveCustomGroups(m); bump()
-        say("أُضيفت إلى $name")
+        say(tx(R.string.added_to, name))
     }
 
     fun removeCustomGroup(name: String) {
@@ -651,7 +656,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val zapEnabled: Boolean get() = playMode == PlayMode.Live && zapList.isNotEmpty()
 
     fun play(c: Channel, mode: PlayMode? = null, startAt: Long = -1) = guard(c) {
-        if (limitReached()) { pin = PinRequest("انتهى وقت المشاهدة اليوم. أدخل الرمز السري للمتابعة") { }; return@guard }
+        if (limitReached()) { pin = PinRequest(tx(R.string.pin_time_limit)) { }; return@guard }
         if (screen != Screen.Player) back = screen
         val m = mode ?: if (kindOf(c) == Kind.Live) PlayMode.Live else PlayMode.Vod
         playMode = m
@@ -667,7 +672,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun playEpisode(s: Channel, e: Episode) =
-        play(Channel(-1, "${s.name} · م${e.season} ح${e.num}", e.url, s.logo, s.group), PlayMode.Vod)
+        play(Channel(-1, "${s.name} · ${tx(R.string.ep_label, e.season, e.num)}", e.url, s.logo, s.group), PlayMode.Vod)
 
     /** Episode that follows the one currently playing, if any (for auto-next). */
     fun nextEpisodeOf(c: Channel): Episode? {
@@ -708,7 +713,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun playCatchup(c: Channel, p: Prog) {
         val u = repo.catchupUrl(c, p)
-        if (u == null) { say("هذه القناة لا تدعم الإعادة"); return }
+        if (u == null) { say(tx(R.string.no_catchup)); return }
         play(Channel(-1, "${c.name} · ${p.title}", u, c.logo, c.group), PlayMode.Catchup, 0)
     }
 
@@ -800,18 +805,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         traktJob = viewModelScope.launch {
             try {
                 val dc = Trakt.deviceCode(repo.http, store)
-                menu = MenuRequest("افتح ${dc.url} وأدخل الكود: ${dc.userCode}", listOf("إلغاء" to { traktJob?.cancel() }))
+                menu = MenuRequest(tx(R.string.trakt_code, dc.url, dc.userCode), listOf(tx(R.string.dlg_cancel) to { traktJob?.cancel() }))
                 val ok = Trakt.awaitAuthorization(repo.http, store, dc)
                 menu = null
-                say(if (ok) "تم ربط حساب Trakt" else "لم يتم الربط (انتهت المهلة أو رُفض الطلب)")
+                say(if (ok) tx(R.string.trakt_linked) else tx(R.string.trakt_not_linked))
             } catch (e: kotlinx.coroutines.CancellationException) {
                 menu = null; throw e
-            } catch (e: Exception) { menu = null; say(e.message ?: "تعذّر الاتصال بـ Trakt") }
+            } catch (e: Exception) { menu = null; say(e.message ?: tx(R.string.trakt_conn_failed)) }
             bump()
         }
     }
 
-    fun traktUnlink() { Trakt.unlink(store); say("تم فك ربط Trakt"); bump() }
+    fun traktUnlink() { Trakt.unlink(store); say(tx(R.string.trakt_unlinked)); bump() }
 
     /** Called once when a movie / episode is finished: marks it watched on Trakt (silently ignored on failure). */
     private fun traktMarkWatched(c: Channel) {
@@ -855,10 +860,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         store.autoRecordTitles = store.autoRecordTitles + p.title.lowercase()
         Recorder.syncAuto(ctx, store, all, epg)
         recCtl.refresh()
-        say("سيتم تسجيل كل حلقات \"${p.title}\"")
+        say(tx(R.string.rec_all_eps, p.title))
     }
 
-    fun remind(c: Channel, p: Prog) { Recorder.remind(ctx, store, c, p); say("سيصلك تنبيه قبل البدء") }
+    fun remind(c: Channel, p: Prog) { Recorder.remind(ctx, store, c, p); say(tx(R.string.remind_set)) }
 
     fun cancelRecording(r: Recording) { recCtl.cancel(r) }
     fun deleteRecording(r: Recording) { recCtl.delete(r) }
@@ -871,12 +876,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun checkHealth(favoritesOnly: Boolean) {
         if (healthStatus != null) return
         val list = (if (favoritesOnly) liveList.filter { it.url in favs } else visible).take(150).map { it.url }
-        if (list.isEmpty()) { say("لا توجد قنوات للفحص"); return }
+        if (list.isEmpty()) { say(tx(R.string.check_none)); return }
         viewModelScope.launch {
             healthStatus = "0/${list.size}"
             val dead = health.check(list, 3) { d, t -> healthStatus = "$d/$t" }
             healthStatus = null; bump()
-            say("اكتمل الفحص: $dead رابط معطّل من ${list.size}")
+            say(tx(R.string.check_done, dead, list.size))
         }
     }
 
@@ -890,12 +895,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun toggleMulti(c: Channel) {
         multi = if (multi.any { it.url == c.url }) multi.filter { it.url != c.url }
-        else if (multi.size >= 4) { say("الحد الأقصى 4 قنوات"); multi } else multi + c
-        say("المشاهدة المتعددة: ${multi.size}/4")
+        else if (multi.size >= 4) { say(tx(R.string.multi_max)); multi } else multi + c
+        say(tx(R.string.multi_count, multi.size))
     }
 
     fun openMulti() {
-        if (multi.size < 2) { say("اختر قناتين على الأقل (ضغطة مطوّلة ← مشاهدة متعددة)"); return }
+        if (multi.size < 2) { say(tx(R.string.multi_min)); return }
         back = Screen.Main; screen = Screen.MultiView
     }
 
@@ -912,25 +917,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun channelMenu(c: Channel) {
         val k = kindOf(c)
         val items = ArrayList<Pair<String, () -> Unit>>()
-        items += (if (c.url in favs) "إزالة من المفضلة" else "إضافة للمفضلة") to { toggleFav(c) }
+        items += (if (c.url in favs) tx(R.string.menu_fav_remove) else tx(R.string.menu_fav_add)) to { toggleFav(c) }
         if (k == Kind.Live) {
-            items += "مشاهدة متعددة (${multi.size}/4)" to { toggleMulti(c) }
-            items += "إضافة إلى مجموعة" to {
+            items += tx(R.string.menu_multi, multi.size) to { toggleMulti(c) }
+            items += tx(R.string.menu_add_group) to {
                 val names = store.customGroups().keys.toList()
-                menu = MenuRequest("المجموعات",
+                menu = MenuRequest(tx(R.string.menu_groups),
                     names.map { n -> n to { addToCustomGroup(n, c) } } +
-                        ("+ مجموعة جديدة" to { prompt = PromptRequest("اسم المجموعة", "") { n -> if (n.isNotBlank()) addToCustomGroup(n.trim(), c) } })
+                        (tx(R.string.menu_new_group) to { prompt = PromptRequest(tx(R.string.prompt_group_name), "") { n -> if (n.isNotBlank()) addToCustomGroup(n.trim(), c) } })
                 )
             }
             val alts = alternativesOf(c)
-            if (alts.isNotEmpty()) items += "مصادر بديلة (${alts.size})" to {
-                menu = MenuRequest("مصادر بديلة", alts.map { a -> (a.name + " · " + health.state(a.url).name) to { play(a) } })
+            if (alts.isNotEmpty()) items += tx(R.string.menu_alt_sources, alts.size) to {
+                menu = MenuRequest(tx(R.string.alt_sources), alts.map { a -> (a.name + " · " + health.state(a.url).name) to { play(a) } })
             }
-            items += "تعديل مطابقة الدليل" to {
-                prompt = PromptRequest("معرّف القناة في الدليل (فارغ = تلقائي)", store.epgOverrides()[c.url] ?: c.tvgId ?: "") { id -> setEpgOverride(c, id.trim()) }
+            items += tx(R.string.menu_epg_match) to {
+                prompt = PromptRequest(tx(R.string.prompt_epg_id), store.epgOverrides()[c.url] ?: c.tvgId ?: "") { id -> setEpgOverride(c, id.trim()) }
             }
         }
-        items += "إخفاء" to { hideChannel(c) }
+        items += tx(R.string.menu_hide) to { hideChannel(c) }
         menu = MenuRequest(c.name, items)
     }
 
@@ -938,11 +943,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (g == GROUP_ALL || g == GROUP_FAV || g == GROUP_RECENT || g == GROUP_NEW) return
         val items = ArrayList<Pair<String, () -> Unit>>()
         if (g.startsWith(GROUP_CUSTOM)) {
-            items += "حذف المجموعة" to { removeCustomGroup(g.removePrefix(GROUP_CUSTOM)) }
+            items += tx(R.string.menu_delete_group) to { removeCustomGroup(g.removePrefix(GROUP_CUSTOM)) }
         } else {
-            items += (if (g in store.pinnedGroups) "إلغاء التثبيت" else "تثبيت في الأعلى") to { togglePinGroup(g) }
-            items += (if (g in store.lockedGroups) "فك القفل" else "قفل بالرمز السري") to { toggleGroupLock(g) }
-            items += "إخفاء التصنيف" to { hideGroup(g) }
+            items += (if (g in store.pinnedGroups) tx(R.string.menu_unpin) else tx(R.string.menu_pin)) to { togglePinGroup(g) }
+            items += (if (g in store.lockedGroups) tx(R.string.menu_unlock) else tx(R.string.menu_lock)) to { toggleGroupLock(g) }
+            items += tx(R.string.menu_hide_group) to { hideGroup(g) }
         }
         menu = MenuRequest(groupLabel(g), items)
     }

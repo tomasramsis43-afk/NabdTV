@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
     /** Floating window for the player (also used automatically when the user presses Home during playback). */
     fun enterPip(): Boolean {
         if (Build.VERSION.SDK_INT < 26 || !packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
-            vm.say("الجهاز لا يدعم النافذة العائمة"); return false
+            vm.say(vm.tx(R.string.pip_unsupported)); return false
         }
         return try {
             enterPictureInPictureMode(

@@ -94,16 +94,16 @@ private fun Content(vm: AppViewModel, d: Device, modifier: Modifier) {
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 NIcon(Ic.Download, Accent, 20.dp)
-                Text("نسخة جديدة متاحة ${u.tag}", color = Ink, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                MBtn(vm.updateProgress?.let { "جارٍ التحميل $it%" } ?: "تحديث الآن") { vm.installUpdate() }
+                Text(tr(R.string.update_available, u.tag), color = Ink, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                MBtn(vm.updateProgress?.let { tr(R.string.update_downloading, it) } ?: tr(R.string.update_now)) { vm.installUpdate() }
             }
         }
         if (vm.loading || vm.vodLoading || vm.error != null || vm.healthStatus != null) {
             Spacer(Modifier.height(4.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (vm.loading || vm.vodLoading) Text("جارٍ التحميل...", color = Accent, fontSize = 12.sp)
-                vm.error?.let { Text("خطأ: $it", color = Danger, fontSize = 12.sp) }
-                vm.healthStatus?.let { Text("فحص الروابط: $it", color = Accent, fontSize = 12.sp) }
+                if (vm.loading || vm.vodLoading) Text(tr(R.string.common_loading), color = Accent, fontSize = 12.sp)
+                vm.error?.let { Text(tr(R.string.detail_error, it), color = Danger, fontSize = 12.sp) }
+                vm.healthStatus?.let { Text(tr(R.string.health_status, it), color = Accent, fontSize = 12.sp) }
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -139,7 +139,7 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
     val shelves = vm.shelves
     if (shelves.isEmpty() && vm.loading) { SkeletonGrid(d); return }
     if (shelves.isEmpty()) {
-        Text("لا يوجد محتوى بعد. حدّد هذا القسم أو أضف مزوّد البث.", color = TextSecondary, modifier = Modifier.padding(16.dp))
+        Text(tr(R.string.home_empty), color = TextSecondary, modifier = Modifier.padding(16.dp))
         return
     }
 
@@ -200,8 +200,8 @@ private fun HomeHero(
     modifier: Modifier = Modifier
 ) {
     val kind = kindOf(c)
-    val typeLabel = when (kind) { Kind.Movie -> "فيلم"; Kind.Series -> "مسلسل"; Kind.Live -> "بث مباشر" }
-    val primaryLabel = when (kind) { Kind.Series -> "الحلقات"; Kind.Movie -> "تشغيل"; Kind.Live -> "مشاهدة" }
+    val typeLabel = when (kind) { Kind.Movie -> tr(R.string.detail_type_movie); Kind.Series -> tr(R.string.detail_type_series); Kind.Live -> tr(R.string.type_live) }
+    val primaryLabel = when (kind) { Kind.Series -> tr(R.string.detail_episodes); Kind.Movie -> tr(R.string.play); Kind.Live -> tr(R.string.watch) }
     val art = info?.backdrop ?: c.logo
 
     Box(modifier) {
@@ -225,8 +225,8 @@ private fun HomeHero(
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(typeLabel, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp, color = readableOnArt(palette.accent), modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(palette.primary.copy(alpha = 0.26f)).padding(horizontal = 8.dp, vertical = 3.dp))
-                if (c.hasCatchup) MetaChip("إعادة", fg = Color(0xFFE7E9F2), bg = Color(0x26FFFFFF))
-                if (c.url in vm.favs) Text("★ في المفضلة", fontSize = 12.sp, color = Accent2)
+                if (c.hasCatchup) MetaChip(tr(R.string.catchup_chip), fg = Color(0xFFE7E9F2), bg = Color(0x26FFFFFF))
+                if (c.url in vm.favs) Text(tr(R.string.detail_fav_on), fontSize = 12.sp, color = Accent2)
             }
             Spacer(Modifier.height(if (d.tv) 10.dp else 6.dp))
             Text(c.name, fontSize = if (d.tv) 36.sp else if (d.widthDp >= 600) 28.sp else 22.sp, lineHeight = if (d.tv) 42.sp else 32.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -244,7 +244,7 @@ private fun HomeHero(
             Spacer(Modifier.height(if (d.tv) 14.dp else 9.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(if (d.tv) 12.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
                 MBtn(primaryLabel, tint = buttonTone(palette.primary)) { if (kind == Kind.Series) vm.openDetail(c) else vm.play(c) }
-                if (kind != Kind.Live) MBtn("التفاصيل", filled = false, tint = palette.accent) { vm.openDetail(c) }
+                if (kind != Kind.Live) MBtn(tr(R.string.details), filled = false, tint = palette.accent) { vm.openDetail(c) }
                 HeroFav(vm, c, palette, d)
             }
         }
@@ -348,7 +348,7 @@ private fun BrowseTab(vm: AppViewModel, d: Device) {
     @Composable
     fun Grid(modifier: Modifier) {
         if (items.isEmpty() && (vm.loading || vm.vodLoading)) { SkeletonGrid(d); return }
-        if (items.isEmpty()) Text("لا توجد نتائج", color = TextSecondary, fontSize = 15.sp)
+        if (items.isEmpty()) Text(tr(R.string.no_results), color = TextSecondary, fontSize = 15.sp)
         LazyVerticalGrid(
             state = vm.gridState(vm.tab.name + "|" + vm.group),
             columns = GridCells.Adaptive(if (poster) d.posterMin else d.liveMin),
@@ -369,13 +369,13 @@ private fun BrowseTab(vm: AppViewModel, d: Device) {
                 item {
                     if (vm.tab == Tab.Live) {
                         Spacer(Modifier.height(10.dp))
-                        MBtn("▦ مشاهدة متعددة (${vm.multi.size})", filled = false, modifier = Modifier.fillMaxWidth()) { vm.openMulti() }
+                        MBtn(tr(R.string.multi_view_btn, vm.multi.size), filled = false, modifier = Modifier.fillMaxWidth()) { vm.openMulti() }
                     }
                 }
             }
             Spacer(Modifier.width(d.gap + 6.dp))
             Column(Modifier.weight(1f)) {
-                Text("${items.size} عنصر", color = TextMuted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
+                Text(tr(R.string.items_count, items.size), color = TextMuted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
                 Grid(Modifier.fillMaxSize())
             }
         }
@@ -386,7 +386,7 @@ private fun BrowseTab(vm: AppViewModel, d: Device) {
                 horizontalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
             ) {
                 items(vm.groups, key = { it }) { g -> GroupItem(vm, g) }
-                if (vm.tab == Tab.Live) item { TabChip("▦ متعدد (${vm.multi.size})", false) { vm.openMulti() } }
+                if (vm.tab == Tab.Live) item { TabChip(tr(R.string.multi_chip, vm.multi.size), false) { vm.openMulti() } }
             }
             Spacer(Modifier.height(4.dp))
             Grid(Modifier.fillMaxSize())
@@ -401,7 +401,7 @@ private fun SearchResults(vm: AppViewModel, d: Device) {
     val progs = vm.progResults
     SideEffect { vm.firstKey = if (progs.isNotEmpty()) null else r.firstOrNull()?.let { it.url + it.id } }
     Column {
-        Text("نتائج البحث: ${r.size + progs.size}", color = TextMuted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
+        Text(tr(R.string.search_results, r.size + progs.size), color = TextMuted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
         LazyVerticalGrid(
             state = vm.gridState("search"),
             columns = GridCells.Adaptive(if (r.any { kindOf(it) == Kind.Live }) d.liveMin else d.posterMin),
@@ -410,13 +410,13 @@ private fun SearchResults(vm: AppViewModel, d: Device) {
         ) {
             if (progs.isNotEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }, key = "prog-head") {
-                    Text("برامج في الدليل (${progs.size})", color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(tr(R.string.search_epg, progs.size), color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
                 items(progs, key = { "p" + it.first.url + it.second.start }, span = { GridItemSpan(maxLineSpan) }) { (c, p) ->
                     ProgRow(vm, c, p)
                 }
                 if (r.isNotEmpty()) item(span = { GridItemSpan(maxLineSpan) }, key = "prog-tail") {
-                    Text("القنوات والأفلام والمسلسلات (${r.size})", color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(tr(R.string.search_all, r.size), color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
             items(r, key = { it.url + it.id }) { c -> if (kindOf(c) == Kind.Live) LiveCard(vm, c) else PosterCard(vm, c) }
@@ -429,16 +429,18 @@ private fun SearchResults(vm: AppViewModel, d: Device) {
 @Composable
 private fun ProgRow(vm: AppViewModel, c: Channel, p: Prog) {
     val airing = p.start <= System.currentTimeMillis()
+    val watchLbl = tr(R.string.prog_watch)
+    val recLbl = tr(R.string.prog_record)
     Focusable(
         onClick = {
             if (airing) vm.play(c)
-            else vm.menu = MenuRequest(p.title, listOf("▶ مشاهدة القناة" to { vm.play(c) }, "⏺ تسجيل البرنامج" to { vm.record(c, p) }))
+            else vm.menu = MenuRequest(p.title, listOf(watchLbl to { vm.play(c) }, recLbl to { vm.record(c, p) }))
         },
         modifier = Modifier.fillMaxWidth(), zoom = 1.02f, shape = RoundedCornerShape(Radius.small)
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                if (airing) "الآن" else dayHm(p.start), color = if (airing) Accent else TextSecondary,
+                if (airing) tr(R.string.now) else dayHm(p.start), color = if (airing) Accent else TextSecondary,
                 fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(84.dp), maxLines = 1
             )
             Column(Modifier.weight(1f)) {

@@ -225,9 +225,9 @@ fun BoxScope.VodOverlay(
         }
         val options: @Composable () -> Unit = {
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
-                CaptionBtn(VIc.Subs, "الترجمة والصوت", side, onInteract, onSubs)
-                if (hasEpisodes) CaptionBtn(VIc.Episodes, "الحلقات", side, onInteract, onEpisodes)
-                CaptionBtn(VIc.Settings, "الإعدادات", side, onInteract, onSettings)
+                CaptionBtn(VIc.Subs, tr(R.string.cap_subs_audio), side, onInteract, onSubs)
+                if (hasEpisodes) CaptionBtn(VIc.Episodes, tr(R.string.detail_episodes), side, onInteract, onEpisodes)
+                CaptionBtn(VIc.Settings, tr(R.string.cap_settings), side, onInteract, onSettings)
             }
         }
         if (narrow) {
