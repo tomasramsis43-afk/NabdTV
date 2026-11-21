@@ -127,14 +127,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Keeps one entry per channel name (quality tags ignored), preferring the healthiest source. Others stay available as alternatives. */
     private fun dedupeSources(l: List<Channel>): List<Channel> {
         fun rank(c: Channel) = when (health.state(c.url)) { Health.Ok -> 0; Health.Unknown -> 1; Health.Slow -> 2; Health.Dead -> 3 }
-        val best = HashMap<String, Channel>()
-        for (c in l) {
-            val k = Classifier.normalize(c.name)
-            if (k.isBlank()) continue
-            val b = best[k]
-            if (b == null || rank(c) < rank(b)) best[k] = c
-        }
-        return l.filter { val k = Classifier.normalize(it.name); k.isBlank() || best[k]?.url == it.url }
+        return VmLogic.dedupeSources(l, ::rank)
     }
     val movieList by derivedStateOf { rev; val h = store.hiddenChannels; movies.filter { ok(it, false, h) } }
     val seriesList by derivedStateOf { rev; val h = store.hiddenChannels; series.filter { ok(it, false, h) } }
@@ -219,8 +212,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val cont = history.filter { it.kind != Kind.Live && !it.finished && it.progress > 0.02f && parental.visible(histChannel(it)) }
             .take(20).map { histChannel(it) }
         if (cont.isNotEmpty()) out += Shelf("استكمال المشاهدة", cont)
-        fun top(l: List<Channel>) = l.filter { (it.rating?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: 0.0) > 0.0 }
-            .sortedByDescending { it.rating!!.trim().replace(',', '.').toDouble() }.take(10)
+        fun top(l: List<Channel>) = VmLogic.topRated(l, 10)
         val topM = top(movieList)
         if (topM.isNotEmpty()) out += Shelf("الأفلام الأعلى تقييماً", topM, ranked = true)
         val topS = top(seriesList)

@@ -23,4 +23,26 @@ object VmLogic {
         is org.json.JSONException -> "رد غير متوقع من السيرفر (الخدمة غير مفعّلة في اشتراكك أو الرد تالف)"
         else -> e.message ?: "خطأ غير معروف"
     }
+
+    /** Rating text ("7,5", " 8.1 ") as a number, or 0 when missing / not numeric. */
+    fun ratingOf(c: Channel): Double = c.rating?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: 0.0
+
+    /** Highest-rated entries (rating > 0), best first. */
+    fun topRated(l: List<Channel>, n: Int = 10): List<Channel> =
+        l.filter { ratingOf(it) > 0.0 }.sortedByDescending { ratingOf(it) }.take(n)
+
+    /**
+     * One entry per normalized channel name; among duplicates the lowest [rank] wins (first one on a tie).
+     * Entries with a blank key are always kept. Order of [l] is preserved.
+     */
+    fun dedupeSources(l: List<Channel>, rank: (Channel) -> Int): List<Channel> {
+        val best = HashMap<String, Channel>()
+        for (c in l) {
+            val k = Classifier.normalize(c.name)
+            if (k.isBlank()) continue
+            val b = best[k]
+            if (b == null || rank(c) < rank(b)) best[k] = c
+        }
+        return l.filter { val k = Classifier.normalize(it.name); k.isBlank() || best[k]?.url == it.url }
+    }
 }
