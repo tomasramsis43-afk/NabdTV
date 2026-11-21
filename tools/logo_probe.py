@@ -50,7 +50,7 @@ def resolve(title, kind, year, lang):
         classes = {c["mainsnak"]["datavalue"]["value"]["id"] for c in cl.get("P31", []) if "datavalue" in c["mainsnak"]}
         desc = " ".join(v["value"] for v in e.get("descriptions", {}).values()).lower()
         is_series = bool(classes & SERIES) or bool(re.search(r"(television|tv|web|anime|animated) (series|show)|miniseries|tv series", desc))
-        is_film = (bool(classes & FILM) or bool(re.search(r"\b(film|movie)\b", desc))) and not is_series
+        is_film = (not (classes & {"Q24856", "Q1198113"})) and (bool(classes & FILM) or bool(re.search(r"\b(film|movie)\b(?! series)", desc))) and not is_series
         if (kind == "movie" and not is_film) or (kind == "series" and not is_series):
             continue
         ys = year_of(cl, "P577") + year_of(cl, "P580")
