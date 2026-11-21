@@ -117,8 +117,10 @@ object LogoMatch {
     fun fileOk(name: String): Boolean = name.lowercase().let { it.endsWith(".svg") || it.endsWith(".png") }
 
     /**
-     * Pixel check of the rendered image ([argb] = w*h pixels): a real title logo is wide-ish, has a transparent
-     * border and a modest amount of opaque ink. Photos, posters and opaque banners fail.
+     * Pixel check of the rendered image ([argb] = w*h pixels): a real title logo is wide-ish, mostly transparent
+     * (>= 20% of all pixels and >= 30% of the border) and has a modest amount of opaque ink. Tight-cropped logos
+     * whose letters touch the edges still pass; photos, posters and opaque banners (even PNGs with an alpha
+     * channel but a solid background) fail.
      */
     fun looksLikeLogo(w: Int, h: Int, argb: IntArray): Boolean {
         if (w <= 0 || h <= 0 || argb.size < w * h) return false
@@ -127,10 +129,10 @@ object LogoMatch {
         var border = 0; var transparentBorder = 0
         for (x in 0 until w) for (y in intArrayOf(0, h - 1)) { border++; if ((argb[y * w + x] ushr 24) < 16) transparentBorder++ }
         for (y in 1 until h - 1) for (x in intArrayOf(0, w - 1)) { border++; if ((argb[y * w + x] ushr 24) < 16) transparentBorder++ }
-        if (border == 0 || transparentBorder.toFloat() / border < 0.9f) return false
-        var opaque = 0
-        for (p in argb) if ((p ushr 24) > 128) opaque++
-        val frac = opaque.toFloat() / (w * h)
-        return frac in 0.01f..0.9f
+        if (border == 0 || transparentBorder.toFloat() / border < 0.3f) return false
+        var opaque = 0; var clear = 0
+        for (p in argb) { val a = p ushr 24; if (a > 128) opaque++ else if (a < 16) clear++ }
+        val n = w * h
+        return clear.toFloat() / n >= 0.2f && opaque.toFloat() / n in 0.01f..0.9f
     }
 }

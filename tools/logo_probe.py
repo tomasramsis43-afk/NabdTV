@@ -84,10 +84,14 @@ def check_image(fname):
         from PIL import Image
         im = Image.open(io.BytesIO(data)); info += " %s %dx%d" % (im.mode, *im.size)
         rgba = im.convert("RGBA"); w, h = rgba.size
-        pts = [(0,0),(w-1,0),(0,h-1),(w-1,h-1),(w//2,0),(w//2,h-1),(0,h//2),(w-1,h//2)]
-        tr = sum(1 for pt in pts if rgba.getpixel(pt)[3] < 16)
-        info += " transparent_edges=%d/8 ratio=%.2f" % (tr, w / h)
-        if tr < 6: info = "REJECT (not transparent) " + info
+        al = rgba.getchannel("A"); px = al.load()
+        border = [px[x, y] for x in range(w) for y in (0, h - 1)] + [px[x, y] for y in range(1, h - 1) for x in (0, w - 1)]
+        tb = sum(1 for v in border if v < 16) / len(border)
+        hist = al.histogram(); n = w * h
+        clear = sum(hist[:16]) / n; opaque = sum(hist[129:]) / n
+        ok = 1.15 <= w / h <= 12 and tb >= 0.3 and clear >= 0.2 and 0.01 <= opaque <= 0.9
+        info += " border_transparent=%.2f clear=%.2f ink=%.2f ratio=%.2f" % (tb, clear, opaque, w / h)
+        if not ok: info = "REJECT (not a transparent logo) " + info
     except Exception as ex:
         info += " (pil: %s)" % ex
     return info

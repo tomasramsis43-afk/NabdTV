@@ -70,6 +70,10 @@ class LogoMatchTest {
         assertFalse(LogoMatch.looksLikeLogo(100, 40, photo))
         val tall = px(40, 100) { x, y -> if (x in 10..30 && y in 10..90) ink else 0 }
         assertFalse(LogoMatch.looksLikeLogo(40, 100, tall))
+        val tight = px(100, 40) { _, y -> if (y in 15..25) ink else 0 }          // letters touch the left/right edges
+        assertTrue(LogoMatch.looksLikeLogo(100, 40, tight))
+        val solidBanner = px(100, 40) { x, y -> if (x in 10..90 && y in 15..25) ink else 0xFF101010.toInt() }  // alpha channel but opaque background
+        assertFalse(LogoMatch.looksLikeLogo(100, 40, solidBanner))
         val empty = px(100, 40) { _, _ -> 0 }
         assertFalse(LogoMatch.looksLikeLogo(100, 40, empty))
     }
