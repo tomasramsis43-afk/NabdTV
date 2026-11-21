@@ -55,7 +55,7 @@ fun DetailScreen(vm: AppViewModel) {
 
     Box(Modifier.fillMaxSize().appBackground()) {
         // Full-bleed backdrop: wide artwork to the screen edges, dissolving into the page (no frame, no card).
-        Box(Modifier.fillMaxWidth().fillMaxHeight(0.72f)) {
+        Box(Modifier.fillMaxWidth().fillMaxHeight(0.72f).fadeOutBottom(0.55f)) {
             AsyncImage(
                 model = info?.backdrop ?: c.logo, contentDescription = null,
                 contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, -0.45f), modifier = Modifier.fillMaxSize()
@@ -63,7 +63,7 @@ fun DetailScreen(vm: AppViewModel) {
             Box(Modifier.fillMaxSize().textSideScrim(if (narrow) 0.78f else 0.95f))
             Box(
                 Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(0.0f to Scrim.copy(alpha = 0.55f), 0.30f to Color.Transparent, 0.62f to Scrim.copy(alpha = 0.62f), 1f to Bg)
+                    Brush.verticalGradient(0.0f to Scrim.copy(alpha = 0.55f), 0.30f to Color.Transparent, 0.62f to Scrim.copy(alpha = 0.55f), 1f to Scrim.copy(alpha = 0.90f))
                 )
             )
             Box(

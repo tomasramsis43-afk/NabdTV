@@ -235,6 +235,7 @@ private fun HomeHero(
     val shortScreen = d.heightDp < 420
 
     Box(modifier) {
+        Box(Modifier.fillMaxSize().fadeOutBottom(0.55f)) {
         // 1. Artwork: wide backdrop, cropped (never stretched), subject kept in view.
         if (kind == Kind.Live) {
             Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(SurfHigh, NavyDeep))))
@@ -250,11 +251,12 @@ private fun HomeHero(
         // 2. Layered gradients: text side wash, top wash for the floating header, bottom fade into the page.
         Box(Modifier.fillMaxSize().textSideScrim(if (wide) 0.95f else 0.78f))
         Box(Modifier.fillMaxWidth().fillMaxHeight(0.42f).background(Brush.verticalGradient(listOf(Scrim.copy(alpha = 0.72f), Color.Transparent))))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.0f to Color.Transparent, 0.38f to Scrim.copy(alpha = 0.18f), 0.74f to Scrim.copy(alpha = 0.78f), 1f to Bg)))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.0f to Color.Transparent, 0.38f to Scrim.copy(alpha = 0.18f), 0.74f to Scrim.copy(alpha = 0.70f), 1f to Scrim.copy(alpha = 0.90f))))
         Box(Modifier.fillMaxSize().drawBehind {
             drawCircle(Brush.radialGradient(listOf(palette.glow, Color.Transparent), center = Offset(size.width * 0.5f, 0f), radius = size.width * 0.6f), radius = size.width * 0.6f, center = Offset(size.width * 0.5f, 0f))
         })
 
+        }
         // 3. Info block: anchored to the start side, bottom of the artwork; the right/centre of the image stays clear.
         Column(
             Modifier.align(Alignment.BottomStart)

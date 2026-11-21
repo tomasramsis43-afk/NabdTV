@@ -16,6 +16,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -195,3 +197,18 @@ fun edgePad(d: Device): EdgePad {
     val cut = WindowInsets.displayCutout.asPaddingValues()
     return EdgePad(d.pad + cut.calculateStartPadding(ld), d.pad + cut.calculateEndPadding(ld))
 }
+
+
+/**
+ * Dissolves the bottom of a layer into whatever is behind it (real transparency, not a colour fill),
+ * so artwork melts into the page background with no visible rectangular edge.
+ */
+fun Modifier.fadeOutBottom(from: Float = 0.6f): Modifier = this
+    .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        drawRect(
+            Brush.verticalGradient(0f to Color.Black, from to Color.Black, 0.85f to Color.Black.copy(alpha = 0.35f), 1f to Color.Transparent),
+            blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
+        )
+    }
