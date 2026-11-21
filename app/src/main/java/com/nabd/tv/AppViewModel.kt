@@ -608,6 +608,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 try {
                     episodes = repo.loadEpisodes(c.url.removePrefix("series:").toInt())
                     season = episodes.firstOrNull()?.season ?: 1
+                    loadStills(c, season)
                 } catch (e: Exception) { error = friendly(e) }
                 epLoading = false
             }
@@ -615,7 +616,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun closeDetail() { restoreFocus = true; screen = Screen.Main }
-    fun selectSeason(n: Int) { season = n }
+    fun selectSeason(n: Int) { season = n; detail?.let { loadStills(it, n) } }
+
+    private val stillsRequested = HashSet<String>()
+
+    /** Fetches real TMDB stills for one season (lazy: only the season on screen) and merges them into [episodes]. */
+    private fun loadStills(c: Channel, n: Int) {
+        val k = "${c.url}:$n"
+        if (!stillsRequested.add(k)) return
+        viewModelScope.launch {
+            val m = repo.tmdbStills(c.name, n)
+            if (m.isEmpty()) { stillsRequested.remove(k); return@launch }
+            if (detail?.url != c.url) return@launch
+            episodes = episodes.map { e -> if (e.season == n) m[e.num]?.let { e.copy(image = it) } ?: e else e }
+        }
+    }
 
     /** Opens the right screen for an item from any shelf or grid. */
     fun open(c: Channel) {

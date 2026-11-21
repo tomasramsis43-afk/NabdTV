@@ -413,6 +413,57 @@ class Repo(private val ctx: Context, val store: Store) {
         } catch (_: Exception) { null }
     }
 
+    /* ───────────── TMDB episode stills ───────────── */
+
+    private val tmdbIds = HashMap<String, Int>()
+    private val tmdbMiss = HashSet<String>()
+    private val stillCache = HashMap<String, Map<Int, String>>()
+
+    private fun norm(t: String) = t.lowercase().replace(Regex("""[^\p{L}\p{N}]"""), "")
+
+    /**
+     * Real episode stills for one season from TMDB, keyed by episode number. The series is accepted only when its
+     * TMDB title equals the provider title (exact match after normalising); otherwise nothing is returned,
+     * so an image is never attached to the wrong show.
+     */
+    suspend fun tmdbStills(title: String, season: Int): Map<Int, String> = withContext(Dispatchers.IO) {
+        val key = store.tmdbKey
+        if (key.isBlank() || season <= 0) return@withContext emptyMap()
+        val clean = title.replace(Regex("""[\[(].*?[\])]"""), " ").replace(Regex("""\s+"""), " ").trim()
+        val want = norm(clean)
+        if (want.isEmpty()) return@withContext emptyMap()
+        fun get(url: String): JSONObject? = http.newCall(Request.Builder().url(url).build()).execute().use { r ->
+            if (r.isSuccessful) JSONObject(r.body!!.string()) else null
+        }
+        try {
+            if (synchronized(tmdbIds) { want in tmdbMiss }) return@withContext emptyMap()
+            val id = synchronized(tmdbIds) { tmdbIds[want] } ?: run {
+                val res = get("https://api.themoviedb.org/3/search/tv?api_key=${Uri.encode(key)}&language=ar&query=${Uri.encode(clean)}")
+                    ?.optJSONArray("results")
+                var found: Int? = null
+                if (res != null) for (i in 0 until minOf(res.length(), 5)) {
+                    val o = res.getJSONObject(i)
+                    if (norm(str(o, "name")) == want || norm(str(o, "original_name")) == want) { found = o.optInt("id"); break }
+                }
+                // Cache hits and confirmed misses; a failed request (res == null) is retried later.
+                synchronized(tmdbIds) { if (found != null) tmdbIds[want] = found else if (res != null) tmdbMiss.add(want) }
+                found
+            } ?: return@withContext emptyMap()
+            val ck = "$id:$season"
+            synchronized(stillCache) { stillCache[ck] }?.let { return@withContext it }
+            val eps = get("https://api.themoviedb.org/3/tv/$id/season/$season?api_key=${Uri.encode(key)}&language=ar")
+                ?.optJSONArray("episodes") ?: return@withContext emptyMap()
+            val out = HashMap<Int, String>()
+            for (i in 0 until eps.length()) {
+                val e = eps.getJSONObject(i)
+                val path = str(e, "still_path")
+                if (path.isNotBlank()) out[e.optInt("episode_number")] = "https://image.tmdb.org/t/p/w300$path"
+            }
+            synchronized(stillCache) { stillCache[ck] = out }
+            out
+        } catch (_: Exception) { emptyMap() }
+    }
+
     /* ───────────── Health probe ───────────── */
 
     private fun looksLike(buf: ByteArray, n: Int): String {
