@@ -330,10 +330,11 @@ fun PlayerSheet(
                             SheetRow("إزالة الترجمة الخارجية", enabled = ui.extSub != null) { actions.removeSubtitle() }
                             ui.extError?.let { SheetInfo("خطأ: $it", danger = true) }
                             SheetRow("مسار الترجمة المدمج", "${ui.textTracks.size} مسار") {
-                                if (ui.extSub != null) actions.removeSubtitle()
+                                // The external file is dropped only when an embedded track is actually chosen, not when the list opens.
+                                val dropExternal = { if (ui.extSub != null) actions.removeSubtitle() }
                                 val items = listOf(SheetOption("إيقاف الترجمة") { actions.setSubtitlesEnabled(false) }) +
                                     ui.textTracks.mapIndexed { i, t ->
-                                        SheetOption(t.label, t.selected) { actions.selectSubtitle(i) }
+                                        SheetOption(t.label, t.selected) { dropExternal(); actions.selectSubtitle(i) }
                                     }
                                 if (items.size == 1) vm.say("لا توجد ترجمة مدمجة في هذا البث") else openChoice("الترجمة المدمجة", items)
                             }
