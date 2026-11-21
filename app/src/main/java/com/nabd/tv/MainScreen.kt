@@ -298,21 +298,19 @@ private fun HomeCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel, rank: I
     }
 }
 
-/** Pulsing placeholders while the first list loads. */
+/** Shimmering placeholders while the first list loads. */
 @Composable
 private fun SkeletonGrid(d: Device) {
-    val a by rememberInfiniteTransition(label = "sk").animateFloat(
-        0.30f, 0.75f, infiniteRepeatable(tween(850), RepeatMode.Reverse), label = "skA"
-    )
+    val ph = rememberShimmerPhase()
     LazyVerticalGrid(
         columns = GridCells.Adaptive(d.posterMin), userScrollEnabled = false,
         horizontalArrangement = Arrangement.spacedBy(d.gap), verticalArrangement = Arrangement.spacedBy(d.gap + 10.dp)
     ) {
         items(18) {
             Column {
-                Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).alpha(a).clip(RoundedCornerShape(Radius.poster)).background(SurfHigh))
+                Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(RoundedCornerShape(Radius.poster)).background(SurfHigh).shimmer(ph))
                 Spacer(Modifier.height(6.dp))
-                Box(Modifier.fillMaxWidth(0.7f).height(9.dp).alpha(a).clip(RoundedCornerShape(4.dp)).background(SurfHigh))
+                Box(Modifier.fillMaxWidth(0.7f).height(9.dp).clip(RoundedCornerShape(4.dp)).background(SurfHigh).shimmer(ph))
             }
         }
     }
