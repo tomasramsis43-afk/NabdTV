@@ -47,3 +47,21 @@ class M3uParserTest {
         assertNull(M3uParser.epgFromHeader("#EXTM3U\n"))
     }
 }
+
+class M3uNameTest {
+    @Test fun quoteInsideTitleDoesNotCutTheName() {
+        val l = """#EXTINF:-1 tvg-id="a" group-title="News",Channel "Plus" HD"""
+        assertEquals("Channel \"Plus\" HD", M3uParser.displayName(l))
+    }
+
+    @Test fun commaInsideAttributeIsIgnored() {
+        val l = """#EXTINF:-1 group-title="News, Sports",Real Name"""
+        assertEquals("Real Name", M3uParser.displayName(l))
+    }
+
+    @Test fun parseKeepsQuotedTitleAndUrl() {
+        val c = M3uParser.parse("#EXTM3U\n#EXTINF:-1 tvg-id=\"a\",Show \"X\"\nhttp://h/1.ts").single()
+        assertEquals("Show \"X\"", c.name)
+        assertEquals("http://h/1.ts", c.url)
+    }
+}

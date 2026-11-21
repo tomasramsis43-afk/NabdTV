@@ -7,6 +7,18 @@ object M3uParser {
     fun epgFromHeader(text: String): String? =
         headerEpg.find(text.take(2000))?.groupValues?.get(1)?.split(',')?.firstOrNull()?.trim()
 
+    /** Text after the first comma that is outside quotes, so a quote inside the title (Name "HD") cannot cut it. */
+    internal fun displayName(extinf: String): String {
+        var inQuote = false
+        for (i in extinf.indices) {
+            when (extinf[i]) {
+                '"' -> inQuote = !inQuote
+                ',' -> if (!inQuote) return extinf.substring(i + 1).trim()
+            }
+        }
+        return ""
+    }
+
     fun parse(text: String): List<Channel> {
         val out = ArrayList<Channel>(2048)
         var name = ""
@@ -32,8 +44,7 @@ object M3uParser {
                     chno = a["tvg-chno"]?.toIntOrNull() ?: 0
                     rating = a["tn-rating"]?.takeIf { it.isNotBlank() }
                     added = a["tn-added"]?.toLongOrNull() ?: 0L
-                    name = line.substring(line.lastIndexOf('"') + 1).substringAfter(',', "").trim()
-                        .ifEmpty { a["tvg-name"] ?: "Channel" }
+                    name = displayName(line).ifEmpty { a["tvg-name"] ?: "Channel" }
                     pending = true
                 }
                 line.isNotEmpty() && !line.startsWith("#") && pending -> {
