@@ -136,7 +136,7 @@ fun RecordingsTab(vm: AppViewModel) {
     val recFr = remember { androidx.compose.ui.focus.FocusRequester() }
     Column {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("التسجيلات (${list.size})", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Ink)
+            Text(S(R.string.x_rec_title, list.size), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Ink)
             MBtn(S(R.string.a_4309a75e), filled = false) { vm.refreshRecordings() }
         }
         if (list.isEmpty()) Text(S(R.string.a_c987fb4c), color = TextSecondary, modifier = Modifier.padding(top = 12.dp))

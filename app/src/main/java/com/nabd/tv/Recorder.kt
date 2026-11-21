@@ -139,7 +139,7 @@ object Recorder {
         )
         val n = NotificationCompat.Builder(ctx, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("يبدأ قريباً: ${r.title}")
+            .setContentTitle(S(R.string.x_rec_starting, r.title))
             .setContentText(r.channelName)
             .setContentIntent(open).setAutoCancel(true).build()
         runCatching { (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(id.hashCode(), n) }

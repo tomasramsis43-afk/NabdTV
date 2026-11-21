@@ -176,7 +176,7 @@ class Repo(private val ctx: Context, val store: Store) {
             } catch (e: Exception) {
                 val m = e.message ?: ""
                 if (m.startsWith("HTTP 403") || m.startsWith("HTTP 401"))
-                    error("$m: السيرفر رفض الطلب. تأكد من اليوزر والباسورد وأن الاشتراك شغال، أو أن المزوّد يحظر هذا التطبيق أو الـ IP. جرّب نفس البيانات في IPTV Smarters للتأكد.")
+                    error(S(R.string.x_repo_denied, m))
                 throw e
             }
         }
@@ -511,7 +511,7 @@ class Repo(private val ctx: Context, val store: Store) {
                 ?: return@withContext null
             val exp = str(ui, "exp_date").toLongOrNull()
                 ?.let { SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(it * 1000)) } ?: S(R.string.a_5b4b0d88)
-            "الحساب: ${str(ui, "status")} · ينتهي: $exp · الاتصالات: ${str(ui, "active_cons")}/${str(ui, "max_connections")}"
+            S(R.string.x_acct_line, str(ui, "status"), exp, str(ui, "active_cons"), str(ui, "max_connections"))
         } catch (_: Exception) { null }
     }
 
@@ -524,16 +524,16 @@ class Repo(private val ctx: Context, val store: Store) {
             if (ui == null) sb.append(S(R.string.a_bee01191)) else {
                 val exp = str(ui, "exp_date").toLongOrNull()
                     ?.let { SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(it * 1000)) } ?: S(R.string.a_5b4b0d88)
-                sb.append("الحساب: ${str(ui, "status")} (auth=${str(ui, "auth")}) · ينتهي: $exp\n")
-                sb.append("الاتصالات الآن: ${str(ui, "active_cons")} من ${str(ui, "max_connections")}\n")
+                sb.append(S(R.string.x_diag_acct, str(ui, "status"), str(ui, "auth"), exp))
+                sb.append(S(R.string.x_diag_cons, str(ui, "active_cons"), str(ui, "max_connections")))
             }
-        } catch (e: Exception) { sb.append("فحص الحساب فشل: ${e.message}\n") }
+        } catch (e: Exception) { sb.append(S(R.string.x_diag_acct_failed, e.message ?: "")) }
         val live = cacheFile.takeIf { it.exists() }?.let { M3uParser.parse(it.readText()).firstOrNull()?.url }
         if (live == null) sb.append(S(R.string.a_ee94ac8e)) else {
             val stem = live.removeSuffix(".m3u8").removeSuffix(".ts")
             val ts = probeStream("$stem.ts")
             val hls = probeStream("$stem.m3u8")
-            sb.append("مباشر ts: ${ts.state} (${ts.latencyMs}ms) · m3u8: ${hls.state} (${hls.latencyMs}ms)\n")
+            sb.append(S(R.string.x_diag_live, ts.state, ts.latencyMs, hls.state, hls.latencyMs))
             if (hls.state != Health.Dead && ts.state == Health.Dead) {
                 liveExt = "m3u8"; cacheFile.delete()
                 sb.append(S(R.string.a_a1845b79))

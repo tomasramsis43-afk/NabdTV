@@ -279,10 +279,10 @@ private fun trackLabel(f: Format, index: Int): String {
     val extras = ArrayList<String>()
     if (!lang.isNullOrBlank()) extras += lang
     if (f.label != null && f.label != lang) extras += f.label!!
-    if (f.channelCount > 0) extras += if (f.channelCount == 1) S(R.string.a_42e49f89) else "${f.channelCount} قنوات"
+    if (f.channelCount > 0) extras += if (f.channelCount == 1) S(R.string.a_42e49f89) else S(R.string.x_channels_n, f.channelCount)
     if (f.sampleRate > 0) extras += "${f.sampleRate / 1000} kHz"
     if (f.bitrate > 0) extras += "${f.bitrate / 1000} kbps"
-    if (extras.isEmpty()) extras += "مسار ${index + 1}"
+    if (extras.isEmpty()) extras += S(R.string.x_track_n, index + 1)
     return extras.joinToString(" · ")
 }
 
@@ -376,12 +376,12 @@ fun playbackStats(p: ExoPlayer): String {
     val textTracks = p.textTracks()
     return buildString {
         append("${v?.width ?: 0}×${v?.height ?: 0} · $fps fps · $kbps kbps\n")
-        append("الفيديو: ${v?.codecs ?: "-"} · ${hdrLabel(v)}\n")
-        append("الصوت: ${a?.codecs ?: "-"} · ${a?.channelCount ?: 0}ch · ${a?.sampleRate?.div(1000) ?: 0} kHz · $abr kbps\n")
-        append("المسارات: صوت ${audioTracks.size} · ترجمة ${textTracks.size}\n")
-        append("بافر ${p.totalBufferedDuration / 1000}s · ${if (p.isPlaying) "يعمل" else "متوقف"} · ${p.playbackParameters.speed}x\n")
-        append("إطارات معروضة $decoded · مفقودة $dropped")
-        if (Build.VERSION.SDK_INT >= 29) append("\n${if (p.isCurrentMediaItemLive) "بث مباشر" else "VOD"} · تأخير الصوت ${AudioDelayBus.ms}ms")
+        append(S(R.string.x_st_video, v?.codecs ?: "-", hdrLabel(v)))
+        append(S(R.string.x_st_audio, a?.codecs ?: "-", a?.channelCount ?: 0, a?.sampleRate?.div(1000) ?: 0, abr))
+        append(S(R.string.x_st_tracks, audioTracks.size, textTracks.size))
+        append(S(R.string.x_st_buffer, p.totalBufferedDuration / 1000, S(if (p.isPlaying) R.string.x_playing else R.string.x_paused), p.playbackParameters.speed))
+        append(S(R.string.x_st_frames, decoded, dropped))
+        if (Build.VERSION.SDK_INT >= 29) append(S(R.string.x_st_live, if (p.isCurrentMediaItemLive) S(R.string.x_live_word) else "VOD", AudioDelayBus.ms))
     }
 }
 

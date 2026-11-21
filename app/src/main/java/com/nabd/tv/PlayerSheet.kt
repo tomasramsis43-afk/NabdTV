@@ -226,11 +226,11 @@ fun PlayerSheet(
                             val seasons = eps.map { it.season }.distinct().sorted()
                             var sSel by remember(ch.url) { mutableStateOf(eps.firstOrNull { it.url == ch.url }?.season ?: seasons.firstOrNull() ?: 1) }
                             if (seasons.size > 1) {
-                                SheetRow(S(R.string.a_68474436), "الموسم $sSel") {
-                                    openChoice(S(R.string.a_3a0a6b8a), seasons.map { n -> SheetOption("الموسم $n", n == sSel) { sSel = n } })
+                                SheetRow(S(R.string.a_68474436), S(R.string.detail_season, sSel)) {
+                                    openChoice(S(R.string.a_3a0a6b8a), seasons.map { n -> SheetOption(S(R.string.detail_season, n), n == sSel) { sSel = n } })
                                 }
                             }
-                            SheetSection("حلقات الموسم $sSel")
+                            SheetSection(S(R.string.x_season_eps, sSel))
                             eps.filter { it.season == sSel }.forEach { e ->
                                 val h = store.historyOf(e.url)
                                 val playingNow = e.url == ch.url
@@ -241,7 +241,7 @@ fun PlayerSheet(
                                     else -> ""
                                 }
                                 val t = e.title.takeIf { it.isNotBlank() }?.let { " — $it" } ?: ""
-                                SheetRow("حلقة ${e.num}$t", value, selected = playingNow) {
+                                SheetRow(S(R.string.ep_default_title, e.num) + t, value, selected = playingNow) {
                                     val d = vm.detail
                                     if (!playingNow && d != null) { vm.playEpisode(d, e); onClose() }
                                 }
@@ -254,9 +254,9 @@ fun PlayerSheet(
                                     SheetOption(if (v == 1f) S(R.string.a_ebca19a0) else "${v}x", v == ui.speed) { actions.setSpeed(v) }
                                 })
                             }
-                            SheetRow(S(R.string.a_608dc8b8), "${store.seekInterval} ثانية") {
+                            SheetRow(S(R.string.a_608dc8b8), S(R.string.x_seconds, store.seekInterval)) {
                                 openChoice(S(R.string.a_6d0922bc), SEEK_INTERVALS.map { v ->
-                                    SheetOption("$v ثانية", v == store.seekInterval) {
+                                    SheetOption(S(R.string.x_seconds, v), v == store.seekInterval) {
                                         store.seekInterval = v
                                         ui.seekInterval = v
                                         actions.changed()
@@ -280,12 +280,12 @@ fun PlayerSheet(
                             }
                             val sleepLabel = when {
                                 ui.sleepEnd -> S(R.string.a_db02b041)
-                                vm.sleepAt > 0 -> "${((vm.sleepAt - System.currentTimeMillis()).coerceAtLeast(0) / 60000L) + 1} د متبقية"
+                                vm.sleepAt > 0 -> S(R.string.x_min_left, ((vm.sleepAt - System.currentTimeMillis()).coerceAtLeast(0) / 60000L) + 1)
                                 else -> S(R.string.a_bafc4458)
                             }
                             SheetRow(S(R.string.a_9fa87337), sleepLabel) {
                                 openChoice(S(R.string.a_558d3a2f), listOf(15, 30, 45, 60, 90, 120).map { m ->
-                                    SheetOption("$m دقيقة") { actions.setSleep(m) }
+                                    SheetOption(S(R.string.x_minutes, m)) { actions.setSleep(m) }
                                 } + listOf(
                                     SheetOption(S(R.string.a_29efb0ed)) { actions.setSleepEnd() },
                                     SheetOption(S(R.string.a_2b71fd45)) { actions.cancelSleep() }
@@ -313,7 +313,7 @@ fun PlayerSheet(
                         PlayerTab.Audio -> {
                             SheetSection(S(R.string.a_beb4436d))
                             SheetRow(S(R.string.a_ba704975), if (store.audioBoost) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)) { actions.toggleAudioBoost() }
-                            SheetRow(S(R.string.a_e9952d72), "${ui.audioTracks.size} مسار", detail = ui.audioTracks.firstOrNull()?.label.orEmpty()) {
+                            SheetRow(S(R.string.a_e9952d72), S(R.string.x_tracks_n, ui.audioTracks.size), detail = ui.audioTracks.firstOrNull()?.label.orEmpty()) {
                                 val items = listOf(SheetOption(S(R.string.a_4cdfdadb)) { actions.clearAudioOverride() }) +
                                     ui.audioTracks.mapIndexed { i, t ->
                                         SheetOption(t.label, t.selected) { actions.setAudioTrack(t) }
@@ -328,8 +328,8 @@ fun PlayerSheet(
                             SheetRow(S(R.string.a_61151639), ui.extSub?.name ?: S(R.string.a_d5e96ebf)) { actions.loadSubtitle() }
                             SheetRow(S(R.string.a_29531391), "OpenSubtitles", enabled = !live) { searchOnlineSubtitles() }
                             SheetRow(S(R.string.a_04cd1f90), enabled = ui.extSub != null) { actions.removeSubtitle() }
-                            ui.extError?.let { SheetInfo("خطأ: $it", danger = true) }
-                            SheetRow(S(R.string.a_c04d9164), "${ui.textTracks.size} مسار") {
+                            ui.extError?.let { SheetInfo(S(R.string.detail_error, it), danger = true) }
+                            SheetRow(S(R.string.a_c04d9164), S(R.string.x_tracks_n, ui.textTracks.size)) {
                                 // The external file is dropped only when an embedded track is actually chosen, not when the list opens.
                                 val dropExternal = { if (ui.extSub != null) actions.removeSubtitle() }
                                 val items = listOf(SheetOption(S(R.string.a_43de6b2e)) { actions.setSubtitlesEnabled(false) }) +
@@ -343,8 +343,8 @@ fun PlayerSheet(
                                 openChoice(S(R.string.a_80dd0013), listOf(-1000, -500, -250, -100, -50, 0, 50, 100, 250, 500, 1000).map { v ->
                                     SheetOption(
                                         when {
-                                            v < 0 -> "تقديم ${-v} ms"
-                                            v > 0 -> "تأخير $v ms"
+                                            v < 0 -> S(R.string.x_adv, -v)
+                                            v > 0 -> S(R.string.x_delay, v)
                                             else -> S(R.string.a_5d9f1039)
                                         },
                                         v == store.subDelayMs

@@ -40,7 +40,7 @@ object NewEpisodes {
             if (Build.VERSION.SDK_INT >= 26) nm.createNotificationChannel(NotificationChannel(CH, S(R.string.a_007e9376), NotificationManager.IMPORTANCE_DEFAULT))
             val open = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
             val pi = open?.let { PendingIntent.getActivity(ctx, c.url.hashCode(), it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT) }
-            val text = if (added == 1) S(R.string.a_8d8f4720) else "$added حلقات جديدة متاحة الآن"
+            val text = if (added == 1) S(R.string.a_8d8f4720) else S(R.string.x_ne_many, added)
             val n = NotificationCompat.Builder(ctx, CH)
                 .setSmallIcon(android.R.drawable.stat_sys_download_done)
                 .setContentTitle(c.name)

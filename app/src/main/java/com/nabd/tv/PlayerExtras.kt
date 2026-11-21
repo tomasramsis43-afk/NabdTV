@@ -65,7 +65,7 @@ object LiveRewind { @Volatile var pending = 0 }
 fun rewindLive(vm: AppViewModel, player: ExoPlayer, url: String, sec: Int) {
     if (player.isCurrentMediaItemSeekable) {
         player.seekTo(maxOf(0L, player.currentPosition - sec * 1000L))
-        vm.say("رجوع $sec ثانية")
+        vm.say(S(R.string.x_player_back, sec))
     } else if (url.endsWith(".ts")) {
         LiveRewind.pending = sec
         player.setMediaItem(MediaItem.fromUri(url.removeSuffix(".ts") + ".m3u8"))
@@ -81,7 +81,7 @@ fun statsText(p: ExoPlayer): String {
     val fps = f?.frameRate?.takeIf { it > 0f }?.toInt() ?: 0
     val dropped = runCatching { p.videoDecoderCounters?.droppedBufferCount ?: 0 }.getOrDefault(0)
     return "${f?.width ?: 0}×${f?.height ?: 0} · ${f?.codecs ?: "-"} · $kbps kbps · $fps fps\n" +
-        "بافر ${p.totalBufferedDuration / 1000}s · إطارات مفقودة $dropped"
+        S(R.string.x_stats_buffer_dropped, p.totalBufferedDuration / 1000, dropped)
 }
 
 /**
@@ -163,7 +163,7 @@ fun ChannelPanel(vm: AppViewModel, current: Channel, onClose: () -> Unit, modifi
             .padding(horizontal = if (dev.tv) 36.dp else 12.dp, vertical = if (dev.tv) 27.dp else 12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("القنوات (${list.size})", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(S(R.string.x_channels_title, list.size), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
             Spacer(Modifier.weight(1f))
             Text("✕", color = TextSecondary, fontSize = 18.sp, modifier = Modifier.clickable { onClose() }.padding(8.dp))
         }

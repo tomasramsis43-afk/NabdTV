@@ -68,7 +68,7 @@ object AutoUpdate {
         if (UpdatePrefs.lastTried(ctx) == rel.build && System.currentTimeMillis() - UpdatePrefs.triedAt(ctx) < 3 * 3600_000L) return false
         UpdatePrefs.setTried(ctx, rel.build)
         if (Build.VERSION.SDK_INT >= 26 && !ctx.packageManager.canRequestPackageInstalls()) {
-            Notifier.show(ctx, 7001, "تحديث جديد ${rel.tag}", S(R.string.a_a2b12612), Notifier.openApp(ctx))
+            Notifier.show(ctx, 7001, S(R.string.x_upd_new, rel.tag), S(R.string.a_a2b12612), Notifier.openApp(ctx))
             return false
         }
         val apk = Updater.download(ctx, http, rel) { }
@@ -126,6 +126,6 @@ class InstallResultReceiver : BroadcastReceiver() {
 class PackageReplacedReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, i: Intent) {
         runCatching { NotificationManagerCompat.from(ctx).cancel(7001) }
-        Notifier.show(ctx, 7002, S(R.string.a_690bdaaa), "الإصدار ${Updater.currentName(ctx)} جاهز، اضغط للفتح", Notifier.openApp(ctx))
+        Notifier.show(ctx, 7002, S(R.string.a_690bdaaa), S(R.string.x_upd_done_body, Updater.currentName(ctx)), Notifier.openApp(ctx))
     }
 }

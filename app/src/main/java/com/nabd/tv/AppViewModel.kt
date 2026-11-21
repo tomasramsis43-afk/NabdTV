@@ -270,7 +270,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { while (true) { kotlinx.coroutines.delay(20 * 60_000L); checkUpdate(false) } }
     }
 
-    private fun friendly(e: Exception): String = VmLogic.friendlyError(e)
+    private fun friendly(e: Exception): String = when (e) {
+        is java.net.UnknownHostException -> tx(R.string.x_err_unknown_host)
+        is java.net.SocketTimeoutException -> tx(R.string.x_err_timeout)
+        is java.net.ConnectException -> tx(R.string.x_err_refused)
+        is IllegalArgumentException -> tx(R.string.x_err_bad_address, e.message ?: "")
+        is org.json.JSONException -> tx(R.string.x_err_json)
+        else -> e.message ?: tx(R.string.x_err_unknown)
+    }
+
+    private fun recordMsg(scheduled: Boolean, clash: Boolean): String = when {
+        !scheduled -> tx(R.string.x_rec_already)
+        clash -> tx(R.string.x_rec_clash)
+        else -> tx(R.string.x_rec_ok)
+    }
 
     fun load(force: Boolean) {
         viewModelScope.launch {
@@ -778,7 +791,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Local report of the channels that failed most often, for the settings screen. */
     fun problemReport(): List<String> = store.worstHealth(15).map { (u, r) ->
         val name = all.firstOrNull { it.url == u }?.name ?: u.takeLast(30)
-        VmLogic.problemLine(name, r.state == Health.Dead, r.failures)
+        tx(R.string.x_problem_line, name, tx(if (r.state == Health.Dead) R.string.x_word_dead else R.string.x_word_slow), r.failures)
     }
 
 
@@ -852,7 +865,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /* ───────── recording / reminders ───────── */
     fun record(c: Channel, p: Prog) {
         val clash = recCtl.schedule(c, p)
-        say(VmLogic.recordMessage(clash != null, clash == true))
+        say(recordMsg(clash != null, clash == true))
     }
 
     fun autoRecord(c: Channel, p: Prog) {

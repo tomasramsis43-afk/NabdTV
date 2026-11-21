@@ -56,6 +56,9 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
+/** Marker for "buffering / loading": drives the spinner, is never shown as text. */
+const val STATUS_LOADING = "\u0000loading"
+
 /**
  * Professional player screen.
  *
@@ -165,7 +168,7 @@ fun PlayerScreen(vm: AppViewModel) {
         ui.settingsRev++
         vm.say(
             if (res.cues.isEmpty()) res.error ?: S(R.string.a_1122e8b1)
-            else "تم تحميل ${res.cues.size} سطر ترجمة"
+            else S(R.string.x_subs_loaded, res.cues.size)
         )
     }
 
@@ -242,7 +245,7 @@ fun PlayerScreen(vm: AppViewModel) {
                 else {
                     vm.sleepAt = System.currentTimeMillis() + minutes * 60_000L
                     ui.sleepEnd = false
-                    vm.say("سيتوقف التشغيل بعد $minutes دقيقة")
+                    vm.say(S(R.string.x_sleep_after, minutes))
                 }
                 ui.settingsRev++
             },
@@ -284,7 +287,7 @@ fun PlayerScreen(vm: AppViewModel) {
                     ui.extError = res.error
                 }
                 ui.settingsRev++
-                vm.say(if (enc == "auto") S(R.string.a_6316a65b) else "تم تغيير الترميز إلى $enc")
+                vm.say(if (enc == "auto") S(R.string.a_6316a65b) else S(R.string.x_enc_changed, enc))
             },
             setSubtitleDelay = { ms ->
                 store.subDelayMs = ms.coerceIn(-10_000, 10_000)
@@ -365,7 +368,7 @@ fun PlayerScreen(vm: AppViewModel) {
             },
             retry = {
                 retries = 0; altUsed = false
-                ui.error = null; ui.errorDetail = ""; ui.status = "جارٍ التحميل..."
+                ui.error = null; ui.errorDetail = ""; ui.status = STATUS_LOADING
                 player.prepare(); player.playWhenReady = true
                 ui.ping++
             },
@@ -547,7 +550,7 @@ fun PlayerScreen(vm: AppViewModel) {
 
             override fun onPlaybackStateChanged(state: Int) {
                 when (state) {
-                    Player.STATE_BUFFERING -> ui.status = "جارٍ التحميل..."
+                    Player.STATE_BUFFERING -> ui.status = STATUS_LOADING
                     Player.STATE_READY -> {
                         ui.status = ""
                         retries = 0
@@ -604,7 +607,7 @@ fun PlayerScreen(vm: AppViewModel) {
     LaunchedEffect(ch.url, player) {
         retries = 0; altUsed = false
         ui.error = null; ui.errorDetail = ""; ui.nextEp = null; ui.ended = false
-        ui.hudText = ""; ui.resumeAt = -1L; ui.status = "جارٍ التحميل..."
+        ui.hudText = ""; ui.resumeAt = -1L; ui.status = STATUS_LOADING
         pendingResume = -1L
         startedAt = System.currentTimeMillis()
 
@@ -1057,7 +1060,7 @@ fun PlayerScreen(vm: AppViewModel) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("🔒 ${if (ui.lockHint) "اضغط لفتح القفل" else "الشاشة مقفولة"}", color = Color.White, fontSize = 15.sp)
+                Text("🔒 ${S(if (ui.lockHint) R.string.x_lock_hint else R.string.x_locked)}", color = Color.White, fontSize = 15.sp)
                 PlayerRoundButton("🔓", size = 34) { actions.toggleLock() }
             }
         }
@@ -1087,7 +1090,7 @@ fun PlayerScreen(vm: AppViewModel) {
             )
         }
 
-        if (ui.status == "جارٍ التحميل..." && !vm.inPip && ui.error == null) {
+        if (ui.status == STATUS_LOADING && !vm.inPip && ui.error == null) {
             androidx.compose.material3.CircularProgressIndicator(
                 Modifier.align(Alignment.Center).size(46.dp), color = Accent, strokeWidth = 3.dp
             )
@@ -1188,7 +1191,7 @@ fun PlayerScreen(vm: AppViewModel) {
                                     Box(Modifier.fillMaxHeight().fillMaxWidth(pct).background(Accent))
                                 }
                                 Text(
-                                    "${hm(now.start)} - ${hm(now.stop)}" + (next?.let { " · التالي: ${it.title}" } ?: ""),
+                                    "${hm(now.start)} - ${hm(now.stop)}" + (next?.let { " · " + S(R.string.x_next_prog, it.title) } ?: ""),
                                     fontSize = 12.sp, color = OverlayText, maxLines = 1
                                 )
                             }
@@ -1257,8 +1260,8 @@ fun PlayerScreen(vm: AppViewModel) {
                 horizontalAlignment = Alignment.End
             ) {
                 Text(
-                    if (store.autoNext && !ui.sleepEnd) "الحلقة التالية خلال 5 ثوانٍ: ${ep.num}"
-                    else "الحلقة التالية: ${ep.num}",
+                    if (store.autoNext && !ui.sleepEnd) S(R.string.x_next_ep_5, ep.num)
+                    else S(R.string.x_next_ep, ep.num),
                     color = Color.White, fontSize = 14.sp)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

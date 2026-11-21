@@ -473,7 +473,7 @@ fun ResumePrompt(position: Long, onResume: () -> Unit, onRestart: () -> Unit) {
         ) {
             Text(S(R.string.a_bc5c351e), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
-            Text("آخر موضع: ${fmtTime(position)}", color = OverlayText, fontSize = 14.sp)
+            Text(S(R.string.x_last_pos, fmtTime(position)), color = OverlayText, fontSize = 14.sp)
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 PlayerButton(S(R.string.a_843aa9db), focusRequester = focus) { onResume() }
@@ -551,7 +551,7 @@ fun TimeJumpDialog(current: Long, duration: Long, onJump: (Long) -> Unit, onDism
                 TimeColumn(S(R.string.a_6588387b), sec) { shift(2, it) }
             }
             Spacer(Modifier.height(12.dp))
-            Text("الوقت المطلوب: ${fmtTime(total)}", color = Accent, fontSize = 14.sp)
+            Text(S(R.string.x_required_time, fmtTime(total)), color = Accent, fontSize = 14.sp)
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 PlayerButton(S(R.string.a_ca9c7ff5), focusRequester = focus) { onJump(total); onDismiss() }

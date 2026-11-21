@@ -38,7 +38,7 @@ object Trakt {
     suspend fun deviceCode(http: OkHttpClient, store: Store): TraktDeviceCode = withContext(Dispatchers.IO) {
         if (store.traktId.isBlank() || store.traktSecret.isBlank()) error(S(R.string.a_4df3672b))
         val (code, text) = call(http, store, "/oauth/device/code", JSONObject().put("client_id", store.traktId), auth = false)
-        if (code != 200) error("تعذّر بدء الربط مع Trakt ($code)")
+        if (code != 200) error(S(R.string.x_trakt_start_failed, code))
         val j = JSONObject(text)
         TraktDeviceCode(j.getString("device_code"), j.getString("user_code"), j.optString("verification_url", "https://trakt.tv/activate"),
             j.optInt("interval", 5), j.optInt("expires_in", 600))

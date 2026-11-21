@@ -26,7 +26,7 @@ class CrashActivity : Activity() {
             }
         }
         val body = TextView(this).apply {
-            text = "توقف التطبيق بسبب خطأ. صوّر هذه الشاشة أو شارك النص.\n\n$trace"
+            text = S(R.string.x_crash_body, trace)
             textSize = 11f
             setTextColor(Color.WHITE)
             setPadding(24, 24, 24, 24)

@@ -390,7 +390,7 @@ private fun AudioPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
         }
         Row2(S(R.string.a_1b6dc5bc), "${s.audioDelayMs} ms") {
             vm.menu = MenuRequest(S(R.string.a_5ca15333), listOf(-500, -300, -200, -100, -50, 0, 50, 100, 200, 300, 500).map { v ->
-                (if (v == 0) S(R.string.a_5d9f1039) else if (v > 0) "تأخير $v ms" else "تقديم ${-v} ms") to { upd { s.audioDelayMs = v } }
+                (if (v == 0) S(R.string.a_5d9f1039) else if (v > 0) S(R.string.x_delay, v) else S(R.string.x_adv, -v)) to { upd { s.audioDelayMs = v } }
             })
         }
     }
@@ -420,7 +420,7 @@ private fun SubtitlePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) 
         }
         Row2(S(R.string.a_d3f7183d), "${s.subDelayMs} ms") {
             vm.menu = MenuRequest(S(R.string.a_80dd0013), listOf(-1000, -500, -250, -100, -50, 0, 50, 100, 250, 500, 1000).map { v ->
-                (if (v == 0) S(R.string.a_5d9f1039) else if (v > 0) "تأخير $v ms" else "تقديم ${-v} ms") to { upd { s.subDelayMs = v } }
+                (if (v == 0) S(R.string.a_5d9f1039) else if (v > 0) S(R.string.x_delay, v) else S(R.string.x_adv, -v)) to { upd { s.subDelayMs = v } }
             })
         }
     }
@@ -432,7 +432,7 @@ private fun SubtitlePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) 
         Row2(S(R.string.a_1acfde50), "${(s.subSize * 100).toInt()}%") {
             vm.menu = MenuRequest(S(R.string.a_1acfde50), (5..14).map { v -> "$v%" to { upd { s.subSize = v / 100f } } })
         }
-        Row2(S(R.string.a_b8ffdfa3), "${(s.subPosition * 100).toInt()}% من الأسفل") {
+        Row2(S(R.string.a_b8ffdfa3), S(R.string.x_from_bottom, (s.subPosition * 100).toInt())) {
             vm.menu = MenuRequest(S(R.string.a_b8ffdfa3), listOf(4, 8, 12, 18, 24, 32).map { v -> "$v%" to { upd { s.subPosition = v / 100f } } })
         }
         Toggle(S(R.string.a_6471ac58), s.subOutline) { upd { s.subOutline = it } }
@@ -459,8 +459,8 @@ private fun PlaybackPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) 
                 (if (v == 1f) S(R.string.a_ebca19a0) else "${v}x") to { upd { s.defaultSpeed = v } }
             })
         }
-        Row2(S(R.string.a_608dc8b8), "${s.seekInterval} ثانية") {
-            vm.menu = MenuRequest(S(R.string.a_6d0922bc), SEEK_INTERVALS.map { v -> "$v ثانية" to { upd { s.seekInterval = v } } })
+        Row2(S(R.string.a_608dc8b8), S(R.string.x_seconds, s.seekInterval)) {
+            vm.menu = MenuRequest(S(R.string.a_6d0922bc), SEEK_INTERVALS.map { v -> S(R.string.x_seconds, v) to { upd { s.seekInterval = v } } })
         }
         Row2(S(R.string.a_fab55504), ResumeMode.of(s.resumeMode).label) {
             vm.menu = MenuRequest(S(R.string.a_fab55504), ResumeMode.entries.map { m -> m.label to { upd { s.resumeMode = m.name } } })
@@ -489,7 +489,7 @@ private fun NetworkPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
     Group(S(R.string.a_df75cf66)) {
         Toggle(S(R.string.a_6a5e5b61), s.hideDead) { upd { s.hideDead = it; vm.clearHealth() } }
         Toggle(S(R.string.a_9f355a70), s.mergeDuplicates) { upd { s.mergeDuplicates = it; vm.listsChanged() } }
-        Row2(vm.healthStatus?.let { "جارٍ الفحص $it" } ?: S(R.string.a_ba526b66)) { vm.checkHealth(true) }
+        Row2(vm.healthStatus?.let { S(R.string.x_checking, it) } ?: S(R.string.a_ba526b66)) { vm.checkHealth(true) }
         Row2(S(R.string.a_0bd6ec14)) { vm.checkHealth(false) }
         Row2(S(R.string.a_a7ab598d)) { vm.clearHealth(); upd {} }
     }
@@ -535,9 +535,9 @@ private fun ProfilePage(vm: AppViewModel, upd: (() -> Unit) -> Unit) {
             }
         }
         vm.profileList.filter { it.id != "main" }.forEach { pr ->
-            Row2("حذف: ${pr.name}") {
+            Row2(S(R.string.x_delete_profile, pr.name)) {
                 // Deleting a profile drops its favourites and history: ask first.
-                vm.menu = MenuRequest("حذف الملف «${pr.name}»؟", listOf(
+                vm.menu = MenuRequest(S(R.string.x_delete_profile_q, pr.name), listOf(
                     S(R.string.a_494feab7) to { vm.deleteProfile(pr.id); upd {} },
                     S(R.string.a_e776b020) to { }
                 ))
@@ -573,10 +573,10 @@ private fun ParentalPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) 
             ))
         }
         Toggle(S(R.string.a_ed1dafca), s.hideLocked) { upd { s.hideLocked = it; vm.lockNow() } }
-        Row2(S(R.string.a_8492be05), if (s.limitMinutes == 0) S(R.string.a_4a46afc8) else "${s.limitMinutes} د") {
+        Row2(S(R.string.a_8492be05), if (s.limitMinutes == 0) S(R.string.a_4a46afc8) else S(R.string.x_min_short, s.limitMinutes)) {
             vm.requirePin(S(R.string.a_24a4b868)) {
                 vm.menu = MenuRequest(S(R.string.a_9d379939), listOf(0, 60, 120, 180, 240).map { m ->
-                    (if (m == 0) S(R.string.a_7b9dba3c) else "$m دقيقة") to { upd { s.limitMinutes = m } }
+                    (if (m == 0) S(R.string.a_7b9dba3c) else S(R.string.x_minutes, m)) to { upd { s.limitMinutes = m } }
                 })
             }
         }
@@ -682,8 +682,8 @@ private fun RemotePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
         Row2(S(R.string.a_635631fb), UpDownAction.of(s.tvUpDown).label) {
             vm.menu = MenuRequest(S(R.string.a_776ca067), UpDownAction.entries.map { a -> a.label to { upd { s.tvUpDown = a.name } } })
         }
-        Row2(S(R.string.a_608dc8b8), "${s.seekInterval} ثانية") {
-            vm.menu = MenuRequest(S(R.string.a_6d0922bc), SEEK_INTERVALS.map { v -> "$v ثانية" to { upd { s.seekInterval = v } } })
+        Row2(S(R.string.a_608dc8b8), S(R.string.x_seconds, s.seekInterval)) {
+            vm.menu = MenuRequest(S(R.string.a_6d0922bc), SEEK_INTERVALS.map { v -> S(R.string.x_seconds, v) to { upd { s.seekInterval = v } } })
         }
     }
     Group(S(R.string.a_905e8b45)) {
@@ -701,7 +701,7 @@ private fun AboutPage(vm: AppViewModel, upd: (() -> Unit) -> Unit) {
     val ctx = LocalContext.current
     Group(S(R.string.a_6d0ff9f6)) {
         Row2(S(R.string.a_3560b6e8), Updater.currentName(ctx))
-        Row2(if (vm.update != null) "تحديث إلى ${vm.update!!.tag}" else S(R.string.a_967d497f)) {
+        Row2(if (vm.update != null) S(R.string.x_update_to, vm.update!!.tag) else S(R.string.a_967d497f)) {
             if (vm.update != null) vm.installUpdate() else vm.checkUpdate(true)
         }
         Row2(S(R.string.a_1b4a0fe4)) { vm.runDiag() }
