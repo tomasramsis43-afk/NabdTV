@@ -26,6 +26,7 @@ import java.security.SecureRandom
 
 /** Tiny LAN web server: the TV shows a QR, the phone opens the page and sends the login details. */
 class PairingServer(private val onReceived: (Map<String, String>) -> Unit) {
+    @Volatile private var badRequests = 0
     @Volatile private var server: ServerSocket? = null
     private val token = SecureRandom().let { r -> (1..8).map { "abcdefghjkmnpqrstuvwxyz23456789"[r.nextInt(31)] }.joinToString("") }
 
@@ -88,7 +89,12 @@ class PairingServer(private val onReceived: (Map<String, String>) -> Unit) {
             out.write("HTTP/1.1 $code\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${bytes.size}\r\nConnection: close\r\n\r\n".toByteArray())
             out.write(bytes); out.flush()
         }
-        if (path != "/$token") { send("404 Not Found", "404"); return }
+        if (path != "/$token") {
+            send("404 Not Found", "404")
+            // The token is the only secret: stop listening after too many wrong guesses.
+            if (++badRequests >= 30) stop()
+            return
+        }
         if (parts[0] == "POST") {
             if (len <= 0 || len > 8192) { send("400 Bad Request", "400"); return }
             val buf = ByteArray(len)

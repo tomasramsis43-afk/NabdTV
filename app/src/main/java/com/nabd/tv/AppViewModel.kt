@@ -835,8 +835,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         playResume(url)
     }
 
-    private fun playResume(url: String) {
-        val h = store.historyOf(url) ?: return
+    private fun playResume(token: String) {
+        // token is either an opaque WatchNext key or (older tiles) the raw url
+        val h = store.historyOf(token) ?: store.history().firstOrNull { WatchNext.keyOf(it.url) == token } ?: return
         play(histChannel(h))
     }
 

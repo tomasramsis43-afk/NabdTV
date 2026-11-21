@@ -17,7 +17,7 @@ object WatchNext {
     private val lastSync = HashMap<String, Long>()
 
     private fun intentFor(ctx: Context, url: String): Intent =
-        Intent(Intent.ACTION_VIEW, Uri.parse("$SCHEME://resume?u=" + Uri.encode(url)))
+        Intent(Intent.ACTION_VIEW, Uri.parse("$SCHEME://resume?k=" + keyOf(url)))
             .setPackage(ctx.packageName)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 
@@ -26,7 +26,12 @@ object WatchNext {
 
     /** The media url a Watch Next tile asked us to resume, or null for any other intent. */
     fun urlFrom(intent: Intent?): String? =
-        intent?.data?.takeIf { it.scheme == SCHEME }?.getQueryParameter("u")
+        intent?.data?.takeIf { it.scheme == SCHEME }?.let { it.getQueryParameter("k") ?: it.getQueryParameter("u") }
+
+    /** Opaque id for a media url, so the intent / launcher row never carries the stream url (it may embed credentials). */
+    fun keyOf(url: String): String =
+        java.security.MessageDigest.getInstance("SHA-256").digest(url.toByteArray()).take(12)
+            .joinToString("") { "%02x".format(it) }
 
     private fun key(url: String) = url.hashCode().toString()
 
