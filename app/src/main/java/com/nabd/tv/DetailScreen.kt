@@ -60,7 +60,7 @@ fun DetailScreen(vm: AppViewModel) {
                 model = info?.backdrop ?: c.logo, contentDescription = null,
                 contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, -0.45f), modifier = Modifier.fillMaxSize()
             )
-            Box(Modifier.fillMaxSize().textSideScrim(if (narrow) 0.55f else 0.78f))
+            Box(Modifier.fillMaxSize().textSideScrim(if (narrow) 0.78f else 0.95f))
             Box(
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(0.0f to Scrim.copy(alpha = 0.55f), 0.30f to Color.Transparent, 0.62f to Scrim.copy(alpha = 0.62f), 1f to Bg)
@@ -108,7 +108,7 @@ fun DetailScreen(vm: AppViewModel) {
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.Bottom) {
                         Text(
-                            c.name, fontSize = if (narrow) 18.sp else if (d.tv) 26.sp else 22.sp,
+                            c.name, style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.65f), Offset(0f, 3f), 14f)), fontSize = if (narrow) 18.sp else if (d.tv) 26.sp else 22.sp,
                             lineHeight = if (d.tv) 32.sp else 28.sp,
                             fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis
                         )

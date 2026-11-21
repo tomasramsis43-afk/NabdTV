@@ -248,7 +248,7 @@ private fun HomeHero(
             }
         }
         // 2. Layered gradients: text side wash, top wash for the floating header, bottom fade into the page.
-        Box(Modifier.fillMaxSize().textSideScrim(if (wide) 0.80f else 0.55f))
+        Box(Modifier.fillMaxSize().textSideScrim(if (wide) 0.95f else 0.78f))
         Box(Modifier.fillMaxWidth().fillMaxHeight(0.42f).background(Brush.verticalGradient(listOf(Scrim.copy(alpha = 0.72f), Color.Transparent))))
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.0f to Color.Transparent, 0.38f to Scrim.copy(alpha = 0.18f), 0.74f to Scrim.copy(alpha = 0.78f), 1f to Bg)))
         Box(Modifier.fillMaxSize().drawBehind {
@@ -267,7 +267,7 @@ private fun HomeHero(
                 if (c.url in vm.favs) Text(tr(R.string.detail_fav_on), fontSize = 12.sp, color = Accent2)
             }
             Spacer(Modifier.height(if (d.tv) 10.dp else 6.dp))
-            Text(c.name, fontSize = if (d.tv) 26.sp else if (d.widthDp >= 600) 22.sp else 18.sp, lineHeight = if (d.tv) 32.sp else if (d.widthDp >= 600) 28.sp else 23.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(c.name, style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.65f), Offset(0f, 3f), 14f)), fontSize = if (d.tv) 26.sp else if (d.widthDp >= 600) 22.sp else 18.sp, lineHeight = if (d.tv) 32.sp else if (d.widthDp >= 600) 28.sp else 23.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
                 (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let { MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D)) }

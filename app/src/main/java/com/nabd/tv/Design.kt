@@ -177,7 +177,10 @@ fun AccentTitle(text: String, accent: String, size: TextUnit = 26.sp, modifier: 
 fun Modifier.textSideScrim(strength: Float = 0.78f): Modifier {
     val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
     val c = Scrim.copy(alpha = strength)
-    val ltr = listOf(0f to c, 0.5f to c.copy(alpha = strength * 0.5f), 1f to Color.Transparent)
+    val ltr = listOf(
+        0f to c, 0.30f to c.copy(alpha = strength * 0.88f), 0.55f to c.copy(alpha = strength * 0.45f),
+        0.80f to c.copy(alpha = strength * 0.12f), 1f to Color.Transparent
+    )
     val stops = if (rtl) ltr.map { (1f - it.first) to it.second }.reversed() else ltr
     return this.background(Brush.horizontalGradient(*stops.toTypedArray()))
 }
