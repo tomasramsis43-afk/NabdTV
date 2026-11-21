@@ -528,7 +528,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun submitPin(code: String): Boolean {
         val req = pin ?: return false
-        if (!parental.unlock(code)) return false
+        if (!parental.unlock(code)) {
+            val w = parental.lockoutSeconds()
+            if (w > 0) say("محاولات كثيرة خاطئة. حاول بعد $w ثانية")
+            return false
+        }
         pin = null; bump(); req.onOk()
         return true
     }

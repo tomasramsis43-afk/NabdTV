@@ -6,8 +6,15 @@ class Parental(private val store: Store) {
 
     val unlocked: Boolean get() = System.currentTimeMillis() < unlockedUntil
 
+    private val throttle = PinThrottle()
+
+    /** Seconds to wait before the PIN can be tried again (0 = no lockout). */
+    fun lockoutSeconds(): Int = throttle.waitSeconds()
+
     fun unlock(pin: String): Boolean {
-        if (!store.checkPin(pin)) return false
+        if (!throttle.allowed()) return false
+        if (!store.checkPin(pin)) { throttle.recordMiss(); return false }
+        throttle.recordSuccess()
         unlockedUntil = System.currentTimeMillis() + 15 * 60_000L
         return true
     }
