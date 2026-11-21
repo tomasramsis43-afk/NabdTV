@@ -36,12 +36,14 @@ def resolve(title, kind, year, lang):
     ids = [x["id"] for x in s.get("search", [])]
     if not ids:
         return None, "no search hit"
-    ents = api(action="wbgetentities", ids="|".join(ids), props="claims|labels|aliases|descriptions", languages="en|ar")["entities"]
+    ents = api(action="wbgetentities", ids="|".join(ids), props="claims|labels|aliases|descriptions", languages="en|ar|mul")["entities"]
     want = norm(title)
     cands = []
+    hit = {x["id"]: x for x in s.get("search", [])}
     for q in ids:
         e = ents.get(q, {})
         names = [v["value"] for v in e.get("labels", {}).values()] + [a["value"] for v in e.get("aliases", {}).values() for a in v]
+        names += [hit[q].get("label", ""), hit[q].get("match", {}).get("text", "")]
         if want not in {norm(n) for n in names}:
             continue
         cl = e.get("claims", {})
@@ -73,12 +75,19 @@ def resolve(title, kind, year, lang):
     return withlogo[0], "ok"
 
 def check_image(fname):
+    if not fname.lower().endswith((".svg", ".png")):
+        return "REJECT (not svg/png: %s)" % fname
     url = "https://commons.wikimedia.org/wiki/Special:FilePath/%s?width=600" % urllib.parse.quote(fname.replace(" ", "_"))
     data, h = get(url)
     info = "%s %dB" % (h.get("Content-Type"), len(data))
     try:
         from PIL import Image
         im = Image.open(io.BytesIO(data)); info += " %s %dx%d" % (im.mode, *im.size)
+        rgba = im.convert("RGBA"); w, h = rgba.size
+        pts = [(0,0),(w-1,0),(0,h-1),(w-1,h-1),(w//2,0),(w//2,h-1),(0,h//2),(w-1,h//2)]
+        tr = sum(1 for pt in pts if rgba.getpixel(pt)[3] < 16)
+        info += " transparent_edges=%d/8 ratio=%.2f" % (tr, w / h)
+        if tr < 6: info = "REJECT (not transparent) " + info
     except Exception as ex:
         info += " (pil: %s)" % ex
     return info
