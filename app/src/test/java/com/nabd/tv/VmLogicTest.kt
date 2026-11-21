@@ -57,3 +57,30 @@ class VmLogicListsTest {
         assertEquals(listOf("u1", "u3", "u4"), r.map { it.url })
     }
 }
+
+class VmLogicTimeTest {
+    private val progs = listOf(Prog(0, 100, "a"), Prog(100, 200, "b"), Prog(200, 300, "c"))
+
+    @Test fun nowNextFindsCurrentAndFollowing() {
+        val (n, nx) = VmLogic.nowNext(progs, 150)
+        assertEquals("b", n?.title); assertEquals("c", nx?.title)
+    }
+
+    @Test fun nowNextAtLastProgrammeHasNoNext() {
+        val (n, nx) = VmLogic.nowNext(progs, 250)
+        assertEquals("c", n?.title); assertNull(nx)
+    }
+
+    @Test fun nowNextOutsideScheduleOrWithoutGuideIsEmpty() {
+        assertEquals(null to null, VmLogic.nowNext(progs, 999))
+        assertEquals(null to null, VmLogic.nowNext(null, 10))
+    }
+
+    @Test fun limitOnlyAppliesWithLimitPinAndLockedState() {
+        assertEquals(true, VmLogic.limitReached(60, true, false, 3600))
+        assertEquals(false, VmLogic.limitReached(60, true, false, 3599))
+        assertEquals(false, VmLogic.limitReached(0, true, false, 99999))
+        assertEquals(false, VmLogic.limitReached(60, false, false, 99999))
+        assertEquals(false, VmLogic.limitReached(60, true, true, 99999))
+    }
+}

@@ -45,4 +45,15 @@ object VmLogic {
         }
         return l.filter { val k = Classifier.normalize(it.name); k.isBlank() || best[k]?.url == it.url }
     }
+
+    /** Programme airing at [now] and the one after it; (null, null) when nothing is airing. */
+    fun nowNext(progs: List<Prog>?, now: Long): Pair<Prog?, Prog?> {
+        val l = progs ?: return null to null
+        val i = l.indexOfFirst { now >= it.start && now < it.stop }
+        return if (i < 0) null to null else l[i] to l.getOrNull(i + 1)
+    }
+
+    /** Daily viewing limit: only enforced when a limit and a PIN exist and the PIN has not been entered. */
+    fun limitReached(limitMinutes: Int, hasPin: Boolean, unlocked: Boolean, watchedSeconds: Long): Boolean =
+        limitMinutes > 0 && hasPin && !unlocked && watchedSeconds >= limitMinutes * 60L
 }

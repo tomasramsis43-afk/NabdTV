@@ -249,10 +249,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /* ───────── guide ───────── */
     fun nowNext(c: Channel): Pair<Prog?, Prog?> {
-        val l = epg[c.url] ?: return null to null
-        val t = System.currentTimeMillis()
-        val i = l.indexOfFirst { t >= it.start && t < it.stop }
-        return if (i < 0) null to null else l[i] to l.getOrNull(i + 1)
+        return VmLogic.nowNext(epg[c.url], System.currentTimeMillis())
     }
 
     var guideChannel by mutableStateOf<Channel?>(null)
@@ -406,8 +403,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var sleepAt by mutableStateOf(0L)
 
     fun limitReached(): Boolean {
-        val lim = store.limitMinutes
-        return lim > 0 && store.hasPin && !parental.unlocked && store.watchedSeconds() >= lim * 60
+        return VmLogic.limitReached(store.limitMinutes, store.hasPin, parental.unlocked, store.watchedSeconds().toLong())
     }
 
     /** Called every 30 s while something is playing. */
