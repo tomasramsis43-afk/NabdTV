@@ -2,6 +2,9 @@
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -161,4 +164,29 @@ fun AccentTitle(text: String, accent: String, size: TextUnit = 26.sp, modifier: 
         },
         fontSize = size, fontWeight = FontWeight.SemiBold, color = Ink, maxLines = 2, modifier = modifier
     )
+}
+
+
+/**
+ * Dark wash on the side where text sits (the start side), mirrored automatically in RTL.
+ * Used over full-bleed artwork so titles stay readable without a visible box.
+ */
+@Composable
+fun Modifier.textSideScrim(strength: Float = 0.78f): Modifier {
+    val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
+    val c = Scrim.copy(alpha = strength)
+    val ltr = listOf(0f to c, 0.5f to c.copy(alpha = strength * 0.5f), 1f to Color.Transparent)
+    val stops = if (rtl) ltr.map { (1f - it.first) to it.second }.reversed() else ltr
+    return this.background(Brush.horizontalGradient(*stops.toTypedArray()))
+}
+
+/** Horizontal screen padding that keeps foreground content clear of a camera cut-out while artwork bleeds under it. */
+@androidx.compose.runtime.Immutable
+data class EdgePad(val start: Dp, val end: Dp)
+
+@Composable
+fun edgePad(d: Device): EdgePad {
+    val ld = androidx.compose.ui.platform.LocalLayoutDirection.current
+    val cut = WindowInsets.displayCutout.asPaddingValues()
+    return EdgePad(d.pad + cut.calculateStartPadding(ld), d.pad + cut.calculateEndPadding(ld))
 }

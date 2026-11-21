@@ -58,15 +58,16 @@ data class Device(val form: FormFactor, val widthDp: Int, val heightDp: Int) {
     val control: Dp get() = if (tv) 44.dp else 46.dp
 
     /**
-     * Height of the cinematic hero frame on the home screen. It is derived from the real screen height,
-     * not a fixed value: a 540 dp tall TV still keeps a full shelf visible under the hero.
+     * Height of the full-bleed cinematic hero on the home screen. It starts at the very top of the screen
+     * (the floating header sits on top of it), so it is taller than a framed hero would be.
+     * Derived from the real screen height so a shelf always stays visible underneath.
      */
     val heroHeight: Dp get() = when {
-        tv -> (heightDp * 0.42f).dp.coerceIn(210.dp, 330.dp)
-        widthDp >= 900 -> (heightDp * 0.40f).dp.coerceIn(220.dp, 320.dp)
-        widthDp >= 600 -> (heightDp * 0.38f).dp.coerceIn(210.dp, 300.dp)
-        portrait -> (heightDp * 0.32f).dp.coerceIn(200.dp, 280.dp)
-        else -> (heightDp * 0.46f).dp.coerceIn(160.dp, 240.dp)
+        tv -> (heightDp * 0.56f).dp.coerceIn(260.dp, 400.dp)
+        widthDp >= 900 -> (heightDp * 0.52f).dp.coerceIn(260.dp, 400.dp)
+        widthDp >= 600 -> (heightDp * 0.48f).dp.coerceIn(240.dp, 360.dp)
+        portrait -> (heightDp * 0.40f).dp.coerceIn(280.dp, 380.dp)
+        else -> (heightDp * 0.60f).dp.coerceIn(200.dp, 280.dp)
     }
 
     /** Columns for dashboard-style screens (settings). */

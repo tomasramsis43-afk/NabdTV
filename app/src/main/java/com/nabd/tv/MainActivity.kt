@@ -90,9 +90,17 @@ class MainActivity : ComponentActivity() {
 fun App(vm: AppViewModel) {
     // Video screens use every pixel (even under the camera notch); the rest keep clear of the notch and the keyboard.
     val full = vm.screen == Screen.Player || vm.screen == Screen.MultiView
+    // Home and Detail bleed their artwork under the notch; their foreground content applies the cut-out padding itself (edgePad).
+    val edge = vm.screen == Screen.Main || vm.screen == Screen.Detail
     Box(
         Modifier.fillMaxSize().appBackground()
-            .then(if (full) Modifier else Modifier.windowInsetsPadding(WindowInsets.displayCutout).imePadding())
+            .then(
+                when {
+                    full -> Modifier
+                    edge -> Modifier.imePadding()
+                    else -> Modifier.windowInsetsPadding(WindowInsets.displayCutout).imePadding()
+                }
+            )
     ) {
         when (vm.screen) {
             Screen.Setup -> SetupScreen(vm)

@@ -627,10 +627,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var episodes by mutableStateOf<List<Episode>>(emptyList()); private set
     var epLoading by mutableStateOf(false); private set
     var season by mutableStateOf(1); private set
+    /** Episode last focused / started in the gallery, so returning from playback lands on the same card. */
+    var epFocusUrl: String? = null
 
     fun openDetail(c: Channel) = guard(c) {
         val k = kindOf(c)
-        detail = c; info = null; episodes = emptyList(); season = 1; error = null
+        detail = c; info = null; episodes = emptyList(); season = 1; error = null; epFocusUrl = null
         back = Screen.Main; screen = Screen.Detail
         viewModelScope.launch { info = repo.vodInfo(c, k) }
         if (k == Kind.Series) {

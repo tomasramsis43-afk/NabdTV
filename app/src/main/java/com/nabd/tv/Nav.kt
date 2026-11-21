@@ -5,6 +5,7 @@ import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.focus.FocusRequester
@@ -41,10 +43,13 @@ fun visibleTabs(vm: AppViewModel): List<Tab> = Tab.entries.filter { (it != Tab.M
  * The whole main navigation is one horizontal app bar: brand, section names, search and account actions.
  * Sections are plain text with a soft focus wash and an animated underline for the selected one —
  * no rails, no boxes around each item.
+ *
+ * [onArt] = the bar floats over full-bleed artwork: no background box, only a soft dark fade for legibility,
+ * and white labels so it reads on bright and dark images alike.
  */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun AppBar(vm: AppViewModel, d: Device) {
+fun AppBar(vm: AppViewModel, d: Device, onArt: Boolean = false) {
     var searchOpen by remember { mutableStateOf(false) }
     val wide = d.widthDp >= 780
     val tabs = visibleTabs(vm)
@@ -65,15 +70,23 @@ fun AppBar(vm: AppViewModel, d: Device) {
         }.onFailure { vm.say(vm.tx(R.string.voice_unsupported)) }
     }
 
-    Column(Modifier.fillMaxWidth().padding(horizontal = d.pad, vertical = if (d.tv) 8.dp else 6.dp)) {
+    val edge = edgePad(d)
+    Column(
+        Modifier.fillMaxWidth()
+            .then(
+                if (onArt) Modifier.background(Brush.verticalGradient(listOf(Scrim.copy(alpha = 0.78f), Scrim.copy(alpha = 0.34f), Color.Transparent)))
+                else Modifier
+            )
+            .padding(start = edge.start, end = edge.end, top = if (d.tv) 10.dp else 8.dp, bottom = if (d.tv) 8.dp else 6.dp)
+    ) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = d.control),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(if (wide) 16.dp else 8.dp)
         ) {
-            BrandMark(d, compact = !wide)
+            BrandMark(d, compact = !wide, onArt = onArt)
             if (wide) {
-                SectionBar(vm, d, tabs, reqs, Modifier.weight(1f))
+                SectionBar(vm, d, tabs, reqs, onArt, Modifier.weight(1f))
                 SearchField(vm.query, { vm.query = it })
                 IconBtn(Ic.Mic, { startVoice() })
                 IconBtn(Ic.Refresh, { vm.refresh() })
@@ -89,7 +102,7 @@ fun AppBar(vm: AppViewModel, d: Device) {
             IconBtn(Ic.Settings, { vm.openSettings() }, size = if (wide) null else 40.dp)
         }
         if (!wide) {
-            SectionBar(vm, d, tabs, reqs, Modifier.fillMaxWidth().padding(top = 6.dp))
+            SectionBar(vm, d, tabs, reqs, onArt, Modifier.fillMaxWidth().padding(top = 6.dp))
         }
         if (!wide && (searchOpen || vm.query.isNotEmpty())) {
             Spacer(Modifier.height(8.dp))
@@ -100,7 +113,7 @@ fun AppBar(vm: AppViewModel, d: Device) {
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun BrandMark(d: Device, compact: Boolean) {
+private fun BrandMark(d: Device, compact: Boolean, onArt: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
         Box(
             Modifier.size(if (d.tv) 36.dp else 32.dp).clip(RoundedCornerShape(11.dp))
@@ -111,7 +124,7 @@ private fun BrandMark(d: Device, compact: Boolean) {
         }
         if (!compact || d.tv) {
             Row(verticalAlignment = Alignment.Bottom) {
-                Text("Nabd", fontSize = if (d.tv) 20.sp else 18.sp, fontWeight = FontWeight.Bold, color = Ink)
+                Text("Nabd", fontSize = if (d.tv) 20.sp else 18.sp, fontWeight = FontWeight.Bold, color = if (onArt) Color.White else Ink)
                 Text("TV", fontSize = if (d.tv) 12.sp else 11.sp, fontWeight = FontWeight.Bold, color = Accent,
                     modifier = Modifier.padding(start = 3.dp, bottom = 3.dp))
             }
@@ -131,6 +144,7 @@ private fun SectionBar(
     d: Device,
     tabs: List<Tab>,
     reqs: Map<Tab, FocusRequester>,
+    onArt: Boolean,
     modifier: Modifier = Modifier
 ) {
     androidx.compose.foundation.lazy.LazyRow(
@@ -152,6 +166,7 @@ private fun SectionBar(
                 label = tr(t.labelRes),
                 selected = vm.tab == t,
                 tv = d.tv,
+                onArt = onArt,
                 focusRequester = reqs.getValue(t),
                 onClick = { vm.selectTab(t) }
             )
@@ -165,17 +180,20 @@ private fun SectionItem(
     label: String,
     selected: Boolean,
     tv: Boolean,
+    onArt: Boolean,
     focusRequester: FocusRequester,
     onClick: () -> Unit
 ) {
     var focused by remember { mutableStateOf(false) }
+    val zoom by animateFloatAsState(if (focused) 1.07f else 1f, tween(160), label = "tabZoom")
     val underline by animateDpAsState(if (selected) 22.dp else 0.dp, tween(220), label = "tabLine")
     Column(
         Modifier
+            .scale(zoom)
             .focusRequester(focusRequester)
             .onFocusChanged { focused = it.isFocused }
             .clip(RoundedCornerShape(10.dp))
-            .background(if (focused) Accent.copy(alpha = 0.10f) else Color.Transparent)
+            .background(if (focused) (if (onArt) Color(0x33FFFFFF) else Accent.copy(alpha = 0.10f)) else Color.Transparent)
             .clickable(onClick = onClick)
             .padding(horizontal = if (tv) 15.dp else 11.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -185,6 +203,8 @@ private fun SectionItem(
             fontSize = if (tv) 15.sp else 13.5.sp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             color = when {
+                onArt && (selected || focused) -> Color.White
+                onArt -> Color(0xCCFFFFFF)
                 selected -> Ink
                 focused -> Ink
                 else -> TextSecondary

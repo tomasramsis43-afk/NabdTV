@@ -46,6 +46,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -76,17 +78,29 @@ fun MainScreen(vm: AppViewModel) {
         repeat(15) { if (vm.enterContent()) return@LaunchedEffect; delay(130) }
     }
 
-    Column(Modifier.fillMaxSize()) {
-        AppBar(vm, d)
-        Content(vm, d, Modifier.weight(1f))
+    // The header floats ON TOP of the page. On Home the hero artwork runs behind it (edge to edge);
+    // on the other pages the content simply starts below the measured header height.
+    val onHome = vm.tab == Tab.Home && vm.query.isBlank()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    var barH by remember { mutableStateOf(0.dp) }
+    Box(Modifier.fillMaxSize()) {
+        Content(vm, d, barH, Modifier.fillMaxSize())
+        Column(
+            Modifier.align(Alignment.TopCenter).fillMaxWidth()
+                .onSizeChanged { barH = with(density) { it.height.toDp() } }
+        ) {
+            AppBar(vm, d, onArt = onHome)
+            StatusStrip(vm, d)
+        }
     }
 }
 
+/** Update banner + loading / error / health line. Overlays the page just under the header. */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun Content(vm: AppViewModel, d: Device, modifier: Modifier) {
-    val searching = vm.query.isNotBlank() && (vm.tab == Tab.Home || vm.tab == Tab.Guide || vm.tab == Tab.Recordings)
-    Column(modifier.padding(start = d.pad, end = d.pad, top = 2.dp)) {
+private fun StatusStrip(vm: AppViewModel, d: Device) {
+    val edge = edgePad(d)
+    Column(Modifier.fillMaxWidth().padding(start = edge.start, end = edge.end)) {
         vm.update?.let { u ->
             Spacer(Modifier.height(6.dp))
             Row(
@@ -106,25 +120,35 @@ private fun Content(vm: AppViewModel, d: Device, modifier: Modifier) {
                 vm.healthStatus?.let { Text(tr(R.string.health_status, it), color = Accent, fontSize = 12.sp) }
             }
         }
-        Spacer(Modifier.height(8.dp))
+    }
+}
 
-        val key = if (searching) "search" else vm.tab.name
-        AnimatedContent(
-            targetState = key,
-            modifier = Modifier.weight(1f),
-            transitionSpec = {
-                (fadeIn(tween(220)) + scaleIn(initialScale = 0.99f, animationSpec = tween(220))) togetherWith fadeOut(tween(110))
-            },
-            label = "page"
-        ) { k ->
-            val blurR by transition.animateDp(label = "blur") { s -> if (s == EnterExitState.Visible) 0.dp else 8.dp }
-            Box(Modifier.fillMaxSize().then(if (!d.tv && Build.VERSION.SDK_INT >= 31 && blurR > 0.dp) Modifier.blur(blurR) else Modifier)) {
-                when (k) {
-                    "search" -> SearchResults(vm, d)
-                    Tab.Home.name -> HomeTab(vm, d)
-                    Tab.Guide.name -> GuideTab(vm)
-                    Tab.Recordings.name -> RecordingsTab(vm)
-                    else -> BrowseTab(vm, d)
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun Content(vm: AppViewModel, d: Device, barH: androidx.compose.ui.unit.Dp, modifier: Modifier) {
+    val searching = vm.query.isNotBlank() && (vm.tab == Tab.Home || vm.tab == Tab.Guide || vm.tab == Tab.Recordings)
+    val edge = edgePad(d)
+    val key = if (searching) "search" else vm.tab.name
+    AnimatedContent(
+        targetState = key,
+        modifier = modifier,
+        transitionSpec = {
+            (fadeIn(tween(220)) + scaleIn(initialScale = 0.99f, animationSpec = tween(220))) togetherWith fadeOut(tween(110))
+        },
+        label = "page"
+    ) { k ->
+        val blurR by transition.animateDp(label = "blur") { s -> if (s == EnterExitState.Visible) 0.dp else 8.dp }
+        Box(Modifier.fillMaxSize().then(if (!d.tv && Build.VERSION.SDK_INT >= 31 && blurR > 0.dp) Modifier.blur(blurR) else Modifier)) {
+            if (k == Tab.Home.name) {
+                HomeTab(vm, d)   // full-bleed: manages its own side padding
+            } else {
+                Box(Modifier.fillMaxSize().padding(start = edge.start, end = edge.end, top = barH + 6.dp)) {
+                    when (k) {
+                        "search" -> SearchResults(vm, d)
+                        Tab.Guide.name -> GuideTab(vm)
+                        Tab.Recordings.name -> RecordingsTab(vm)
+                        else -> BrowseTab(vm, d)
+                    }
                 }
             }
         }
@@ -150,9 +174,11 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
     val heroArt = vm.homeInfo?.backdrop ?: focus.logo
     val palette = rememberArtworkPalette(heroArt)
 
+    val edge = edgePad(d)
     Column(Modifier.fillMaxSize()) {
+        // Edge to edge, starts at the very top of the screen: the floating header sits on this artwork.
         HomeHero(vm, focus, vm.homeInfo, d, palette, Modifier.fillMaxWidth().height(d.heroHeight))
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(4.dp))
         LazyColumn(
             state = vm.listState("home"),
             modifier = Modifier.weight(1f),
@@ -162,7 +188,7 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
             items(shelves, key = { it.title }) { s ->
                 Column {
                     Row(
-                        Modifier.fillMaxWidth().padding(start = 2.dp, end = 2.dp, bottom = 2.dp),
+                        Modifier.fillMaxWidth().padding(start = edge.start, end = edge.end, bottom = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
@@ -175,7 +201,7 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
                     LazyRow(
                         state = vm.listState("row:" + s.title),
                         horizontalArrangement = Arrangement.spacedBy(if (s.ranked) d.gap + 16.dp else d.gap),
-                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp)
+                        contentPadding = PaddingValues(start = edge.start, end = edge.end, top = 4.dp, bottom = 4.dp)
                     ) {
                         itemsIndexed(s.items) { i, c -> HomeCard(vm, d, s, c, i + 1) }
                     }
@@ -186,8 +212,8 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
 }
 
 /**
- * Cinematic hero: the image fills the whole frame (merged, no card, no frame) and the title,
- * metadata, synopsis and actions sit in a bottom band so the image stays fully visible.
+ * Full-bleed cinematic hero: a wide backdrop runs edge to edge (and behind the floating header), fades into the page,
+ * and the title, metadata, synopsis and actions sit on the start side at the bottom (mirrors automatically in RTL).
  */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -204,24 +230,36 @@ private fun HomeHero(
     val primaryLabel = when (kind) { Kind.Series -> tr(R.string.detail_episodes); Kind.Movie -> tr(R.string.play); Kind.Live -> tr(R.string.watch) }
     val art = info?.backdrop ?: c.logo
 
+    val edge = edgePad(d)
+    val wide = d.widthDp >= 700
+    val shortScreen = d.heightDp < 420
+
     Box(modifier) {
+        // 1. Artwork: wide backdrop, cropped (never stretched), subject kept in view.
         if (kind == Kind.Live) {
             Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(SurfHigh, NavyDeep))))
             AsyncImage(model = c.logo, contentDescription = c.name, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(if (d.tv) 40.dp else 24.dp).alpha(0.25f))
         } else {
             Crossfade(art, animationSpec = tween(520), label = "heroArt") { img ->
-                AsyncImage(model = img, contentDescription = null, contentScale = ContentScale.Crop, alignment = Alignment.TopCenter, modifier = Modifier.fillMaxSize())
+                AsyncImage(
+                    model = img, contentDescription = null, contentScale = ContentScale.Crop,
+                    alignment = androidx.compose.ui.BiasAlignment(0f, -0.45f), modifier = Modifier.fillMaxSize()
+                )
             }
         }
-        // Bottom-only scrim: image stays visible on top, text readable at the bottom.
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.0f to Color.Transparent, 0.50f to Color.Transparent, 0.75f to Bg.copy(alpha = 0.90f), 1f to Bg)))
+        // 2. Layered gradients: text side wash, top wash for the floating header, bottom fade into the page.
+        Box(Modifier.fillMaxSize().textSideScrim(if (wide) 0.80f else 0.55f))
+        Box(Modifier.fillMaxWidth().fillMaxHeight(0.42f).background(Brush.verticalGradient(listOf(Scrim.copy(alpha = 0.72f), Color.Transparent))))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.0f to Color.Transparent, 0.38f to Scrim.copy(alpha = 0.18f), 0.74f to Scrim.copy(alpha = 0.78f), 1f to Bg)))
         Box(Modifier.fillMaxSize().drawBehind {
             drawCircle(Brush.radialGradient(listOf(palette.glow, Color.Transparent), center = Offset(size.width * 0.5f, 0f), radius = size.width * 0.6f), radius = size.width * 0.6f, center = Offset(size.width * 0.5f, 0f))
         })
 
+        // 3. Info block: anchored to the start side, bottom of the artwork; the right/centre of the image stays clear.
         Column(
-            Modifier.fillMaxSize().padding(horizontal = if (d.tv) 30.dp else 18.dp, vertical = if (d.tv) 20.dp else 12.dp),
-            verticalArrangement = Arrangement.Bottom
+            Modifier.align(Alignment.BottomStart)
+                .then(if (wide) Modifier.fillMaxWidth(0.55f) else Modifier.fillMaxWidth())
+                .padding(start = edge.start, end = edge.end, bottom = if (d.tv) 22.dp else 12.dp)
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(typeLabel, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp, color = readableOnArt(palette.accent), modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(palette.primary.copy(alpha = 0.26f)).padding(horizontal = 8.dp, vertical = 3.dp))
@@ -229,7 +267,7 @@ private fun HomeHero(
                 if (c.url in vm.favs) Text(tr(R.string.detail_fav_on), fontSize = 12.sp, color = Accent2)
             }
             Spacer(Modifier.height(if (d.tv) 10.dp else 6.dp))
-            Text(c.name, fontSize = if (d.tv) 36.sp else if (d.widthDp >= 600) 28.sp else 22.sp, lineHeight = if (d.tv) 42.sp else 32.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(c.name, fontSize = if (d.tv) 42.sp else if (d.widthDp >= 600) 32.sp else 24.sp, lineHeight = if (d.tv) 48.sp else if (d.widthDp >= 600) 38.sp else 29.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
                 (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let { MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D)) }
@@ -237,9 +275,9 @@ private fun HomeHero(
                 info?.duration?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
                 info?.genre?.takeIf { it.isNotBlank() }?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(if (d.tv) 2 else 1)?.forEach { MetaChip(it) }
             }
-            info?.plot?.takeIf { it.isNotBlank() }?.let {
+            if (!shortScreen) info?.plot?.takeIf { it.isNotBlank() }?.let {
                 Spacer(Modifier.height(if (d.tv) 8.dp else 5.dp))
-                Text(it, fontSize = if (d.tv) 14.sp else 12.5.sp, lineHeight = if (d.tv) 20.sp else 17.sp, color = Color(0xFFD9DCE8), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(it, fontSize = if (d.tv) 14.sp else 12.5.sp, lineHeight = if (d.tv) 20.sp else 17.sp, color = Color(0xFFE3E6F0), maxLines = if (d.tv) 3 else 2, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.height(if (d.tv) 14.dp else 9.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(if (d.tv) 12.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
