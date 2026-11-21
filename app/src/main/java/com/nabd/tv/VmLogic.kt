@@ -63,4 +63,8 @@ object VmLogic {
         clash -> "تمت الجدولة، لكنه يتعارض مع تسجيل آخر"
         else -> "تمت جدولة التسجيل"
     }
+
+    /** One line of the "problem channels" report. */
+    fun problemLine(name: String, dead: Boolean, failures: Int): String =
+        name + " — " + (if (dead) "ميت" else "بطيء") + " · " + failures + " فشل"
 }

@@ -90,3 +90,10 @@ class VmLogicRecordTest {
     @Test fun clashIsReportedButStillScheduled() = assertEquals("تمت الجدولة، لكنه يتعارض مع تسجيل آخر", VmLogic.recordMessage(true, true))
     @Test fun plainSuccess() = assertEquals("تمت جدولة التسجيل", VmLogic.recordMessage(true, false))
 }
+
+class VmLogicProblemTest {
+    @Test fun deadAndSlowLines() {
+        assertEquals("X — ميت · 3 فشل", VmLogic.problemLine("X", true, 3))
+        assertEquals("Y — بطيء · 1 فشل", VmLogic.problemLine("Y", false, 1))
+    }
+}

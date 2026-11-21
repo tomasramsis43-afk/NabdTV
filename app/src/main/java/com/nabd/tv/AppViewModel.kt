@@ -754,7 +754,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Local report of the channels that failed most often, for the settings screen. */
     fun problemReport(): List<String> = store.worstHealth(15).map { (u, r) ->
         val name = all.firstOrNull { it.url == u }?.name ?: u.takeLast(30)
-        name + " — " + (if (r.state == Health.Dead) "ميت" else "بطيء") + " · " + r.failures + " فشل"
+        VmLogic.problemLine(name, r.state == Health.Dead, r.failures)
     }
 
 
