@@ -1184,7 +1184,7 @@ fun PlayerScreen(vm: AppViewModel) {
                                 }
                                 Text(
                                     "${hm(now.start)} - ${hm(now.stop)}" + (next?.let { " · التالي: ${it.title}" } ?: ""),
-                                    fontSize = 12.sp, color = Color(0xFFB8C2CF), maxLines = 1
+                                    fontSize = 12.sp, color = OverlayText, maxLines = 1
                                 )
                             }
                         }

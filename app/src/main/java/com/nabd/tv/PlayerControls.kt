@@ -320,7 +320,7 @@ fun PlayerTimeline(
                     modifier = Modifier.widthIn(min = 54.dp)
                 )
                 Text(
-                    " / " + fmtTime(duration), color = Color(0xFFB8C2CF), fontSize = 12.sp,
+                    " / " + fmtTime(duration), color = OverlayText, fontSize = 12.sp,
                     modifier = Modifier.widthIn(min = 58.dp)
                 )
                 BoxWithConstraints(
@@ -399,7 +399,7 @@ fun PlayerTimeline(
                     }
                 }
                 Text(
-                    "−" + fmtTime((duration - pos).coerceAtLeast(0)), color = Color(0xFFB8C2CF),
+                    "−" + fmtTime((duration - pos).coerceAtLeast(0)), color = OverlayText,
                     fontSize = 12.sp, textAlign = TextAlign.End, modifier = Modifier.widthIn(min = 62.dp)
                 )
             }
@@ -468,7 +468,7 @@ fun ResumePrompt(position: Long, onResume: () -> Unit, onRestart: () -> Unit) {
         ) {
             Text("متابعة المشاهدة؟", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
-            Text("آخر موضع: ${fmtTime(position)}", color = Color(0xFFB8C2CF), fontSize = 14.sp)
+            Text("آخر موضع: ${fmtTime(position)}", color = OverlayText, fontSize = 14.sp)
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 PlayerButton("▶ استكمال", focusRequester = focus) { onResume() }
@@ -499,7 +499,7 @@ fun PlayerErrorCard(
             Text(message, color = Color.White, fontSize = 14.sp, textAlign = TextAlign.Center)
             if (detail.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
-                Text(detail, color = Color(0xFF9AA3B8), fontSize = 12.sp, textAlign = TextAlign.Center, maxLines = 4)
+                Text(detail, color = OverlayTextMuted, fontSize = 12.sp, textAlign = TextAlign.Center, maxLines = 4)
             }
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -562,7 +562,7 @@ private fun TimeColumn(label: String, value: Int, onDelta: (Int) -> Unit) {
         PlayerButton("＋") { onDelta(1) }
         Text("%02d".format(value), color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(vertical = 4.dp))
         PlayerButton("－") { onDelta(-1) }
-        Text(label, color = Color(0xFF9AA3B8), fontSize = 12.sp)
+        Text(label, color = OverlayTextMuted, fontSize = 12.sp)
     }
 }
 

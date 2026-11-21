@@ -56,6 +56,10 @@ val Ink: Color get() = if (Ui.dark) Color(0xFFF3F5FA) else Color(0xFF14161D)
 val TextSecondary: Color get() = if (Ui.dark) Color(0xFF98A0B3) else Color(0xFF646B7C)
 val TextMuted: Color get() = if (Ui.dark) Color(0xFF6B7385) else Color(0xFF8B92A4)
 
+/** Text on top of video/overlays: always light, independent of the app theme. */
+val OverlayText = Color(0xFFB8C2CF)
+val OverlayTextMuted = Color(0xFF9AA3B8)
+
 val Danger: Color get() = if (Ui.dark) Color(0xFFFF7B7B) else Color(0xFFD93B3B)
 val Ok: Color get() = if (Ui.dark) Color(0xFF4BD6A2) else Color(0xFF12855D)
 val Warn: Color get() = if (Ui.dark) Color(0xFFFFC65C) else Color(0xFF9A6B12)
