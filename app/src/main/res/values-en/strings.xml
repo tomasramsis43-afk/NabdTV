@@ -671,4 +671,5 @@
     <string name="vm_prob_dead">dead</string>
     <string name="vm_prob_slow">slow</string>
     <string name="vm_prob_fails">failures</string>
+    <string name="cap_channels">Channels</string>
 </resources>

@@ -763,7 +763,7 @@ fun PlayerScreen(vm: AppViewModel) {
         if (ui.overlay && ui.sheet == null && !ui.panel && !ui.locked && dev.tv) {
             delay(60)
             // Movies / episodes: land on the timeline so Left/Right scrub immediately.
-            runCatching { if (vod && ui.duration > 0) timelineFocus.requestFocus() else playFocus.requestFocus() }
+            runCatching { if ((vod || live) && ui.duration > 0) timelineFocus.requestFocus() else playFocus.requestFocus() }
         } else if (!ui.overlay && ui.sheet == null && !ui.panel && ui.nextEp == null && !ui.ended && ui.resumeAt <= 0L && ui.error == null) {
             // Controls hid while a button had focus: hand the keys back to the player.
             runCatching { rootFocus.requestFocus() }
@@ -1111,7 +1111,7 @@ fun PlayerScreen(vm: AppViewModel) {
         }
 
         // Top bar
-        if (ui.overlay && !ui.locked && !vm.inPip && ui.sheet == null && !vod) {
+        if (ui.overlay && !ui.locked && !vm.inPip && ui.sheet == null && !vod && !live) {
             Row(
                 Modifier.align(Alignment.TopCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(OverlayScrimStrong, Color.Transparent)))
@@ -1170,8 +1170,33 @@ fun PlayerScreen(vm: AppViewModel) {
             )
         }
 
-        // Bottom control bar (live TV, catch-up, recordings)
-        if (ui.overlay && !ui.locked && !vm.inPip && ui.sheet == null && ui.error == null && ui.resumeAt <= 0L && !vod) {
+        // Live TV: same icon-based controls as movies and series.
+        if (live && ui.overlay && !ui.locked && !vm.inPip && ui.sheet == null && ui.error == null && ui.resumeAt <= 0L) {
+            val (now, next) = vm.nowNext(chRef.value)
+            LiveOverlay(
+                title = (if (chRef.value.url in vm.favs) "★ " else "") + chRef.value.name,
+                group = chRef.value.group,
+                logo = chRef.value.logo,
+                nowTitle = now?.title,
+                nowProgress = now?.let { ((System.currentTimeMillis() - it.start).toFloat() / (it.stop - it.start).coerceAtLeast(1)).coerceIn(0f, 1f) },
+                timeLine = now?.let { "${hm(it.start)} - ${hm(it.stop)}" + (next?.let { n -> " · " + S(R.string.x_next_prog, n.title) } ?: "") },
+                behindLive = player.isCurrentMediaItemLive && player.currentLiveOffset > 8_000L,
+                ui = ui, thumbnails = thumbnails, seekInterval = ui.seekInterval,
+                timelineFocus = timelineFocus, playFocus = playFocus,
+                onBack = { vm.stop() }, onToggle = { actions.togglePlay() },
+                onSeekBy = actions.seekBy, onSeekTo = actions.seekTo,
+                onRewind = { rewindLive(vm, player, chRef.value.url, ui.seekInterval); ui.ping++ },
+                onLiveEdge = { player.seekToDefaultPosition(); ui.ping++ },
+                onChannels = { actions.openChannels() },
+                onSubs = { openSheet(PlayerTab.Subtitles) },
+                onSettings = { openSheet(PlayerTab.Playback) },
+                onPip = { actions.enterPip() }, onLock = { actions.toggleLock() },
+                onInteract = actions.interact
+            )
+        }
+
+        // Bottom control bar (catch-up, recordings)
+        if (ui.overlay && !ui.locked && !vm.inPip && ui.sheet == null && ui.error == null && ui.resumeAt <= 0L && !vod && !live) {
             Column(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xEE000000))))

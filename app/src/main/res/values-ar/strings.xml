@@ -671,4 +671,5 @@
     <string name="vm_prob_dead">ميت</string>
     <string name="vm_prob_slow">بطيء</string>
     <string name="vm_prob_fails">فشل</string>
+    <string name="cap_channels">القنوات</string>
 </resources>

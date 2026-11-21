@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,7 +46,7 @@ fun fmtTime(ms: Long): String {
 }
 
 /** Flat line icons for the movie / series player (24-unit grid, round strokes). */
-enum class VIc { Play, Pause, Prev, Next, Back10, Fwd10, Subs, Episodes, Settings, Back, Lock, Pip }
+enum class VIc { Play, Pause, Prev, Next, Back10, Fwd10, Subs, Episodes, Settings, Back, Lock, Pip, Channels }
 
 private fun DrawScope.drawVIc(ic: VIc, c: Color, rtl: Boolean) {
     val u = size.minDimension / 24f
@@ -101,6 +102,10 @@ private fun DrawScope.drawVIc(ic: VIc, c: Color, rtl: Boolean) {
             drawRoundRect(c, p(6f, 11f), Size(12f * u, 9f * u), CornerRadius(2.4f * u))
             drawArc(c, 180f, 180f, false, p(8.6f, 4.5f), Size(6.8f * u, 6.8f * u), style = st)
             line(8.6f, 8f, 8.6f, 11f); line(15.4f, 8f, 15.4f, 11f)
+        }
+        VIc.Channels -> {
+            drawRoundRect(c, p(3f, 6f), Size(18f * u, 12f * u), CornerRadius(2.6f * u), style = st)
+            line(9f, 21f, 15f, 21f); line(12f, 18f, 12f, 21f)
         }
         VIc.Pip -> {
             drawRoundRect(c, p(3f, 5f), Size(18f * u, 14f * u), CornerRadius(3f * u), style = st)
@@ -227,6 +232,105 @@ fun BoxScope.VodOverlay(
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
                 CaptionBtn(VIc.Subs, tr(R.string.cap_subs_audio), side, onInteract, onSubs)
                 if (hasEpisodes) CaptionBtn(VIc.Episodes, tr(R.string.detail_episodes), side, onInteract, onEpisodes)
+                CaptionBtn(VIc.Settings, tr(R.string.cap_settings), side, onInteract, onSettings)
+            }
+        }
+        if (narrow) {
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                transport(); options()
+            }
+        } else {
+            Box(Modifier.fillMaxWidth()) {
+                Box(Modifier.align(Alignment.Center)) { transport() }
+                Box(Modifier.align(Alignment.CenterEnd)) { options() }
+            }
+        }
+    }
+}
+
+
+/**
+ * Live TV controls in the same look as [VodOverlay]: channel + now/next on top, one short row of
+ * icon buttons at the bottom. The timeline appears only when the stream has a seekable window.
+ */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+fun BoxScope.LiveOverlay(
+    title: String, group: String, logo: String?, nowTitle: String?, nowProgress: Float?, timeLine: String?,
+    behindLive: Boolean, ui: PlayerUiState, thumbnails: ThumbnailLoader?, seekInterval: Int,
+    timelineFocus: FocusRequester, playFocus: FocusRequester,
+    onBack: () -> Unit, onToggle: () -> Unit, onSeekBy: (Long) -> Unit, onSeekTo: (Long) -> Unit,
+    onRewind: () -> Unit, onLiveEdge: () -> Unit, onChannels: () -> Unit, onSubs: () -> Unit,
+    onSettings: () -> Unit, onPip: () -> Unit, onLock: () -> Unit, onInteract: () -> Unit
+) {
+    val dev = LocalDevice.current
+    val narrow = dev.widthDp < 600
+    val side = if (dev.tv) 56.dp else 48.dp
+    val big = if (dev.tv) 72.dp else 62.dp
+    val pad = if (dev.tv) 48.dp else 14.dp
+
+    Row(
+        Modifier.align(Alignment.TopCenter).fillMaxWidth()
+            .background(Brush.verticalGradient(listOf(Color(0xB3000000), Color.Transparent)))
+            .padding(horizontal = pad, vertical = if (dev.tv) 22.dp else 8.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        VodBtn(VIc.Back, size = 44.dp, onFocus = onInteract, onClick = onBack)
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = if (dev.tv) 22.sp else 17.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+            if (group.isNotBlank()) Text(group, fontSize = 12.sp, color = Accent, maxLines = 1)
+        }
+        Text(
+            tr(R.string.a_76ad5744), fontSize = 12.sp, color = Color(0xFFFF8A8F),
+            modifier = Modifier.background(Color(0x66000000), RoundedCornerShape(8.dp)).padding(8.dp)
+        )
+        if (dev.touch) {
+            VodBtn(VIc.Pip, size = 44.dp, onFocus = onInteract, onClick = onPip)
+            VodBtn(VIc.Lock, size = 44.dp, onFocus = onInteract, onClick = onLock)
+        }
+    }
+
+    Column(
+        Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+            .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE6000000))))
+            .padding(horizontal = pad, vertical = if (dev.tv) 20.dp else 10.dp)
+    ) {
+        if (nowTitle != null || timeLine != null) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (!logo.isNullOrBlank()) coil.compose.AsyncImage(model = logo, contentDescription = null, modifier = Modifier.size(40.dp))
+                Column(Modifier.weight(1f)) {
+                    if (nowTitle != null) Text(nowTitle, fontSize = 15.sp, color = Color.White, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    if (nowProgress != null) {
+                        Box(Modifier.padding(vertical = 4.dp).fillMaxWidth().height(3.dp).background(Color(0x33FFFFFF))) {
+                            Box(Modifier.fillMaxHeight().fillMaxWidth(nowProgress).background(Accent))
+                        }
+                    }
+                    if (timeLine != null) Text(timeLine, fontSize = 12.sp, color = Color(0xCCFFFFFF), maxLines = 1)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+        if (ui.duration > 0) {
+            PlayerTimeline(
+                ui = ui, seekInterval = seekInterval, thumbnails = thumbnails,
+                onSeekBy = onSeekBy, onSeekTo = onSeekTo, onInteract = onInteract,
+                modifier = Modifier, focusRequester = timelineFocus, onToggle = onToggle
+            )
+            Spacer(Modifier.height(10.dp))
+        }
+        val transport: @Composable () -> Unit = {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Row(horizontalArrangement = Arrangement.spacedBy(if (dev.tv) 18.dp else 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    VodBtn(VIc.Back10, size = side, onFocus = onInteract, onClick = onRewind)
+                    VodBtn(if (ui.wantPlay) VIc.Pause else VIc.Play, size = big, primary = true, focusRequester = playFocus, onFocus = onInteract, onClick = onToggle)
+                    VodBtn(VIc.Fwd10, size = side, onFocus = onInteract) { if (behindLive) onLiveEdge() else onSeekBy(seekInterval * 1_000L) }
+                }
+            }
+        }
+        val options: @Composable () -> Unit = {
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
+                CaptionBtn(VIc.Channels, tr(R.string.cap_channels), side, onInteract, onChannels)
+                CaptionBtn(VIc.Subs, tr(R.string.cap_subs_audio), side, onInteract, onSubs)
                 CaptionBtn(VIc.Settings, tr(R.string.cap_settings), side, onInteract, onSettings)
             }
         }
