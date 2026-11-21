@@ -46,6 +46,8 @@ object Notifier {
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
             .setContentTitle(title).setContentText(text).setAutoCancel(true)
         if (pi != null) b.setContentIntent(pi)
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) return
         runCatching { NotificationManagerCompat.from(ctx).notify(id, b.build()) }
     }
 
