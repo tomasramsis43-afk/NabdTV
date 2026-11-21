@@ -493,6 +493,7 @@ fun PlayerScreen(vm: AppViewModel) {
     /* ------------------------------------------------------------------ */
 
     DisposableEffect(player) {
+        val retryHandler = android.os.Handler(android.os.Looper.getMainLooper())
         val listener = object : Player.Listener {
             override fun onTracksChanged(tracks: androidx.media3.common.Tracks) = refreshTracks()
 
@@ -520,7 +521,10 @@ fun PlayerScreen(vm: AppViewModel) {
                     }
                     retries < 2 && (code == null || code >= 500) -> {
                         retries++
-                        player.prepare()
+                        // Retrying at once hammers a provider that is already refusing (503 / connection limit): back off.
+                        val wait = if (code != null) retries * 2_000L else 0L
+                        if (wait > 0) ui.status = "السيرفر مشغول، إعادة المحاولة..."
+                        retryHandler.postDelayed({ runCatching { player.prepare() } }, wait)
                     }
                     !altUsed && alternate != null -> {
                         altUsed = true; retries = 0
@@ -532,6 +536,7 @@ fun PlayerScreen(vm: AppViewModel) {
                         if (live && vm.failover()) ui.status = "تحويل تلقائي لمصدر بديل..."
                         else {
                             ui.error = "تعذّر تشغيل هذا المحتوى"
+                            if (code == 503 || code == 429) ui.error = "السيرفر مشغول أو وصلت للحد الأقصى من الاتصالات"
                             ui.errorDetail = (code?.let { "HTTP $it" } ?: error.errorCodeName) +
                                 (error.cause?.message?.let { " · $it" } ?: "")
                             ui.status = ""
@@ -588,7 +593,7 @@ fun PlayerScreen(vm: AppViewModel) {
             }
         }
         player.addListener(listener)
-        onDispose { player.removeListener(listener) }
+        onDispose { retryHandler.removeCallbacksAndMessages(null); player.removeListener(listener) }
     }
 
     // Each engine rebuild creates a new ExoPlayer; the old one must be released (audio focus, decoder, network).
