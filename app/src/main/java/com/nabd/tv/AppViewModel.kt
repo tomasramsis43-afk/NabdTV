@@ -848,7 +848,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (h.kind == Kind.Live) continue
             val meta = store.epMeta(h.url) ?: legacyMeta(h)
             if (meta == null) {
-                if (h.kind == Kind.Movie && !h.finished && (h.progress > 0.02f || h.position > 15_000L) && parental.visible(histChannel(h)))
+                if (h.kind == Kind.Movie && (h.progress > 0.02f || h.position > 15_000L) && parental.visible(histChannel(h)))
                     out += ContinueItem("m:" + h.url, Kind.Movie, h.name, "", "", null, h.progress, histChannel(h), null, h.url, 0, 0, h.group, h.last, h.logo)
                 continue
             }
@@ -859,7 +859,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val th = historyByUrl[epUrl]
             val picked = cur != null && cur.first != h.url
             val inProgress = th != null && !th.finished && (th.progress > 0.02f || th.position > 15_000L)
-            if (!inProgress && !picked) continue
+            // The last episode of a series being finished does not remove it from the list; it just stays as it is.
+            if (!inProgress && !picked && th?.finished != true) continue
             if (!parental.visible(Channel(-1, m.seriesName, m.seriesUrl, h.logo, h.group))) continue
             out += ContinueItem(
                 "s:" + m.seriesUrl, Kind.Series, m.seriesName, m.title, tx(R.string.ep_label, m.season, m.num), m.image?.takeIf { img -> img != h.logo },

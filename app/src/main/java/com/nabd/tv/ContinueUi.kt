@@ -20,7 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,17 +66,14 @@ fun ContinueRow(vm: AppViewModel, d: Device, items: List<ContinueItem>, start: D
 internal fun ContinueCard(vm: AppViewModel, d: Device, item: ContinueItem) {
     val shape = RoundedCornerShape(Radius.poster)
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val img by produceState(initialValue = item.image, item.key, item.episodeUrl, item.image) {
-        value = item.image ?: vm.continueImage(item)
-    }
+    // The title's own wide artwork (movie or series), same shape for both: never an episode still.
+    val artCh = remember(item.key) { if (item.seriesUrl != null) Channel(-1, item.title, item.seriesUrl, item.poster, item.group) else item.play }
     Focusable(
         onClick = { vm.playContinue(item) }, onLongClick = { vm.continueMenu(item) },
-        modifier = Modifier.width(if (item.kind == Kind.Series) d.shelfPoster * 0.85f else d.shelfPoster * 1.7f), shape = shape
+        modifier = Modifier.width(d.shelfPoster * 1.5f), shape = shape
     ) {
-        // Series: the poster itself (portrait) with the episode badge and progress; movies: landscape backdrop.
-        Box(Modifier.fillMaxWidth().aspectRatio(if (item.kind == Kind.Series) 2f / 3f else 16f / 9f).clip(shape).background(SurfHigh)) {
-            val model = if (item.kind == Kind.Series) item.poster else img ?: item.poster
-            if (model != null) AsyncImage(model = model, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(shape).background(SurfHigh)) {
+            AdaptiveArtImage(vm, artCh, landscape = true, cropFallback = true, modifier = Modifier.fillMaxSize())
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Scrim.copy(alpha = 0.75f)))))
             Text("\u25B6", color = Color.White, fontSize = 20.sp, modifier = Modifier.align(Alignment.Center))
             if (item.badge.isNotEmpty()) Text(

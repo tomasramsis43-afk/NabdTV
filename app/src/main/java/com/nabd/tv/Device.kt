@@ -63,11 +63,11 @@ data class Device(val form: FormFactor, val widthDp: Int, val heightDp: Int) {
      * Derived from the real screen height so a shelf always stays visible underneath.
      */
     val heroHeight: Dp get() = when {
-        tv -> (heightDp * 0.56f).dp.coerceIn(260.dp, 400.dp)
-        widthDp >= 900 -> (heightDp * 0.52f).dp.coerceIn(260.dp, 400.dp)
-        widthDp >= 600 -> (heightDp * 0.48f).dp.coerceIn(240.dp, 360.dp)
-        portrait -> (heightDp * 0.40f).dp.coerceIn(280.dp, 380.dp)
-        else -> (heightDp * 0.60f).dp.coerceIn(200.dp, 280.dp)
+        tv -> (heightDp * 0.47f).dp.coerceIn(240.dp, 340.dp)
+        widthDp >= 900 -> (heightDp * 0.45f).dp.coerceIn(240.dp, 340.dp)
+        widthDp >= 600 -> (heightDp * 0.43f).dp.coerceIn(220.dp, 320.dp)
+        portrait -> (heightDp * 0.36f).dp.coerceIn(250.dp, 340.dp)
+        else -> (heightDp * 0.50f).dp.coerceIn(180.dp, 240.dp)
     }
 
     /** Columns for dashboard-style screens (settings). */

@@ -299,9 +299,9 @@ fun PosterCard(
             if (progress > 0.02f) Box(
                 Modifier.matchParentSize().background(Brush.verticalGradient(0.88f to Color.Transparent, 1f to OverlayScrim))
             )
-            (if (tmdbArt != null && (wide || !adaptive)) tmdbArt.rating else ratingBadge(ch))?.let { r -> RatingPill(r, Modifier.align(Alignment.TopStart).padding(6.dp)) }
+            (if (tmdbArt != null && (wide || !adaptive)) tmdbArt.rating else ratingBadge(ch))?.let { r -> RatingPill(r, Modifier.align(Alignment.TopEnd).padding(6.dp)) }
             Row(
-                Modifier.align(Alignment.TopEnd).padding(6.dp),
+                Modifier.align(Alignment.TopStart).padding(6.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically
             ) {
                 if (ch.url in vm.favs) Text("★", fontSize = 12.sp, color = Accent2)

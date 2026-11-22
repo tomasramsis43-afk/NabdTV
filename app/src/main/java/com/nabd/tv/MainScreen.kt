@@ -407,7 +407,7 @@ private fun BrowseTab(vm: AppViewModel, d: Device) {
             if (cont.isEmpty()) Text(tr(R.string.no_results), color = TextSecondary, fontSize = 15.sp)
             LazyVerticalGrid(
                 state = vm.gridState(vm.tab.name + "|" + GROUP_CONT),
-                columns = GridCells.Adaptive(if (d.tv) 180.dp else 140.dp),
+                columns = GridCells.Adaptive(if (d.tv) 150.dp else 118.dp),
                 horizontalArrangement = Arrangement.spacedBy(d.gap), verticalArrangement = Arrangement.spacedBy(d.gap + 6.dp),
                 contentPadding = PaddingValues(start = 2.dp, end = 2.dp, top = 4.dp, bottom = 24.dp), modifier = modifier
             ) {

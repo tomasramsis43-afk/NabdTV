@@ -47,7 +47,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 
-@OptIn(ExperimentalTvMaterial3Api::class)
+@OptIn(ExperimentalTvMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun DetailScreen(vm: AppViewModel) {
     val c = vm.detail ?: return
@@ -137,14 +137,14 @@ fun DetailScreen(vm: AppViewModel) {
             Spacer(Modifier.height(14.dp))
                 val focusMgr = androidx.compose.ui.platform.LocalFocusManager.current
             val scope = rememberCoroutineScope()
-            Row(
-                Modifier.fillMaxWidth().onPreviewKeyEvent { e ->
+            FlowRow(
+                Modifier.fillMaxWidth().padding(horizontal = maxOf(edge.start, edge.end)).onPreviewKeyEvent { e ->
                     // Up from the buttons: back to the artwork (nothing focused), so the next Down reveals the buttons again.
                     if (e.key == androidx.compose.ui.input.key.Key.DirectionUp && e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) {
                         focusMgr.clearFocus(); scope.launch { scroll.animateScrollTo(0) }; true
                     } else false
                 },
-                horizontalArrangement = Arrangement.spacedBy(9.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(9.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                     if (!isSeries) {
                         val h = vm.store.historyOf(c.url)
