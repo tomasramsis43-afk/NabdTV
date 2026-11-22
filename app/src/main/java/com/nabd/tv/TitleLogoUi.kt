@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,7 +43,9 @@ fun TitleLogo(
     var failed by remember(f) { mutableStateOf(false) }
     Crossfade(targetState = f != null && !failed, animationSpec = tween(250), label = "titleLogo") { show ->
         if (show && f != null) {
-            Box(modifier.fillMaxWidth().height(height)) {
+            // Wide wordmarks (pixel fonts, long names) must not cover the artwork: cap the width as well as the height.
+            val maxW = if (LocalDevice.current.tv) 380.dp else 280.dp
+            Box(modifier.widthIn(max = maxW).fillMaxWidth().height(height)) {
                 AsyncImage(
                     model = f, contentDescription = title, contentScale = ContentScale.Fit, alignment = alignment,
                     onError = { failed = true }, modifier = Modifier.fillMaxSize()
