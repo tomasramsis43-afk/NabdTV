@@ -111,7 +111,7 @@ fun DetailScreen(vm: AppViewModel) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.Bottom) {
                         TitleLogo(
                             c.name, kindOf(c), info?.year?.take(4)?.toIntOrNull(),
-                            height = if (narrow) 64.dp else if (d.tv) 104.dp else 88.dp
+                            height = if (narrow) 44.dp else if (d.tv) 72.dp else 60.dp
                         ) {
                             Text(
                                 c.name, style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.65f), Offset(0f, 3f), 14f)), fontSize = if (narrow) 18.sp else if (d.tv) 26.sp else 22.sp,
