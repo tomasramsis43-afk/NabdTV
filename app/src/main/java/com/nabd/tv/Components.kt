@@ -39,6 +39,8 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 fun hm(t: Long): String =
     java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(t))
@@ -272,7 +274,7 @@ fun PosterCard(
     val wide = adaptive && !d.portrait && kindOf(ch) != Kind.Live
     if (adaptive) LaunchedEffect(ch.url, tmdbArt?.image) { tmdbArt?.let { ArtStore.put(ch, backdrop = it.image) } }
 
-    Column(modifier.fillMaxWidth()) {
+    Column(modifier.fillMaxWidth().semantics { contentDescription = ch.name }) {   // screen readers still announce a hidden title
         Box(
             Modifier
                 .fillMaxWidth()
@@ -336,7 +338,8 @@ fun PosterCard(
             }
             if (focused) Box(Modifier.matchParentSize().border(2.dp, Accent, shape))
         }
-        Text(
+        // Option "hide names under posters": movies and series only; live channels always keep their name.
+        if (!(vm.hidePosterTitles && kindOf(ch) != Kind.Live)) Text(
             ch.name,
             maxLines = 2, overflow = TextOverflow.Ellipsis,
             fontSize = if (d.tv) 13.sp else 12.sp, lineHeight = if (d.tv) 16.sp else 15.sp,

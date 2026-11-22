@@ -123,6 +123,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The start-up splash is shown once per process; it ends when [startupReady] holds (or after its time cap). */
     var splashDone by mutableStateOf(false)
 
+    /** Observable copy of the "hide names under posters" option, so every poster updates the moment it is switched. */
+    var hidePosterTitles by mutableStateOf(store.hidePosterTitles); private set
+    fun applyHidePosterTitles(v: Boolean) { hidePosterTitles = v; store.hidePosterTitles = v }
+
     /** The first screen has something real to show: cached lists loaded, or an error / the setup screen is needed. */
     fun startupReady(): Boolean = screen == Screen.Setup || error != null || (!loading && all.isNotEmpty() && !vodLoading)
 

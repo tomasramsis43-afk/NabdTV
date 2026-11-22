@@ -76,6 +76,11 @@ class Store(private val ctx: Context) {
         get() = g.getLong("lastSyncAt", 0L)
         set(v) = g.edit().putLong("lastSyncAt", v).apply()
 
+    /** Option: hide the name written under movie/series posters (live channels keep their names). */
+    var hidePosterTitles: Boolean
+        get() = g.getBoolean("hidePosterTitles", false)
+        set(v) = g.edit().putBoolean("hidePosterTitles", v).apply()
+
     var autoRefresh: Boolean
         get() = g.getBoolean("autoRefresh", true)
         set(v) = g.edit().putBoolean("autoRefresh", v).apply()

@@ -695,4 +695,6 @@
     <string name="group_continue">▶ Continue watching</string>
 
     <string name="splash_loading">Loading your content</string>
+
+    <string name="x_hide_titles">Hide movie and series names under posters</string>
 </resources>
