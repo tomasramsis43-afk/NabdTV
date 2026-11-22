@@ -240,14 +240,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Favourites: only what the user actually starred (any kind), already filtered by parental rules.
         val favItems = all.filter { it.url in favs && parental.visible(it) }.take(40)
         if (favItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_fav), favItems)
-        // Recommended: unwatched movies/series from the categories of the last things the user watched, best rated first.
-        val watched = history.filter { it.kind != Kind.Live }
-        val seen = watched.map { it.url }.toHashSet()
-        val liked = watched.take(8).map { it.group }.filter { it.isNotBlank() }.toHashSet()
-        if (liked.isNotEmpty()) {
-            val rec = VmLogic.topRated((movieList + seriesList).filter { it.group in liked && it.url !in seen }, 20)
-            if (rec.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_recommended), rec)
-        }
         // Trending / Top rated: ONLY from TMDB's own charts (needs the TMDB key in Settings), matched to the library
         // by exact title + year. No key (or no network yet) = these four rows are simply not shown.
         tmdbCharts?.let { ch ->
