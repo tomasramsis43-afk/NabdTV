@@ -695,4 +695,6 @@
     <string name="group_continue">▶ متابعة المشاهدة</string>
 
     <string name="splash_loading">جارٍ تحميل بياناتك</string>
+
+    <string name="x_hide_titles">إخفاء أسماء الأفلام والمسلسلات تحت البوستر</string>
 </resources>
