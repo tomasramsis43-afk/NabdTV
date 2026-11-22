@@ -125,7 +125,7 @@ fun SplashScreen(vm: AppViewModel) {
                 )
             }
             Spacer(Modifier.height(10.dp))
-            Heartbeat(if (reduce) 1f else 0f, pulseA, reduce, Modifier.size(width = 130.dp, height = 36.dp))
+            Heartbeat(pulseA, reduce, Modifier.size(width = 130.dp, height = 36.dp))
             Text(
                 tr(R.string.app_name), color = Color.White, fontSize = if (d.tv) 30.sp else 24.sp, fontWeight = FontWeight.ExtraBold,
                 modifier = Modifier.graphicsLayer { alpha = enter.value }
@@ -175,7 +175,7 @@ private fun StageRow(label: String, done: Boolean, active: Boolean) {
 
 /** ECG-style line that draws itself over and over (fully drawn and still when [still]). */
 @Composable
-private fun Heartbeat(@Suppress("UNUSED_PARAMETER") unused: Float, progress: Float, still: Boolean, modifier: Modifier) {
+private fun Heartbeat(progress: Float, still: Boolean, modifier: Modifier) {
     Canvas(modifier) {
         val w = size.width; val h = size.height
         val p = Path().apply {
