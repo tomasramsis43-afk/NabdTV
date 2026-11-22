@@ -240,7 +240,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Favourites: only what the user actually starred (any kind), already filtered by parental rules.
         val favItems = all.filter { it.url in favs && parental.visible(it) }.take(40)
         if (favItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_fav), favItems)
-        // Trending / Top rated rows are ALWAYS shown. Source: TMDB's own charts when the TMDB key is set and enough of
+        // Daily trending rows (movies + series) are ALWAYS shown. Source: TMDB's own charts when the TMDB key is set and enough of
         // those titles exist in the library (wide TMDB artwork + TMDB rating); otherwise the provider's own data.
         val ch = tmdbCharts
         val ok = { c: Channel -> parental.visible(c) }
@@ -255,8 +255,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         row(tx(R.string.x_shelf_trending_movies), movieTitleIdx, ch?.trendMovies) { VmLogic.trending(movieList.filter(ok), 10) }
         row(tx(R.string.x_shelf_trending_series), seriesTitleIdx, ch?.trendSeries) { VmLogic.trending(seriesList.filter(ok), 10) }
-        row(tx(R.string.shelf_top_movies), movieTitleIdx, ch?.topMovies) { VmLogic.topRated(movieList.filter(ok), 10) }
-        row(tx(R.string.shelf_top_series), seriesTitleIdx, ch?.topSeries) { VmLogic.topRated(seriesList.filter(ok), 10) }
         val newMovies = movieList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { movieList.take(30) }
         if (newMovies.isNotEmpty()) out += Shelf(tx(R.string.shelf_new_movies), newMovies)
         val newSeries = seriesList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { seriesList.take(30) }
