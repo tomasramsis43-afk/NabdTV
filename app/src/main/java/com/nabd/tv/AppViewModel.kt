@@ -765,7 +765,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun playEpisode(s: Channel, e: Episode) {
         // Remember the episode (image, number, title) and make it the series' current episode for Continue watching.
-        store.saveEpMeta(e.url, EpMeta(s.url, s.name, e.season, e.num, e.title, e.image))
+        store.saveEpMeta(e.url, EpMeta(s.url, s.name, e.season, e.num, e.title, VmLogic.episodeImage(e, episodes, s.logo)))
         store.setContCursor(s.url, e.url)
         if (detail?.url == s.url && episodes.isNotEmpty()) epListCache[s.url] = episodes
         bump()
@@ -799,7 +799,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (!inProgress && !picked) continue
             if (!parental.visible(Channel(-1, m.seriesName, m.seriesUrl, h.logo, h.group))) continue
             out += ContinueItem(
-                "s:" + m.seriesUrl, Kind.Series, m.seriesName, m.title, tx(R.string.ep_label, m.season, m.num), m.image,
+                "s:" + m.seriesUrl, Kind.Series, m.seriesName, m.title, tx(R.string.ep_label, m.season, m.num), m.image?.takeIf { img -> img != h.logo },
                 if (inProgress) th!!.progress else 0f,
                 Channel(-1, "${m.seriesName} · ${tx(R.string.ep_label, m.season, m.num)}", epUrl, h.logo, h.group),
                 m.seriesUrl, epUrl, m.season, m.num, h.group, maxOf(th?.last ?: 0L, cur?.second ?: 0L, h.last), h.logo
@@ -849,8 +849,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val t = if (delta > 0) VmLogic.nextEpisode(eps, it.episodeUrl) else VmLogic.previousEpisode(eps, it.episodeUrl)
             if (t == null) { say(tx(if (delta > 0) R.string.x_cont_no_next else R.string.x_cont_no_prev)); return@launch }
             val still = try { repo.episodeStills(it.title, t.season)[t.num] } catch (_: Exception) { null }
-            store.saveEpMeta(t.url, EpMeta(sUrl, it.title, t.season, t.num, t.title, still ?: t.image))
+            store.saveEpMeta(t.url, EpMeta(sUrl, it.title, t.season, t.num, t.title, still ?: VmLogic.episodeImage(t, eps, it.poster)))
             store.setContCursor(sUrl, t.url)
+            bump()
+        }
+    }
+
+    /**
+     * An episode was just finished: make Continue watching offer the NEXT episode ("up next") with its own image.
+     * Skipped when the user already moved on (autoplay / picked another episode) or it was the last episode.
+     */
+    private fun advanceAfterFinish(c: Channel) {
+        val m = store.epMeta(c.url) ?: return
+        val cur = store.contCursor(m.seriesUrl)
+        if (cur != null && cur.first != c.url) return
+        val sid = m.seriesUrl.removePrefix("series:").toIntOrNull() ?: return
+        viewModelScope.launch {
+            val eps = epListCache[m.seriesUrl]
+                ?: (if (detail?.url == m.seriesUrl && episodes.isNotEmpty()) episodes else null)
+                ?: try { repo.loadEpisodes(sid) } catch (_: Exception) { return@launch }
+            epListCache[m.seriesUrl] = eps
+            val t = VmLogic.nextEpisode(eps, c.url) ?: return@launch
+            val still = try { repo.episodeStills(m.seriesName, t.season)[t.num] } catch (_: Exception) { null }
+            store.saveEpMeta(t.url, EpMeta(m.seriesUrl, m.seriesName, t.season, t.num, t.title, still ?: VmLogic.episodeImage(t, eps, c.logo)))
+            store.setContCursor(m.seriesUrl, t.url)
             bump()
         }
     }
@@ -988,7 +1010,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (kindOf(c) == Kind.Live || playMode == PlayMode.Catchup) return
         val wasFinished = store.historyOf(c.url)?.finished == true
         store.recordWatch(c, kindOf(c), pos, dur, false)
-        if (!wasFinished && store.historyOf(c.url)?.finished == true) traktMarkWatched(c)
+        if (!wasFinished && store.historyOf(c.url)?.finished == true) { traktMarkWatched(c); advanceAfterFinish(c) }
         if (parental.visible(c)) store.historyOf(c.url)?.let { WatchNext.sync(ctx, it) }   // Android TV "Watch Next" row
         NabdWidget.refresh(ctx)   // phone home-screen widget
     }
