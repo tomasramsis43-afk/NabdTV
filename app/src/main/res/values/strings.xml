@@ -682,4 +682,9 @@
     <string name="detail_cast_title">الممثلون</string>
     <string name="detail_no_viewer">لا يوجد تطبيق لفتح الفيديو على هذا الجهاز</string>
     <string name="detail_cast_works">أعمال أخرى لأبطال العمل</string>
+    <string name="prov_check">فحص بيانات المزوّد</string>
+    <string name="prov_check_title">بيانات المزوّد</string>
+    <string name="prov_none">%1$s: لا يوجد عمل للفحص</string>
+    <string name="prov_fields">الصورة %1$s · الخلفية %2$s · التريلر %3$s · الممثلون %4$s · القصة %5$s</string>
+    <string name="prov_eps">الحلقات %1$d · منها بصور %2$d</string>
 </resources>

@@ -506,6 +506,7 @@ private fun AccountPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
         Row2(S(R.string.a_b20500e6)) { vm.openSetup() }
     }
     Group(S(R.string.a_37b75114)) {
+        Row2(S(R.string.prov_check)) { vm.providerCheck() }
         Row2(S(R.string.a_e9f10589), if (s.tmdbKey.isBlank()) "—" else "••••") {
             vm.prompt = PromptRequest(S(R.string.a_32f8a730), s.tmdbKey, secret = true) { v -> upd { s.tmdbKey = v } }
         }

@@ -678,6 +678,28 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (detail?.url == c.url) castWorks = found
     }
 
+    /** Shows which artwork/metadata fields the provider really sends for one movie and one series (no credentials are shown). */
+    fun providerCheck() {
+        viewModelScope.launch {
+            fun mark(b: Boolean) = if (b) "✓" else "✗"
+            val lines = ArrayList<String>()
+            suspend fun check(c: Channel?, k: Kind, label: String) {
+                if (c == null) { lines += tx(R.string.prov_none, label); return }
+                val i = runCatching { repo.vodInfo(c, k) }.getOrNull()
+                lines += "$label: ${c.name.take(28)}"
+                lines += tx(R.string.prov_fields, mark(!i?.poster.isNullOrBlank()), mark(!i?.backdrop.isNullOrBlank()), mark(!i?.trailer.isNullOrBlank()),
+                    mark(!i?.cast.isNullOrBlank()), mark(!i?.plot.isNullOrBlank()))
+                if (k == Kind.Series) {
+                    val eps = runCatching { repo.loadEpisodes(c.url.removePrefix("series:").toInt()) }.getOrDefault(emptyList())
+                    lines += tx(R.string.prov_eps, eps.size, eps.count { !it.image.isNullOrBlank() })
+                }
+            }
+            check(movieList.firstOrNull(), Kind.Movie, tx(R.string.detail_type_movie))
+            check(seriesList.firstOrNull { it.url.startsWith("series:") }, Kind.Series, tx(R.string.detail_type_series))
+            menu = MenuRequest(tx(R.string.prov_check_title), lines.map { it to {} })
+        }
+    }
+
     fun closeDetail() { restoreFocus = true; screen = Screen.Main }
     fun selectSeason(n: Int) { season = n; detail?.let { loadStills(it, n) } }
 
