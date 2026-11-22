@@ -716,4 +716,7 @@
     <string name="x_ne_latest">الأحدث: %1$s</string>
 
     <string name="x_vod_failover">جارٍ تجربة مصدر آخر لنفس العنوان…</string>
+    <string name="menu_remove_continue">حذف من متابعة المشاهدة</string>
+    <string name="menu_remove_history">حذف من سجل المشاهدة</string>
+    <string name="menu_removed">تم الحذف</string>
 </resources>

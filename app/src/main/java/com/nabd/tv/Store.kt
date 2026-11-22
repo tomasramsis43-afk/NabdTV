@@ -446,6 +446,20 @@ class Store(private val ctx: Context) {
 
     fun clearHistory() { hist().clear(); saveHist(); epMetas().clear(); saveEpMetas(); cursors().clear(); saveCursors() }
 
+    /** Forgets the watch progress of these items (episode / movie URLs). */
+    fun removeHistory(urls: Collection<String>) {
+        urls.forEach { hist().remove(it); epMetas().remove(it) }
+        saveHist(); saveEpMetas()
+    }
+
+    /** Removes a whole series from Continue watching: all its episodes' progress and its "current episode" marker. */
+    fun removeSeriesProgress(seriesUrl: String, episodeUrls: Collection<String>) {
+        val metaKeys = epMetas().filterValues { it.seriesUrl == seriesUrl }.keys
+        (episodeUrls + metaKeys).forEach { hist().remove(it); epMetas().remove(it) }
+        cursors().remove(seriesUrl)
+        saveHist(); saveEpMetas(); saveCursors()
+    }
+
     /* ---------- episode metadata + current episode per series (Continue watching) ---------- */
     private var epMetaCache: LinkedHashMap<String, EpMeta>? = null
 

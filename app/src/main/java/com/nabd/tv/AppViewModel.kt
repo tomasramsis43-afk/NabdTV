@@ -972,12 +972,37 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun continueMenu(it: ContinueItem) {
         val items = ArrayList<Pair<String, () -> Unit>>()
+        val title = Channel(-1, it.title, it.seriesUrl ?: it.episodeUrl, it.poster, it.group)
+        items += tx(R.string.play) to { playContinue(it) }
         if (it.seriesUrl != null) {
             items += tx(R.string.x_cont_next) to { continueStep(it, 1) }
             items += tx(R.string.x_cont_prev) to { continueStep(it, -1) }
         }
-        items += tx(R.string.details) to { openDetail(Channel(-1, it.title, it.seriesUrl ?: it.episodeUrl, it.poster, it.group)) }
+        items += tx(R.string.details) to { openDetail(title) }
+        items += (if (title.url in favs) tx(R.string.menu_fav_remove) else tx(R.string.menu_fav_add)) to { toggleFav(title) }
+        items += tx(R.string.menu_remove_continue) to { removeFromContinue(it) }
         menu = MenuRequest(if (it.badge.isNotEmpty()) "${it.title} · ${it.badge}" else it.title, items)
+    }
+
+    /** Removes a movie / series from Continue watching (its watch progress is forgotten; favourites are untouched). */
+    fun removeFromContinue(it: ContinueItem) {
+        if (it.seriesUrl == null) {
+            store.removeHistory(listOf(it.episodeUrl))
+        } else {
+            val urls = history.filter { h -> (store.epMeta(h.url) ?: legacyMeta(h))?.seriesUrl == it.seriesUrl }.map { h -> h.url }
+            store.removeSeriesProgress(it.seriesUrl, urls)
+        }
+        WatchNext.remove(ctx, it.episodeUrl)
+        history = store.history()
+        bump(); say(tx(R.string.menu_removed))
+    }
+
+    /** Removes one movie / episode from the watch history (also takes it out of Continue watching). */
+    fun removeFromHistory(c: Channel) {
+        store.removeHistory(listOf(c.url))
+        WatchNext.remove(ctx, c.url)
+        history = store.history()
+        bump(); say(tx(R.string.menu_removed))
     }
 
     /** Episode that follows the one currently playing, if any (for auto-next). */
@@ -1277,8 +1302,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun channelMenu(c: Channel) {
         val k = kindOf(c)
         val items = ArrayList<Pair<String, () -> Unit>>()
+        if (k != Kind.Live) items += tx(R.string.details) to { openDetail(c) }
         items += (if (c.url in favs) tx(R.string.menu_fav_remove) else tx(R.string.menu_fav_add)) to { toggleFav(c) }
         if (k != Kind.Live) items += (if (c.url in laterUrls) tx(R.string.x_later_remove) else tx(R.string.x_later_add)) to { toggleLater(c) }
+        if (k != Kind.Live && historyByUrl[c.url] != null) items += tx(R.string.menu_remove_history) to { removeFromHistory(c) }
         if (k == Kind.Live) {
             items += tx(R.string.menu_multi, multi.size) to { toggleMulti(c) }
             items += tx(R.string.menu_add_group) to {

@@ -716,4 +716,7 @@
     <string name="x_ne_latest">Latest: %1$s</string>
 
     <string name="x_vod_failover">Trying another source for this title…</string>
+    <string name="menu_remove_continue">Remove from continue watching</string>
+    <string name="menu_remove_history">Remove from watch history</string>
+    <string name="menu_removed">Removed</string>
 </resources>
