@@ -212,7 +212,7 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
         LazyColumn(
             state = homeState,
             modifier = Modifier.weight(1f).fadeTopEdge(if (d.tv) 72.dp else 40.dp) { topFade.value },   // taller soft edge on TV
-            verticalArrangement = Arrangement.spacedBy(if (d.tv) 14.dp else 12.dp),
+            verticalArrangement = Arrangement.spacedBy(if (d.tv) 34.dp else 24.dp),   // one gap between every row on Home (continue / trending / new / favourites ...)
             contentPadding = PaddingValues(bottom = 28.dp)
         ) {
             if (contItems.isNotEmpty()) item(key = "continue-row") { ContinueRow(vm, d, contItems, edge.start, edge.end) }
