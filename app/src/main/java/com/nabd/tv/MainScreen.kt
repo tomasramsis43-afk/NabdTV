@@ -206,12 +206,12 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
         val homeState = vm.listState("home")
         val topFade = remember(homeState) {
             derivedStateOf {
-                if (homeState.firstVisibleItemIndex > 0) 1f else (homeState.firstVisibleItemScrollOffset / 48f).coerceIn(0f, 1f)
+                if (homeState.firstVisibleItemIndex > 0) 1f else (homeState.firstVisibleItemScrollOffset / (if (d.tv) 72f else 48f)).coerceIn(0f, 1f)
             }
         }
         LazyColumn(
             state = homeState,
-            modifier = Modifier.weight(1f).fadeTopEdge(40.dp) { topFade.value },
+            modifier = Modifier.weight(1f).fadeTopEdge(if (d.tv) 72.dp else 40.dp) { topFade.value },   // taller soft edge on TV
             verticalArrangement = Arrangement.spacedBy(if (d.tv) 14.dp else 12.dp),
             contentPadding = PaddingValues(bottom = 28.dp)
         ) {
