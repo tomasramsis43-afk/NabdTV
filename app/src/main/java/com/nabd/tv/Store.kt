@@ -108,6 +108,11 @@ class Store(private val ctx: Context) {
         get() = p.getString("pl_aspect", AspectMode.Fit.name) ?: AspectMode.Fit.name
         set(v) = p.edit().putString("pl_aspect", v).apply()
 
+    /** Show verified official title logos (Wikidata/Commons, no key). Off = plain titles only, no logo downloads. */
+    var titleLogos: Boolean
+        get() = p.getBoolean("ui_titleLogos", true)
+        set(v) = p.edit().putBoolean("ui_titleLogos", v).apply()
+
     var autoNext: Boolean
         get() = p.getBoolean("pl_autoNext", true)
         set(v) = p.edit().putBoolean("pl_autoNext", v).apply()

@@ -1,0 +1,22 @@
+name: Logo source probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/title-logos]
+    paths: [tools/logo_probe.py, .github/workflows/logo-probe.yml]
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install pillow >/dev/null 2>&1 || true
+      - name: Run probe and commit the result
+        run: |
+          python3 tools/logo_probe.py | tee tools/logo_probe_result.txt
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add tools/logo_probe_result.txt
+          git commit -m "tools: logo probe result" || true
+          git push || true

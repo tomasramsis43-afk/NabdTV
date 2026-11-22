@@ -673,4 +673,6 @@
     <string name="vm_prob_fails">failures</string>
     <string name="cap_channels">Channels</string>
     <string name="ep_number">Episode %1$02d</string>
+
+    <string name="x_logos_toggle">Official title logos (Wikimedia)</string>
 </resources>

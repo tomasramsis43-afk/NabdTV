@@ -268,7 +268,9 @@ private fun HomeHero(
                 if (c.url in vm.favs) Text(tr(R.string.detail_fav_on), fontSize = 12.sp, color = Accent2)
             }
             Spacer(Modifier.height(if (d.tv) 10.dp else 6.dp))
-            Text(c.name, style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.65f), Offset(0f, 3f), 14f)), fontSize = if (d.tv) 26.sp else if (d.widthDp >= 600) 22.sp else 18.sp, lineHeight = if (d.tv) 32.sp else if (d.widthDp >= 600) 28.sp else 23.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            TitleLogo(c.name, kindOf(c), null, height = if (d.tv) 84.dp else if (d.widthDp >= 600) 72.dp else 56.dp) {
+                Text(c.name, style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.65f), Offset(0f, 3f), 14f)), fontSize = if (d.tv) 26.sp else if (d.widthDp >= 600) 22.sp else 18.sp, lineHeight = if (d.tv) 32.sp else if (d.widthDp >= 600) 28.sp else 23.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
                 (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let { MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D)) }
