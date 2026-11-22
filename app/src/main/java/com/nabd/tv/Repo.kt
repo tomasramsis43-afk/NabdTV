@@ -384,7 +384,7 @@ class Repo(private val ctx: Context, val store: Store) {
     }
     private val INFO_TTL = 7L * 24 * 3600 * 1000
     private val infoDir by lazy { File(ctx.cacheDir, "vodinfo").also { it.mkdirs() } }
-    private fun infoKey(c: Channel, kind: Kind) = "${kind.name}|${c.url}|" + store.tmdbKey.isNotBlank()
+    private fun infoKey(c: Channel, kind: Kind) = "v2|${kind.name}|${c.url}|" + store.tmdbKey.isNotBlank()
     private fun infoFile(k: String) =
         File(infoDir, java.security.MessageDigest.getInstance("SHA-1").digest(k.toByteArray()).joinToString("") { "%02x".format(it) }.take(24) + ".json")
 
