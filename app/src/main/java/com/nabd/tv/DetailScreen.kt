@@ -124,7 +124,7 @@ fun DetailScreen(vm: AppViewModel) {
                             )
                         }
                 }
-                Spacer(Modifier.height(if (d.tv) 64.dp else 48.dp))   // lifts the logo / title a little higher on the artwork
+                Spacer(Modifier.height(if (d.tv) 150.dp else 110.dp))   // lifts the logo / title a little higher on the artwork
             }
             Spacer(Modifier.height(14.dp))
                 val focusMgr = androidx.compose.ui.platform.LocalFocusManager.current
