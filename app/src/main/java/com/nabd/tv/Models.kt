@@ -45,6 +45,8 @@ data class VodInfo(
     val duration: String = "",
     /** YouTube video id of the trailer (from the provider or TMDB), blank when unknown. */
     val trailer: String = "",
+    /** Poster the provider sends with the details (usually sharper than the list thumbnail). */
+    val poster: String? = null,
     /** Cast with photos when TMDB is available; otherwise built from the [cast] text without photos. */
     val people: List<Person> = emptyList()
 )

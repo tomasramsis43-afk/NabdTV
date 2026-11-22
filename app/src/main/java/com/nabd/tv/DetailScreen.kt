@@ -104,9 +104,7 @@ fun DetailScreen(vm: AppViewModel) {
                             Modifier.width(if (d.tv) 132.dp else 116.dp).aspectRatio(2f / 3f)
                                 .softShadow(shape, 16.dp, palette.primary).clip(shape).background(SurfHigh)
                         ) {
-                            val poster by produceState(c.logo, c.url, info?.year) {
-                                Artwork.poster(c.name, kindOf(c), info?.year?.take(4)?.toIntOrNull())?.let { value = it.url }
-                            }
+                            val poster = info?.poster?.takeIf { it.isNotBlank() } ?: c.logo
                             AsyncImage(model = poster, contentDescription = c.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                         }
                     }

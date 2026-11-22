@@ -366,7 +366,8 @@ class Repo(private val ctx: Context, val store: Store) {
         year = (str(i, "releasedate").ifBlank { str(i, "releaseDate") }).take(4),
         backdrop = firstOf(i, "backdrop_path"),
         duration = str(i, "duration"),
-        trailer = youtubeId(str(i, "youtube_trailer").ifBlank { str(i, "trailer") })
+        trailer = youtubeId(str(i, "youtube_trailer").ifBlank { str(i, "trailer") }),
+        poster = str(i, "cover_big").ifBlank { str(i, "movie_image") }.ifBlank { str(i, "cover") }.ifBlank { null }
     )
 
     /** Providers send either a bare YouTube id or a full URL. */
