@@ -288,21 +288,17 @@ fun PosterCard(
                 .combinedClickable(onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) })
         ) {
             if (adaptive && kindOf(ch) != Kind.Live) {
-                AdaptiveArtImage(vm, ch, landscape = wide, modifier = Modifier.fillMaxSize())
+                AdaptiveArtImage(vm, ch, landscape = wide, modifier = Modifier.fillMaxSize(), cropFallback = true)
             } else AsyncImage(
                 model = tmdbArt?.image ?: ch.logo, contentDescription = null,
                 contentScale = if (kindOf(ch) == Kind.Live) ContentScale.Fit else ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().then(if (kindOf(ch) == Kind.Live) Modifier.padding(6.dp) else Modifier)
             )
-            // Bottom scrim keeps the progress bar and badges readable on bright posters.
-            Box(
-                Modifier.matchParentSize().background(
-                    Brush.verticalGradient(0.6f to Color.Transparent, 1f to OverlayScrim)
-                )
+            // Clean artwork: no title wordmark on the card (the name is under it) and no dark wash over the picture.
+            // Only a thin strip behind the watch-progress bar so it stays visible on bright images.
+            if (progress > 0.02f) Box(
+                Modifier.matchParentSize().background(Brush.verticalGradient(0.88f to Color.Transparent, 1f to OverlayScrim))
             )
-            if (!wide && tmdbArt == null && vm.store.titleLogos && kindOf(ch) != Kind.Live) {
-                PosterLogo(ch.name, kindOf(ch), if (d.tv) 40.dp else 34.dp, Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.8f).padding(bottom = 10.dp))
-            }
             (if (tmdbArt != null && (wide || !adaptive)) tmdbArt.rating else ratingBadge(ch))?.let { r -> RatingPill(r, Modifier.align(Alignment.TopStart).padding(6.dp)) }
             Row(
                 Modifier.align(Alignment.TopEnd).padding(6.dp),

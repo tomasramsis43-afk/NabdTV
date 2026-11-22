@@ -73,7 +73,9 @@ fun AdaptiveArtImage(
     ch: Channel,
     landscape: Boolean,
     modifier: Modifier = Modifier,
-    alpha: Float = 1f
+    alpha: Float = 1f,
+    /** Cards: when only the other-orientation picture exists, fill the frame with it (sharp) instead of the blurred-fit look. */
+    cropFallback: Boolean = false
 ) {
     val art = ArtStore.get(ch)
     LaunchedEffect(ch.url, landscape) {
@@ -85,9 +87,9 @@ fun AdaptiveArtImage(
     Crossfade(targetState = url to natural, modifier = modifier, animationSpec = tween(350), label = "adaptiveArt") { (u, nat) ->
         when {
             u == null -> Box(Modifier.fillMaxSize().background(SurfHigh))
-            nat || !landscape -> AsyncImage(
+            nat || !landscape || cropFallback -> AsyncImage(
                 model = u, contentDescription = null, contentScale = ContentScale.Crop,
-                alignment = BiasAlignment(0f, if (landscape) -0.35f else -0.2f),
+                alignment = BiasAlignment(0f, if (landscape) (if (nat) -0.35f else -0.55f) else -0.2f),
                 alpha = alpha, modifier = Modifier.fillMaxSize()
             )
             else -> Box(Modifier.fillMaxSize().background(SurfHigh)) {
