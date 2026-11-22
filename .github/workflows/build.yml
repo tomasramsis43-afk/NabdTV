@@ -70,6 +70,13 @@ jobs:
         run: |
           cp app/build/outputs/apk/debug/app-debug.apk NabdTV-debug.apk
           gh release create "preview-logos-${{ github.run_number }}" NabdTV-debug.apk --prerelease --target "${{ github.sha }}" --title "NabdTV preview: official title logos #${{ github.run_number }}" --notes "Preview from branch feature/title-logos. Not the stable release."
+      - name: Publish preview APK as pre-release (continue-watching branch only)
+        if: github.ref == 'refs/heads/continue-watching'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk NabdTV-debug.apk
+          gh release create "preview-continue-${{ github.run_number }}" NabdTV-debug.apk --prerelease --target "${{ github.sha }}" --title "NabdTV preview: Continue watching #${{ github.run_number }}" --notes "Preview from branch continue-watching. Not the stable release."
       - name: Verify release build (R8 / shrink) - does not block the debug release
         continue-on-error: true
         env:
