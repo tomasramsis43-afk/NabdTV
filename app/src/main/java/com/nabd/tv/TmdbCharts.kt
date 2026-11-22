@@ -49,7 +49,7 @@ object TmdbCharts {
                     val date = r.optString(if (movie) "release_date" else "first_air_date")
                     val e = byId.getOrPut(id) { Acc(LinkedHashSet(), date.take(4).toIntOrNull()) }
                     e.names.addAll(names)
-                    if (e.backdrop == null) r.optString("backdrop_path").takeIf { it.isNotBlank() && it != "null" }?.let { e.backdrop = "https://image.tmdb.org/t/p/w780$it" }
+                    if (e.backdrop == null) r.optString("backdrop_path").takeIf { it.isNotBlank() && it != "null" }?.let { e.backdrop = "https://image.tmdb.org/t/p/w1280$it" }
                     if (e.rating == null) r.optDouble("vote_average", 0.0).takeIf { it > 0.0 }?.let { e.rating = it }
                 }
             }
@@ -98,4 +98,33 @@ object TmdbCharts {
         }
         return out to art
     }
+
+    private fun entriesJson(l: List<Entry>) = org.json.JSONArray().also { a ->
+        l.forEach { e ->
+            a.put(JSONObject().put("n", org.json.JSONArray(e.names.toList())).put("y", e.year ?: 0).put("b", e.backdrop ?: "").put("r", e.rating ?: 0.0))
+        }
+    }
+
+    private fun entriesFrom(a: org.json.JSONArray?): List<Entry> = if (a == null) emptyList() else (0 until a.length()).map { i ->
+        val o = a.getJSONObject(i)
+        val n = o.getJSONArray("n")
+        Entry((0 until n.length()).map { n.getString(it) }.toSet(), o.optInt("y").takeIf { it > 0 }, o.optString("b").ifBlank { null }, o.optDouble("r", 0.0).takeIf { it > 0.0 })
+    }
+
+    /** Keeps the last charts on disk so the trending rows (and their artwork) are there instantly on the next launch. */
+    fun save(ctx: android.content.Context, c: Charts, at: Long) {
+        runCatching {
+            val j = JSONObject().put("t", at)
+                .put("tm", entriesJson(c.trendMovies)).put("ts", entriesJson(c.trendSeries))
+                .put("pm", entriesJson(c.topMovies)).put("ps", entriesJson(c.topSeries))
+            ctx.getSharedPreferences("tmdb_charts", android.content.Context.MODE_PRIVATE).edit().putString("d", j.toString()).apply()
+        }
+    }
+
+    /** Last saved charts + when they were fetched, or null. */
+    fun loadCached(ctx: android.content.Context): Pair<Charts, Long>? = runCatching {
+        val s = ctx.getSharedPreferences("tmdb_charts", android.content.Context.MODE_PRIVATE).getString("d", null) ?: return null
+        val j = JSONObject(s)
+        Charts(entriesFrom(j.optJSONArray("tm")), entriesFrom(j.optJSONArray("ts")), entriesFrom(j.optJSONArray("pm")), entriesFrom(j.optJSONArray("ps"))) to j.optLong("t")
+    }.getOrNull()
 }

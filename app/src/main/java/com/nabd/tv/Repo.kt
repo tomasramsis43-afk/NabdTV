@@ -498,7 +498,7 @@ class Repo(private val ctx: Context, val store: Store) {
                     plot = str(o, "overview"),
                     rating = str(o, "vote_average").take(3),
                     year = (str(o, "release_date").ifBlank { str(o, "first_air_date") }).take(4),
-                    backdrop = if (back.isBlank()) null else "https://image.tmdb.org/t/p/w780$back"
+                    backdrop = if (back.isBlank()) null else "https://image.tmdb.org/t/p/w1280$back"
                 )
             }
         } catch (_: Exception) { null }
@@ -548,7 +548,7 @@ class Repo(private val ctx: Context, val store: Store) {
             for (i in 0 until eps.length()) {
                 val e = eps.getJSONObject(i)
                 val path = str(e, "still_path")
-                if (path.isNotBlank()) out[e.optInt("episode_number")] = "https://image.tmdb.org/t/p/w300$path"
+                if (path.isNotBlank()) out[e.optInt("episode_number")] = "https://image.tmdb.org/t/p/w780$path"
             }
             synchronized(stillCache) { stillCache[ck] = out }
             out

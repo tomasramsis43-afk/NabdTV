@@ -234,7 +234,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (!force && tmdbCharts != null && System.currentTimeMillis() - chartsAt < 6 * 3_600_000L) return
         viewModelScope.launch {
             val c = withContext(Dispatchers.IO) { runCatching { TmdbCharts.load(key) }.getOrNull() }
-            if (c != null) { tmdbCharts = c; chartsAt = System.currentTimeMillis() }
+            if (c != null) { tmdbCharts = c; chartsAt = System.currentTimeMillis(); TmdbCharts.save(ctx, c, chartsAt) }
             else if (force) tmdbCharts = null
         }
     }
@@ -316,6 +316,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         RefreshWorker.schedule(app)
         if (repo.playlistUrl.isNotBlank()) { load(false); refreshRecs() }
         checkUpdate(false)
+        if (store.tmdbKey.isNotBlank()) TmdbCharts.loadCached(ctx)?.let { (c, at) -> tmdbCharts = c; chartsAt = at }   // instant rows, refreshed below when older than 6 h
         refreshTmdbCharts()
         viewModelScope.launch { while (true) { kotlinx.coroutines.delay(20 * 60_000L); checkUpdate(false) } }
     }

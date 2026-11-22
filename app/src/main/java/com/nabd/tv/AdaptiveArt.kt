@@ -36,6 +36,36 @@ data class ArtPair(val poster: String?, val backdrop: String?) {
 object ArtStore {
     private val map = mutableStateMapOf<String, ArtPair>()          // snapshot state: cards update when a picture arrives
     private val tried = ConcurrentHashMap.newKeySet<String>()
+    private val order = ArrayDeque<String>()                         // oldest first, caps the store
+    private const val MAX = 1500
+    private var prefs: android.content.SharedPreferences? = null
+    private val ui = android.os.Handler(android.os.Looper.getMainLooper())
+    private val saver = Runnable { save() }
+
+    /** Restores the pictures found in earlier sessions, so the very first frame already shows the right image (no re-loading / swapping). */
+    fun init(ctx: android.content.Context) {
+        val p = ctx.applicationContext.getSharedPreferences("art_store", android.content.Context.MODE_PRIVATE)
+        prefs = p
+        runCatching {
+            val j = org.json.JSONObject(p.getString("m", "{}") ?: "{}")
+            for (k in j.keys()) {
+                val e = j.getJSONObject(k)
+                map[k] = ArtPair(e.optString("p").ifBlank { null }, e.optString("b").ifBlank { null })
+                order.addLast(k)
+            }
+        }
+    }
+
+    private fun scheduleSave() { ui.removeCallbacks(saver); ui.postDelayed(saver, 2500) }
+
+    private fun save() {
+        val p = prefs ?: return
+        runCatching {
+            val j = org.json.JSONObject()
+            for (k in order) map[k]?.let { j.put(k, org.json.JSONObject().put("p", it.poster ?: "").put("b", it.backdrop ?: "")) }
+            p.edit().putString("m", j.toString()).apply()
+        }
+    }
 
     /** Known pictures for [ch]; the provider's image is the poster until something better is known. */
     fun get(ch: Channel): ArtPair = map[ch.url] ?: ArtPair(ch.logo, null)
@@ -47,7 +77,14 @@ object ArtStore {
         if (p == null && b == null) return
         val old = map[ch.url] ?: ArtPair(ch.logo, null)
         val n = ArtPair(p ?: old.poster, b ?: old.backdrop)
-        if (n != map[ch.url]) map[ch.url] = n
+        if (n != map[ch.url]) {
+            if (ch.url !in map) {
+                order.addLast(ch.url)
+                while (order.size > MAX) order.removeFirst().let { map.remove(it) }
+            }
+            map[ch.url] = n
+            scheduleSave()
+        }
     }
 
     /** Looks the missing picture up once (cache first, then TMDB), without ever touching the provider's network. */
@@ -80,7 +117,9 @@ fun AdaptiveArtImage(
     val art = ArtStore.get(ch)
     LaunchedEffect(ch.url, landscape) {
         // Only look something up when the picture this orientation needs is missing.
-        if ((landscape && art.backdrop == null) || art.poster == null) ArtStore.resolve(vm, ch)
+        // With a TMDB key also swap provider thumbnails for the clean, sharper TMDB poster (found once, then remembered on disk).
+        val sharper = vm.store.tmdbKey.isNotBlank()
+        if ((landscape && art.backdrop == null) || art.poster == null || sharper) ArtStore.resolve(vm, ch)
     }
     val url = art.pick(landscape)
     val natural = art.natural(landscape)

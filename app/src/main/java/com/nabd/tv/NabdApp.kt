@@ -15,6 +15,7 @@ class NabdApp : Application(), ImageLoaderFactory {
         Lang.load(this)
         Logos.init(this)
         Artwork.init(this)
+        ArtStore.init(this)
         Store(this).let { st -> Logos.tmdbKey = { st.tmdbKey }; Artwork.tmdbKey = { st.tmdbKey } }
         CrashLog.install(this)
         CrashReporter.sendPendingAsync(this)
