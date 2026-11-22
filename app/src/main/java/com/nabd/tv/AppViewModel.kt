@@ -127,6 +127,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var hidePosterTitles by mutableStateOf(store.hidePosterTitles); private set
     fun applyHidePosterTitles(v: Boolean) { hidePosterTitles = v; store.hidePosterTitles = v }
 
+    private fun systemReducesMotion(): Boolean = try {
+        android.provider.Settings.Global.getFloat(ctx.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    } catch (e: SecurityException) { false }
+
+    /** Reduced motion for the start-up screen: the user's choice, else the system's "remove animations". */
+    var reduceMotion by mutableStateOf(store.reduceMotion ?: systemReducesMotion()); private set
+    fun applyReduceMotion(v: Boolean) { reduceMotion = v; store.reduceMotion = v }
+
+    /** Network present right now? Unknown is treated as online so a quirk can never hide data. */
+    fun isOnline(): Boolean = try {
+        val cm = ctx.getSystemService(android.net.ConnectivityManager::class.java)
+        cm?.getNetworkCapabilities(cm.activeNetwork)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) ?: true
+    } catch (e: SecurityException) { true }
+
+    /** Real start-up stages for the splash (channels, movies, series, home). */
+    fun splashStages() = SplashLogic.stages(hasXtream, all.isNotEmpty(), !vodLoading, movies.isNotEmpty(), series.isNotEmpty(), startupReady())
+
+    /** "Try again" on the splash: reload from the provider (the cached copy stays until the new one is stored). */
+    fun retryStartup() = load(true)
+
     /** The first screen has something real to show: cached lists loaded, or an error / the setup screen is needed. */
     fun startupReady(): Boolean = screen == Screen.Setup || error != null || (!loading && all.isNotEmpty() && !vodLoading)
 

@@ -91,7 +91,7 @@ fun App(vm: AppViewModel) {
     // First launch of the process with a playlist configured: logo + loading screen, then a cross-fade into the app.
     // (Setup, a Watch Next resume straight into the player and later re-entries skip it.)
     val showSplash = !vm.splashDone && vm.screen != Screen.Setup && vm.screen != Screen.Player
-    androidx.compose.animation.Crossfade(targetState = showSplash, animationSpec = androidx.compose.animation.core.tween(450), label = "splashFade") { splash ->
+    androidx.compose.animation.Crossfade(targetState = showSplash, animationSpec = androidx.compose.animation.core.tween(if (vm.reduceMotion) 120 else 450), label = "splashFade") { splash ->
         if (splash) SplashScreen(vm) else AppContent(vm)
     }
 }

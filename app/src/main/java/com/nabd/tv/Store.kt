@@ -81,6 +81,11 @@ class Store(private val ctx: Context) {
         get() = g.getBoolean("hidePosterTitles", false)
         set(v) = g.edit().putBoolean("hidePosterTitles", v).apply()
 
+    /** Reduced motion: null = follow the system (animations switched off), true/false = the user's own choice. */
+    var reduceMotion: Boolean?
+        get() = if (g.contains("reduceMotion")) g.getBoolean("reduceMotion", false) else null
+        set(v) { if (v == null) g.edit().remove("reduceMotion").apply() else g.edit().putBoolean("reduceMotion", v).apply() }
+
     var autoRefresh: Boolean
         get() = g.getBoolean("autoRefresh", true)
         set(v) = g.edit().putBoolean("autoRefresh", v).apply()

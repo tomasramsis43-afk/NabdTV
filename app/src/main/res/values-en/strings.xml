@@ -697,4 +697,14 @@
     <string name="splash_loading">Loading your content</string>
 
     <string name="x_hide_titles">Hide movie and series names under posters</string>
+
+    <string name="stage_channels">Reading channels</string>
+    <string name="stage_movies">Movies</string>
+    <string name="stage_series">Series</string>
+    <string name="stage_home">Preparing home</string>
+    <string name="splash_enter_now">Enter now</string>
+    <string name="splash_retry">Try again</string>
+    <string name="splash_offline">No internet. Showing your last saved copy.</string>
+    <string name="splash_ready">All set</string>
+    <string name="x_reduce_motion">Reduce motion (start-up screen)</string>
 </resources>

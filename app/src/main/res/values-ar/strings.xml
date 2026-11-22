@@ -697,4 +697,14 @@
     <string name="splash_loading">جارٍ تحميل بياناتك</string>
 
     <string name="x_hide_titles">إخفاء أسماء الأفلام والمسلسلات تحت البوستر</string>
+
+    <string name="stage_channels">قراءة القنوات</string>
+    <string name="stage_movies">الأفلام</string>
+    <string name="stage_series">المسلسلات</string>
+    <string name="stage_home">تجهيز الرئيسية</string>
+    <string name="splash_enter_now">ادخل الآن</string>
+    <string name="splash_retry">إعادة المحاولة</string>
+    <string name="splash_offline">لا يوجد إنترنت. نعرض آخر نسخة محفوظة.</string>
+    <string name="splash_ready">كل شيء جاهز</string>
+    <string name="x_reduce_motion">تقليل الحركة (شاشة البداية)</string>
 </resources>
