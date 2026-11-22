@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
@@ -34,7 +33,9 @@ data class ArtPair(val poster: String?, val backdrop: String?) {
 }
 
 object ArtStore {
-    private val map = mutableStateMapOf<String, ArtPair>()          // snapshot state: cards update when a picture arrives
+    private val map = HashMap<String, ArtPair>()
+    private val holders = HashMap<String, androidx.compose.runtime.MutableState<ArtPair?>>()   // one state per title: only that card recomposes
+    private fun holder(url: String) = holders.getOrPut(url) { androidx.compose.runtime.mutableStateOf(map[url]) }
     private val tried = ConcurrentHashMap.newKeySet<String>()
     private val order = ArrayDeque<String>()                         // oldest first, caps the store
     private const val MAX = 1500
@@ -68,7 +69,7 @@ object ArtStore {
     }
 
     /** Known pictures for [ch]; the provider's image is the poster until something better is known. */
-    fun get(ch: Channel): ArtPair = map[ch.url] ?: ArtPair(ch.logo, null)
+    fun get(ch: Channel): ArtPair = holder(ch.url).value ?: ArtPair(ch.logo, null)
 
     /** Merges new pictures into the pair (never replaces a known one with nothing). Call on the main thread. */
     fun put(ch: Channel, poster: String? = null, backdrop: String? = null) {
@@ -80,9 +81,10 @@ object ArtStore {
         if (n != map[ch.url]) {
             if (ch.url !in map) {
                 order.addLast(ch.url)
-                while (order.size > MAX) order.removeFirst().let { map.remove(it) }
+                while (order.size > MAX) order.removeFirst().let { map.remove(it); holders.remove(it) }
             }
             map[ch.url] = n
+            holder(ch.url).value = n
             scheduleSave()
         }
     }
@@ -91,7 +93,7 @@ object ArtStore {
     suspend fun resolve(vm: AppViewModel, ch: Channel) {
         val kind = kindOf(ch)
         if (kind == Kind.Live || !tried.add(ch.url)) return
-        val (p, b) = vm.artworkFor(ch, kind)
+        val (p, b) = try { vm.artworkFor(ch, kind) } catch (e: Exception) { tried.remove(ch.url); return }
         if (p == null && b == null) tried.remove(ch.url)   // offline / not found yet: allow a later retry
         put(ch, p, b)
     }
