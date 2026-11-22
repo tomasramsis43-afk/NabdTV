@@ -189,7 +189,12 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
                 }
             }
         )
-    }
+    }.then(
+        // Touch: tapping the big image opens that movie / series page (live channels start playing).
+        if (d.tv) Modifier else Modifier.clickable(
+            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null
+        ) { if (kindOf(focus) == Kind.Live) vm.play(focus) else vm.openDetail(focus) }
+    )
     val edge = edgePad(d)
     val contItems = vm.continueItems
     Column(Modifier.fillMaxSize()) {
