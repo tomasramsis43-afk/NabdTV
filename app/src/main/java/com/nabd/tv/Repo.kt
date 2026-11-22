@@ -378,22 +378,62 @@ class Repo(private val ctx: Context, val store: Store) {
         return if (Regex("""[A-Za-z0-9_-]{11}""").matches(t)) t else ""
     }
 
-    // Opening the same title again must not hit the provider (and TMDB) again: keep recent details in memory for a while.
+    // Title details are cached on the device (memory + files in the app cache) so reopening a title is instant, even after a restart.
     private val infoCache = object : LinkedHashMap<String, Pair<Long, VodInfo>>(64, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Long, VodInfo>>?) = size > 80
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Long, VodInfo>>?) = size > 200
     }
+    private val INFO_TTL = 7L * 24 * 3600 * 1000
+    private val infoDir by lazy { File(ctx.cacheDir, "vodinfo").also { it.mkdirs() } }
     private fun infoKey(c: Channel, kind: Kind) = "${kind.name}|${c.url}|" + store.tmdbKey.isNotBlank()
+    private fun infoFile(k: String) =
+        File(infoDir, java.security.MessageDigest.getInstance("SHA-1").digest(k.toByteArray()).joinToString("") { "%02x".format(it) }.take(24) + ".json")
 
-    /** Details loaded in the last 30 minutes, or null. Safe to call on the main thread. */
+    /** Details already in memory (fresh), or null. Safe to call on the main thread. */
     fun cachedInfo(c: Channel, kind: Kind): VodInfo? = synchronized(infoCache) {
-        infoCache[infoKey(c, kind)]?.takeIf { System.currentTimeMillis() - it.first < 30 * 60_000L }?.second
+        infoCache[infoKey(c, kind)]?.takeIf { System.currentTimeMillis() - it.first < INFO_TTL }?.second
     }
 
     suspend fun vodInfo(c: Channel, kind: Kind): VodInfo? {
         cachedInfo(c, kind)?.let { return it }
+        val k = infoKey(c, kind)
+        val fromDisk = withContext(Dispatchers.IO) { readInfo(k) }
+        if (fromDisk != null) {
+            synchronized(infoCache) { infoCache[k] = fromDisk.first to fromDisk.second }
+            return fromDisk.second
+        }
         val r = loadVodInfo(c, kind)
-        if (r != null) synchronized(infoCache) { infoCache[infoKey(c, kind)] = System.currentTimeMillis() to r }
+        if (r != null) {
+            val now = System.currentTimeMillis()
+            synchronized(infoCache) { infoCache[k] = now to r }
+            withContext(Dispatchers.IO) { writeInfo(k, now, r) }
+        }
         return r
+    }
+
+    private fun readInfo(k: String): Pair<Long, VodInfo>? = runCatching {
+        val f = infoFile(k)
+        if (!f.isFile) return null
+        val j = JSONObject(f.readText())
+        val t = j.getLong("t")
+        if (System.currentTimeMillis() - t > INFO_TTL) { f.delete(); return null }
+        val ps = j.optJSONArray("people")
+        val people = if (ps == null) emptyList() else (0 until ps.length()).map { i ->
+            ps.getJSONObject(i).let { Person(it.optString("n"), it.optString("p").ifBlank { null }, it.optString("r"), it.optInt("i")) }
+        }
+        t to VodInfo(
+            j.optString("plot"), j.optString("cast"), j.optString("director"), j.optString("genre"), j.optString("rating"),
+            j.optString("year"), j.optString("backdrop").ifBlank { null }, j.optString("duration"), j.optString("trailer"),
+            j.optString("poster").ifBlank { null }, people
+        )
+    }.getOrNull()
+
+    private fun writeInfo(k: String, t: Long, v: VodInfo) = runCatching {
+        val ps = org.json.JSONArray()
+        v.people.forEach { ps.put(JSONObject().put("n", it.name).put("p", it.photo ?: "").put("r", it.role).put("i", it.id)) }
+        val j = JSONObject().put("t", t).put("plot", v.plot).put("cast", v.cast).put("director", v.director).put("genre", v.genre)
+            .put("rating", v.rating).put("year", v.year).put("backdrop", v.backdrop ?: "").put("duration", v.duration)
+            .put("trailer", v.trailer).put("poster", v.poster ?: "").put("people", ps)
+        infoFile(k).writeText(j.toString())
     }
 
     private suspend fun loadVodInfo(c: Channel, kind: Kind): VodInfo? = withContext(Dispatchers.IO) {
