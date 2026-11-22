@@ -266,6 +266,7 @@ fun PosterCard(
 ) {
     val progress = vm.historyByUrl[ch.url]?.progress ?: 0f
     val locked = vm.parental.needsPin(ch)
+    LaunchedEffect(ch.url) { if (vm.store.tmdbKey.isNotBlank()) TmdbRatings.resolve(ch) }
     val fr = rememberCardFocus(vm, focusKey)
     var focused by remember { mutableStateOf(false) }
     val sc by animateFloatAsState(if (focused) 1.045f else 1f, tween(150), label = "posterZoom")
@@ -302,7 +303,9 @@ fun PosterCard(
             if (progress > 0.02f) Box(
                 Modifier.matchParentSize().background(Brush.verticalGradient(0.88f to Color.Transparent, 1f to OverlayScrim))
             )
-            (if (tmdbArt != null && (wide || !adaptive)) tmdbArt.rating else ratingBadge(ch))?.let { r -> RatingPill(r, Modifier.align(Alignment.TopEnd).padding(6.dp)) }
+            val tmdbOn = vm.store.tmdbKey.isNotBlank()
+            // TMDB is the only source of the number when a key is set; the provider's own value is used only when there is no key at all.
+            (if (tmdbArt != null && (wide || !adaptive)) tmdbArt.rating else if (tmdbOn) TmdbRatings.get(ch.url) else ratingBadge(ch))?.let { r -> RatingPill(r, Modifier.align(Alignment.TopEnd).padding(6.dp)) }
             Row(
                 Modifier.align(Alignment.TopStart).padding(6.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically

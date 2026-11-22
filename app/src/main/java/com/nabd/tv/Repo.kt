@@ -384,7 +384,7 @@ class Repo(private val ctx: Context, val store: Store) {
     }
     private val INFO_TTL = 7L * 24 * 3600 * 1000
     private val infoDir by lazy { File(ctx.cacheDir, "vodinfo").also { it.mkdirs() } }
-    private fun infoKey(c: Channel, kind: Kind) = "v3|${kind.name}|${c.url}|" + store.tmdbKey.isNotBlank()
+    private fun infoKey(c: Channel, kind: Kind) = "v4|${kind.name}|${c.url}|" + store.tmdbKey.isNotBlank()
     private fun infoFile(k: String) =
         File(infoDir, java.security.MessageDigest.getInstance("SHA-1").digest(k.toByteArray()).joinToString("") { "%02x".format(it) }.take(24) + ".json")
 
@@ -463,18 +463,18 @@ class Repo(private val ctx: Context, val store: Store) {
                 people = ex.people
             )
         }
-        // Still no description / year / rating (new titles the provider and the keyless lookup do not know): TMDB's verified match fills them.
-        if (kind != Kind.Live && (info == null || info.plot.isBlank() || info.year.isBlank() || info.rating.isBlank())) {
-            Artwork.hit(c.name, kind, info?.year?.toIntOrNull())?.let { h ->
-                val date = h.optString("release_date").ifBlank { h.optString("first_air_date") }
-                val va = h.optDouble("vote_average", 0.0)
-                val base = info ?: VodInfo()
-                info = base.copy(
-                    plot = base.plot.ifBlank { h.optString("overview") },
-                    year = base.year.ifBlank { date.take(4) },
-                    rating = base.rating.ifBlank { if (va > 0) String.format(java.util.Locale.US, "%.1f", va) else "" }
-                )
-            }
+        // TMDB's verified match: its 0-10 rating always replaces the provider's number (cleared when TMDB has none, so a provider
+        // number never shows as if it were TMDB's); description and year only fill what the provider left blank.
+        if (kind != Kind.Live && store.tmdbKey.isNotBlank()) {
+            val h = Artwork.hit(c.name, kind, info?.year?.toIntOrNull())
+            val va = h?.optDouble("vote_average", 0.0) ?: 0.0
+            val date = h?.optString("release_date").orEmpty().ifBlank { h?.optString("first_air_date").orEmpty() }
+            val base = info ?: VodInfo()
+            info = base.copy(
+                plot = base.plot.ifBlank { h?.optString("overview").orEmpty() },
+                year = base.year.ifBlank { date.take(4) },
+                rating = if (va > 0) String.format(java.util.Locale.US, "%.1f", va) else ""
+            )
         }
         // Provider gave no backdrop: look for a verified landscape one (never a poster stretched wide).
         // With a TMDB key the verified clean artwork wins over the provider's (often watermarked) one; the provider's stays as fallback.

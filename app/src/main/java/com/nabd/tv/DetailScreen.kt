@@ -153,7 +153,7 @@ fun DetailScreen(vm: AppViewModel) {
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.Start), verticalAlignment = Alignment.CenterVertically) {
-                        (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let {
+                        (if (vm.store.tmdbKey.isNotBlank()) info?.rating?.takeIf { it.isNotBlank() } else (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c)))?.let {
                             MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D))
                         }
                         info?.year?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
