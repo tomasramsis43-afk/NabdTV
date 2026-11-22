@@ -130,7 +130,9 @@ fun AdaptiveArtImage(
             u == null -> Box(Modifier.fillMaxSize().background(SurfHigh))
             nat || !landscape || cropFallback -> AsyncImage(
                 model = u, contentDescription = null, contentScale = ContentScale.Crop,
-                alignment = BiasAlignment(0f, if (landscape) (if (nat) -0.35f else -0.55f) else -0.2f),
+                // Vertical bias: -1 = top of the picture, 0 = centre. Biased towards the top so faces / heads are not cut off
+                // (the picture sits lower in its frame); wide pictures need it most, portrait posters a little.
+                alignment = BiasAlignment(0f, if (landscape) (if (nat) -0.8f else -1f) else -0.5f),
                 alpha = alpha, modifier = Modifier.fillMaxSize()
             )
             else -> Box(Modifier.fillMaxSize().background(SurfHigh)) {
