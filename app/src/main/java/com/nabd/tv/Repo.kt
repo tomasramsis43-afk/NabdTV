@@ -406,9 +406,18 @@ class Repo(private val ctx: Context, val store: Store) {
             )
         }
         // Provider gave no backdrop: look for a verified landscape one (never a poster stretched wide).
-        if (kind != Kind.Live && info?.backdrop.isNullOrBlank()) {
-            Artwork.backdrop(c.name, kind, info?.year?.toIntOrNull())?.let { a ->
-                info = (info ?: VodInfo()).copy(backdrop = a.url)
+        // With a TMDB key the verified clean artwork wins over the provider's (often watermarked) one; the provider's stays as fallback.
+        if (kind != Kind.Live) {
+            val hasKey = store.tmdbKey.isNotBlank()
+            if (hasKey || info?.backdrop.isNullOrBlank()) {
+                Artwork.backdrop(c.name, kind, info?.year?.toIntOrNull())?.let { a ->
+                    info = (info ?: VodInfo()).copy(backdrop = a.url)
+                }
+            }
+            if (hasKey) {
+                Artwork.poster(c.name, kind, info?.year?.toIntOrNull())?.let { a ->
+                    info = (info ?: VodInfo()).copy(poster = a.url)
+                }
             }
         }
         info
