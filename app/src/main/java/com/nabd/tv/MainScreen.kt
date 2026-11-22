@@ -305,8 +305,12 @@ private fun HomeHero(
             }
             Spacer(Modifier.height(if (d.tv) 14.dp else 9.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(if (d.tv) 12.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
-                MBtn(primaryLabel, tint = buttonTone(palette.primary)) { if (kind == Kind.Series) vm.openDetail(c) else vm.play(c) }
-                if (kind != Kind.Live) MBtn(tr(R.string.details), filled = false, tint = palette.accent) { vm.openDetail(c) }
+                // Touch: the whole image is the button (tap = open the title page), so no Play / Details here.
+                // Remote (TV) has no tapping, so it keeps them.
+                if (d.tv) {
+                    MBtn(primaryLabel, tint = buttonTone(palette.primary)) { if (kind == Kind.Series) vm.openDetail(c) else vm.play(c) }
+                    if (kind != Kind.Live) MBtn(tr(R.string.details), filled = false, tint = palette.accent) { vm.openDetail(c) }
+                }
                 HeroFav(vm, c, palette, d)
             }
         }
