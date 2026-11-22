@@ -273,12 +273,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Item currently focused on Home; drives the big preview on TV/tablet. */
     var homeFocus by mutableStateOf<Channel?>(null)
     var homeInfo by mutableStateOf<VodInfo?>(null); private set
-    private var homeInfoUrl: String? = null
+    var homeInfoUrl: String? = null; private set
     suspend fun loadHomeInfo(c: Channel) {
         if (homeInfoUrl == c.url) return
         homeInfoUrl = c.url; homeInfo = null
         val k = kindOf(c)
         if (k != Kind.Live) homeInfo = runCatching { repo.vodInfo(c, k) }.getOrNull()
+    }
+
+    /** Poster + backdrop for [c] from caches / TMDB only (never hits the provider's API), for the adaptive image system. */
+    suspend fun artworkFor(c: Channel, kind: Kind): Pair<String?, String?> = withContext(Dispatchers.IO) {
+        val info = repo.cachedInfo(c, kind)
+        val year = info?.year?.toIntOrNull()
+        val backdrop = info?.backdrop ?: runCatching { Artwork.backdrop(c.name, kind, year)?.url }.getOrNull()
+        val poster = info?.poster ?: runCatching { Artwork.poster(c.name, kind, year)?.url }.getOrNull()
+        poster to backdrop
     }
 
     private fun refreshRecs() {

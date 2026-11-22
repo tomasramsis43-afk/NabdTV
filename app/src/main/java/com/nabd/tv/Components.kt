@@ -258,7 +258,8 @@ fun PosterCard(
     modifier: Modifier = Modifier,
     focusKey: String = ch.url + ch.id,
     onFocusExtra: (() -> Unit)? = null,
-    tmdbArt: TmdbArt? = null   // set = wide 16:9 card with clean TMDB backdrop + TMDB rating
+    tmdbArt: TmdbArt? = null,   // clean TMDB backdrop + TMDB rating (used for the wide card)
+    adaptive: Boolean = false   // true = card follows the screen orientation: portrait poster (2:3) / landscape backdrop (16:9)
 ) {
     val progress = vm.historyByUrl[ch.url]?.progress ?: 0f
     val locked = vm.parental.needsPin(ch)
@@ -267,12 +268,14 @@ fun PosterCard(
     val sc by animateFloatAsState(if (focused) 1.045f else 1f, tween(150), label = "posterZoom")
     val shape = RoundedCornerShape(Radius.poster)
     val d = LocalDevice.current
+    val wide = adaptive && !d.portrait && kindOf(ch) != Kind.Live
+    if (adaptive) LaunchedEffect(ch.url, tmdbArt?.image) { tmdbArt?.let { ArtStore.put(ch, backdrop = it.image) } }
 
     Column(modifier.fillMaxWidth()) {
         Box(
             Modifier
                 .fillMaxWidth()
-                .aspectRatio(if (tmdbArt != null) 16f / 9f else 2f / 3f)
+                .aspectRatio(if (wide || (!adaptive && tmdbArt != null)) 16f / 9f else 2f / 3f)
                 .scale(sc)
                 .then(if (focused) Modifier.softShadow(shape, 18.dp) else Modifier)
                 .focusRequester(fr)
@@ -284,7 +287,9 @@ fun PosterCard(
                 .background(SurfHigh)
                 .combinedClickable(onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) })
         ) {
-            AsyncImage(
+            if (adaptive && kindOf(ch) != Kind.Live) {
+                AdaptiveArtImage(vm, ch, landscape = wide, modifier = Modifier.fillMaxSize())
+            } else AsyncImage(
                 model = tmdbArt?.image ?: ch.logo, contentDescription = null,
                 contentScale = if (kindOf(ch) == Kind.Live) ContentScale.Fit else ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().then(if (kindOf(ch) == Kind.Live) Modifier.padding(6.dp) else Modifier)
@@ -295,10 +300,10 @@ fun PosterCard(
                     Brush.verticalGradient(0.6f to Color.Transparent, 1f to OverlayScrim)
                 )
             )
-            if (tmdbArt == null && vm.store.titleLogos && kindOf(ch) != Kind.Live) {
+            if (!wide && tmdbArt == null && vm.store.titleLogos && kindOf(ch) != Kind.Live) {
                 PosterLogo(ch.name, kindOf(ch), if (d.tv) 40.dp else 34.dp, Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.8f).padding(bottom = 10.dp))
             }
-            (if (tmdbArt != null) tmdbArt.rating else ratingBadge(ch))?.let { r -> RatingPill(r, Modifier.align(Alignment.TopStart).padding(6.dp)) }
+            (if (tmdbArt != null && (wide || !adaptive)) tmdbArt.rating else ratingBadge(ch))?.let { r -> RatingPill(r, Modifier.align(Alignment.TopStart).padding(6.dp)) }
             Row(
                 Modifier.align(Alignment.TopEnd).padding(6.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically

@@ -51,6 +51,7 @@ fun DetailScreen(vm: AppViewModel) {
     val edge = edgePad(d)
     val narrow = d.widthDp < 600
     val shortScreen = d.heightDp < 440
+    LaunchedEffect(c.url, info?.backdrop, info?.poster) { ArtStore.put(c, info?.poster, info?.backdrop) }
     val palette = rememberArtworkPalette(info?.backdrop ?: c.logo)
     val typeLabel = tr(if (isSeries) R.string.detail_type_series else R.string.detail_type_movie)
 
@@ -59,11 +60,8 @@ fun DetailScreen(vm: AppViewModel) {
         Box(Modifier.fillMaxWidth().fillMaxHeight(0.72f).fadeOutBottom(0.55f)) {
             // Phone held upright: the portrait poster fills the tall page; wide screens (landscape phone, tablet, TV): the wide backdrop.
             val upright = d.portrait && !d.tv
-            val art = if (upright) info?.poster?.takeIf { it.isNotBlank() } ?: c.logo ?: info?.backdrop else info?.backdrop ?: c.logo
-            AsyncImage(
-                model = art, contentDescription = null,
-                contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, if (upright) -0.2f else -0.45f), modifier = Modifier.fillMaxSize()
-            )
+            // Same adaptive image system as the home screen: poster when upright, backdrop when wide; either falls back to the other.
+            AdaptiveArtImage(vm, c, landscape = !upright, modifier = Modifier.fillMaxSize())
             Box(Modifier.fillMaxSize().textSideScrim(if (narrow) 0.78f else 0.95f))
             Box(
                 Modifier.fillMaxSize().background(
@@ -221,10 +219,11 @@ private fun CastRow(info: VodInfo?, edge: EdgePad) {
 private fun WorksRow(vm: AppViewModel, edge: EdgePad) {
     val works = vm.castWorks
     if (works.isEmpty()) return
+    val d = LocalDevice.current
     Spacer(Modifier.height(16.dp))
     Text(tr(R.string.detail_cast_works), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.padding(start = edge.start, end = edge.end, bottom = 8.dp))
     LazyRow(contentPadding = PaddingValues(start = edge.start, end = edge.end), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(works.size, key = { works[it].url + works[it].id }) { i -> PosterCard(vm, works[i], Modifier.width(112.dp), focusKey = "cw|" + works[i].url) }
+        items(works.size, key = { works[it].url + works[it].id }) { i -> PosterCard(vm, works[i], Modifier.width(if (!d.portrait) 200.dp else 112.dp), focusKey = "cw|" + works[i].url, adaptive = true) }
     }
 }
 

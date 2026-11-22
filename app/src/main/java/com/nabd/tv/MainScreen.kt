@@ -261,6 +261,8 @@ private fun HomeHero(
     val edge = edgePad(d)
     val wide = d.widthDp >= 700
     val shortScreen = d.heightDp < 420
+    // Feed the details that arrived for THIS title into the shared poster/backdrop store.
+    LaunchedEffect(c.url, info?.backdrop, info?.poster) { if (vm.homeInfoUrl == c.url) ArtStore.put(c, info?.poster, info?.backdrop) }
 
     Box(modifier) {
         Box(Modifier.fillMaxSize().fadeOutBottom(0.55f)) {
@@ -269,12 +271,8 @@ private fun HomeHero(
             Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(SurfHigh, NavyDeep))))
             AsyncImage(model = c.logo, contentDescription = c.name, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(if (d.tv) 40.dp else 24.dp).alpha(0.25f))
         } else {
-            Crossfade(art, animationSpec = tween(520), label = "heroArt") { img ->
-                AsyncImage(
-                    model = img, contentDescription = null, contentScale = ContentScale.Crop,
-                    alignment = androidx.compose.ui.BiasAlignment(0f, -0.45f), modifier = Modifier.fillMaxSize()
-                )
-            }
+            // Portrait screen = the portrait poster, landscape screen = the wide backdrop (same title id; either falls back to the other).
+            AdaptiveArtImage(vm, c, landscape = !d.portrait, modifier = Modifier.fillMaxSize())
         }
         // 2. Layered gradients: text side wash, top wash for the floating header, bottom fade into the page.
         Box(Modifier.fillMaxSize().textSideScrim(if (wide) 0.95f else 0.78f))
@@ -362,10 +360,11 @@ private fun HomeCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel, rank: I
         val art = s.art[ch.url]
         PosterCard(
             vm, ch,
-            modifier = Modifier.width(if (art != null) d.shelfPoster * 2.6f else d.shelfPoster),
+            modifier = Modifier.width(if (!d.portrait && kindOf(ch) != Kind.Live) d.shelfPoster * 2.6f else d.shelfPoster),
             focusKey = key,
             onFocusExtra = { vm.homeFocus = ch },
-            tmdbArt = art
+            tmdbArt = art,
+            adaptive = true
         )
     }
 }
