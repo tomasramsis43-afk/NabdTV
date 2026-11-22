@@ -257,7 +257,8 @@ fun PosterCard(
     ch: Channel,
     modifier: Modifier = Modifier,
     focusKey: String = ch.url + ch.id,
-    onFocusExtra: (() -> Unit)? = null
+    onFocusExtra: (() -> Unit)? = null,
+    tmdbArt: TmdbArt? = null   // set = wide 16:9 card with clean TMDB backdrop + TMDB rating
 ) {
     val progress = vm.historyByUrl[ch.url]?.progress ?: 0f
     val locked = vm.parental.needsPin(ch)
@@ -271,7 +272,7 @@ fun PosterCard(
         Box(
             Modifier
                 .fillMaxWidth()
-                .aspectRatio(2f / 3f)
+                .aspectRatio(if (tmdbArt != null) 16f / 9f else 2f / 3f)
                 .scale(sc)
                 .then(if (focused) Modifier.softShadow(shape, 18.dp) else Modifier)
                 .focusRequester(fr)
@@ -284,7 +285,7 @@ fun PosterCard(
                 .combinedClickable(onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) })
         ) {
             AsyncImage(
-                model = ch.logo, contentDescription = null,
+                model = tmdbArt?.image ?: ch.logo, contentDescription = null,
                 contentScale = if (kindOf(ch) == Kind.Live) ContentScale.Fit else ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().then(if (kindOf(ch) == Kind.Live) Modifier.padding(6.dp) else Modifier)
             )
@@ -294,10 +295,10 @@ fun PosterCard(
                     Brush.verticalGradient(0.6f to Color.Transparent, 1f to OverlayScrim)
                 )
             )
-            if (vm.store.titleLogos && kindOf(ch) != Kind.Live) {
+            if (tmdbArt == null && vm.store.titleLogos && kindOf(ch) != Kind.Live) {
                 PosterLogo(ch.name, kindOf(ch), if (d.tv) 40.dp else 34.dp, Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.8f).padding(bottom = 10.dp))
             }
-            ratingBadge(ch)?.let { r -> RatingPill(r, Modifier.align(Alignment.TopStart).padding(6.dp)) }
+            (if (tmdbArt != null) tmdbArt.rating else ratingBadge(ch))?.let { r -> RatingPill(r, Modifier.align(Alignment.TopStart).padding(6.dp)) }
             Row(
                 Modifier.align(Alignment.TopEnd).padding(6.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically

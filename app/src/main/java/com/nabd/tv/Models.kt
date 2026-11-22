@@ -88,4 +88,7 @@ data class Recording(
 data class Reminder(val id: String, val channelName: String, val title: String, val start: Long)
 
 /** A row of content on the home screen. */
-data class Shelf(val title: String, val items: List<Channel>, val ranked: Boolean = false)
+/** Clean TMDB artwork for a library title: a wide backdrop and TMDB's own 0-10 rating ("8.4"). */
+data class TmdbArt(val image: String, val rating: String?)
+
+data class Shelf(val title: String, val items: List<Channel>, val ranked: Boolean = false, val art: Map<String, TmdbArt> = emptyMap())

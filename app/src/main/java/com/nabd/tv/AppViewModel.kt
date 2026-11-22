@@ -252,14 +252,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // by exact title + year. No key (or no network yet) = these four rows are simply not shown.
         tmdbCharts?.let { ch ->
             val ok = { c: Channel -> parental.visible(c) }
-            val trendM = TmdbCharts.pick(movieTitleIdx, ch.trendMovies, 10, ok)
-            if (trendM.size >= 3) out += Shelf(tx(R.string.x_shelf_trending_movies), trendM, ranked = true)
-            val trendS = TmdbCharts.pick(seriesTitleIdx, ch.trendSeries, 10, ok)
-            if (trendS.size >= 3) out += Shelf(tx(R.string.x_shelf_trending_series), trendS, ranked = true)
-            val topM = TmdbCharts.pick(movieTitleIdx, ch.topMovies, 10, ok)
-            if (topM.size >= 3) out += Shelf(tx(R.string.shelf_top_movies), topM, ranked = true)
-            val topS = TmdbCharts.pick(seriesTitleIdx, ch.topSeries, 10, ok)
-            if (topS.size >= 3) out += Shelf(tx(R.string.shelf_top_series), topS, ranked = true)
+            fun row(title: String, idx: Map<String, List<Pair<Channel, Int?>>>, e: List<TmdbCharts.Entry>) {
+                val (items, art) = TmdbCharts.pick(idx, e, 10, ok)
+                if (items.size >= 3) out += Shelf(title, items, ranked = true, art = art)
+            }
+            row(tx(R.string.x_shelf_trending_movies), movieTitleIdx, ch.trendMovies)
+            row(tx(R.string.x_shelf_trending_series), seriesTitleIdx, ch.trendSeries)
+            row(tx(R.string.shelf_top_movies), movieTitleIdx, ch.topMovies)
+            row(tx(R.string.shelf_top_series), seriesTitleIdx, ch.topSeries)
         }
         val newMovies = movieList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { movieList.take(30) }
         if (newMovies.isNotEmpty()) out += Shelf(tx(R.string.shelf_new_movies), newMovies)

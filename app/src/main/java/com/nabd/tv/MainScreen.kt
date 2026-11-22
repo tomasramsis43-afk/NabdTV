@@ -330,11 +330,13 @@ private fun HomeCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel, rank: I
                 modifier = Modifier.padding(end = 6.dp).offset(y = 0.dp)
             )
         }
+        val art = s.art[ch.url]
         PosterCard(
             vm, ch,
-            modifier = Modifier.width(d.shelfPoster),
+            modifier = Modifier.width(if (art != null) d.shelfPoster * 2.6f else d.shelfPoster),
             focusKey = key,
-            onFocusExtra = { vm.homeFocus = ch }
+            onFocusExtra = { vm.homeFocus = ch },
+            tmdbArt = art
         )
     }
 }
