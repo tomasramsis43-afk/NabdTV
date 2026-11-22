@@ -120,6 +120,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val savedUrl: String get() = repo.playlistUrl
     val hasXtream: Boolean get() = repo.hasXtream
 
+    /** The start-up splash is shown once per process; it ends when [startupReady] holds (or after its time cap). */
+    var splashDone by mutableStateOf(false)
+
+    /** The first screen has something real to show: cached lists loaded, or an error / the setup screen is needed. */
+    fun startupReady(): Boolean = screen == Screen.Setup || error != null || (!loading && all.isNotEmpty() && !vodLoading)
+
     private fun ok(c: Channel, live: Boolean, hidden: Set<String>): Boolean =
         parental.visible(c) && c.url !in hidden && !(live && store.hideDead && health.isDead(c.url))
 
