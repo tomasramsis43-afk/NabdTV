@@ -695,4 +695,7 @@
     <string name="group_continue">▶ Continue watching</string>
 
     <string name="splash_loading">Loading your content</string>
+    <string name="menu_remove_continue">Remove from continue watching</string>
+    <string name="menu_remove_history">Remove from watch history</string>
+    <string name="menu_removed">Removed</string>
 </resources>

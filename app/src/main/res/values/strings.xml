@@ -695,4 +695,7 @@
     <string name="group_continue">▶ متابعة المشاهدة</string>
 
     <string name="splash_loading">جارٍ تحميل بياناتك</string>
+    <string name="menu_remove_continue">حذف من متابعة المشاهدة</string>
+    <string name="menu_remove_history">حذف من سجل المشاهدة</string>
+    <string name="menu_removed">تم الحذف</string>
 </resources>
