@@ -21,6 +21,8 @@ import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import kotlinx.coroutines.launch
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -120,20 +122,20 @@ fun DetailScreen(vm: AppViewModel) {
                             )
                         }
                 }
-                Spacer(Modifier.height(8.dp))
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
-                            (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let {
-                                MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D))
-                            }
-                            info?.year?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
-                            info?.duration?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
-                            info?.genre?.takeIf { it.isNotBlank() }?.split(',', '،', '/')?.map { it.trim() }
-                                ?.filter { it.isNotEmpty() }?.take(if (narrow) 1 else 2)?.forEach { MetaChip(it) }
-                        }
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(if (d.tv) 64.dp else 48.dp))   // lifts the logo / title a little higher on the artwork
             }
             Spacer(Modifier.height(14.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
+                val focusMgr = androidx.compose.ui.platform.LocalFocusManager.current
+            val scope = rememberCoroutineScope()
+            Row(
+                Modifier.fillMaxWidth().onPreviewKeyEvent { e ->
+                    // Up from the buttons: back to the artwork (nothing focused), so the next Down reveals the buttons again.
+                    if (e.key == androidx.compose.ui.input.key.Key.DirectionUp && e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) {
+                        focusMgr.clearFocus(); scope.launch { scroll.animateScrollTo(0) }; true
+                    } else false
+                },
+                horizontalArrangement = Arrangement.spacedBy(9.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically
+            ) {
                     if (!isSeries) {
                         val h = vm.store.historyOf(c.url)
                         val label = if (h != null && !h.finished && h.position > 10_000) tr(R.string.detail_resume, h.position / 60000) else tr(R.string.detail_play)
@@ -149,6 +151,19 @@ fun DetailScreen(vm: AppViewModel) {
                             ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
                         } catch (_: Exception) { vm.say(S(R.string.detail_no_viewer)) }
                     }
+            Spacer(Modifier.height(12.dp))
+            Box(Modifier.fillMaxWidth().padding(horizontal = maxOf(edge.start, edge.end))) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
+                            (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let {
+                                MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D))
+                            }
+                            info?.year?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
+                            info?.duration?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
+                            info?.genre?.takeIf { it.isNotBlank() }?.split(',', '،', '/')?.map { it.trim() }
+                                ?.filter { it.isNotEmpty() }?.take(if (narrow) 1 else 2)?.forEach { MetaChip(it) }
+                        }
+            }
+            Spacer(Modifier.height(10.dp))
             Column(Modifier.fillMaxWidth().padding(horizontal = maxOf(edge.start, edge.end)), horizontalAlignment = Alignment.CenterHorizontally) {
                 }
                     if (info != null && info.plot.isNotBlank() && !(isSeries && shortScreen)) {
