@@ -71,10 +71,11 @@ internal fun ContinueCard(vm: AppViewModel, d: Device, item: ContinueItem) {
     }
     Focusable(
         onClick = { vm.playContinue(item) }, onLongClick = { vm.continueMenu(item) },
-        modifier = Modifier.width(d.shelfPoster * 2.6f), shape = shape
+        modifier = Modifier.width(if (item.kind == Kind.Series) d.shelfPoster * 1.2f else d.shelfPoster * 2.6f), shape = shape
     ) {
-        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(shape).background(SurfHigh)) {
-            val model = img ?: if (item.kind == Kind.Movie) item.poster else null   // a series poster is never used as the episode image
+        // Series: the poster itself (portrait) with the episode badge and progress; movies: landscape backdrop.
+        Box(Modifier.fillMaxWidth().aspectRatio(if (item.kind == Kind.Series) 2f / 3f else 16f / 9f).clip(shape).background(SurfHigh)) {
+            val model = if (item.kind == Kind.Series) item.poster else img ?: item.poster
             if (model != null) AsyncImage(model = model, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Scrim.copy(alpha = 0.75f)))))
             Text("\u25B6", color = Color.White, fontSize = 20.sp, modifier = Modifier.align(Alignment.Center))
