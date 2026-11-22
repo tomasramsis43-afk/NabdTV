@@ -697,4 +697,6 @@
     <string name="splash_loading">جارٍ تحميل بياناتك</string>
 
     <string name="x_hide_titles">إخفاء أسماء الأفلام والمسلسلات تحت البوستر</string>
+    <string name="player_season_ep">الموسم %1$d · الحلقة %2$d</string>
+    <string name="player_more">خيارات إضافية</string>
 </resources>

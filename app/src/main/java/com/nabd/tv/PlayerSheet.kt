@@ -254,6 +254,17 @@ fun PlayerSheet(
                                     SheetOption(if (v == 1f) S(R.string.a_ebca19a0) else "${v}x", v == ui.speed) { actions.setSpeed(v) }
                                 })
                             }
+                            SheetRow(S(R.string.a_3c6411ea), fmtTime(ui.position)) { ui.showJump = true; onClose() }
+                            if (!live && canSaveIntro) {   // next-episode behaviour only matters for series
+                            SheetSection(S(R.string.a_79e08935))
+                            SheetRow(S(R.string.a_954384b8), if (store.autoNext) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)) {
+                                store.autoNext = !store.autoNext; actions.changed()
+                            }
+                            }
+                            // Rarely used options stay folded so the menu is short; one row opens them.
+                            var more by remember { mutableStateOf(false) }
+                            SheetRow(S(R.string.player_more), if (more) "▲" else "▼") { more = !more }
+                            if (more) {
                             SheetRow(S(R.string.a_608dc8b8), S(R.string.x_seconds, store.seekInterval)) {
                                 openChoice(S(R.string.a_6d0922bc), SEEK_INTERVALS.map { v ->
                                     SheetOption(S(R.string.x_seconds, v), v == store.seekInterval) {
@@ -263,14 +274,9 @@ fun PlayerSheet(
                                     }
                                 })
                             }
-                            SheetRow(S(R.string.a_3c6411ea), fmtTime(ui.position)) { ui.showJump = true; onClose() }
                             SheetRow(S(R.string.a_59fd59df)) { actions.restart(); onClose() }
                             SheetRow(S(R.string.a_896dada2), if (ui.loop) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)) { actions.setLoop(!ui.loop) }
 
-                            SheetSection(S(R.string.a_79e08935))
-                            SheetRow(S(R.string.a_954384b8), if (store.autoNext) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)) {
-                                store.autoNext = !store.autoNext; actions.changed()
-                            }
                             SheetRow(S(R.string.a_fab55504), ResumeMode.of(store.resumeMode).label) {
                                 openChoice(S(R.string.a_fab55504), ResumeMode.entries.map { m ->
                                     SheetOption(m.label, m.name == store.resumeMode) {
@@ -290,6 +296,8 @@ fun PlayerSheet(
                                     SheetOption(S(R.string.a_29efb0ed)) { actions.setSleepEnd() },
                                     SheetOption(S(R.string.a_2b71fd45)) { actions.cancelSleep() }
                                 ))
+                            }
+
                             }
 
                             if (live) {

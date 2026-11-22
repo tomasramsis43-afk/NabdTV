@@ -1152,7 +1152,10 @@ fun PlayerScreen(vm: AppViewModel) {
             !ui.showJump && ui.nextEp == null && !ui.ended
         ) {
             VodOverlay(
-                title = if (seriesKey != null) (vm.detail?.name ?: ch.name) + " — " + ch.name else ch.name,
+                title = if (seriesKey != null) {
+                    // Series: only the season and episode number, never the series name.
+                    vm.episodes.firstOrNull { it.url == chRef.value.url }?.let { S(R.string.player_season_ep, it.season, it.num) } ?: ch.name
+                } else ch.name,
                 subtitle = player.videoFormat?.let { "${it.width}×${it.height}" },
                 ui = ui, thumbnails = thumbnails, seekInterval = ui.seekInterval,
                 hasPrev = vm.hasPreviousEpisode(chRef.value), hasNext = vm.hasNextEpisode(chRef.value),
