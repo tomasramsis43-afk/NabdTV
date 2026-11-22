@@ -27,6 +27,20 @@ object VmLogic {
     /** Rating text ("7,5", " 8.1 ") as a number, or 0 when missing / not numeric. */
     fun ratingOf(c: Channel): Double = c.rating?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: 0.0
 
+    /**
+     * "Trending": well-rated AND fresh. Score = rating (0-10) plus a recency bonus from the provider's added date
+     * (<=30 days +2.5, <=90 days +1.5, <=1 year +0.5). Unrated entries are dropped. Honest proxy: it uses the
+     * provider's own data, not live worldwide viewing numbers.
+     */
+    fun trending(l: List<Channel>, n: Int = 10, nowSec: Long = System.currentTimeMillis() / 1000): List<Channel> {
+        fun score(c: Channel): Double {
+            val ageDays = if (c.added > 0) (nowSec - c.added) / 86_400.0 else Double.MAX_VALUE
+            val bonus = when { ageDays <= 30 -> 2.5; ageDays <= 90 -> 1.5; ageDays <= 365 -> 0.5; else -> 0.0 }
+            return ratingOf(c) + bonus
+        }
+        return l.filter { ratingOf(it) > 0.0 }.sortedByDescending { score(it) }.take(n)
+    }
+
     /** Highest-rated entries (rating > 0), best first. */
     fun topRated(l: List<Channel>, n: Int = 10): List<Channel> =
         l.filter { ratingOf(it) > 0.0 }.sortedByDescending { ratingOf(it) }.take(n)

@@ -229,6 +229,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val rec = VmLogic.topRated((movieList + seriesList).filter { it.group in liked && it.url !in seen }, 20)
             if (rec.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_recommended), rec)
         }
+        // Trending worldwide: foreign (non-Arabic) titles only, well rated and recently added.
+        fun trend(l: List<Channel>) = VmLogic.trending(l.filter { !Origin.isArabic(it.name, it.group) && parental.visible(it) }, 10)
+        val trendM = trend(movieList)
+        if (trendM.size >= 3) out += Shelf(tx(R.string.x_shelf_trending_movies), trendM, ranked = true)
+        val trendS = trend(seriesList)
+        if (trendS.size >= 3) out += Shelf(tx(R.string.x_shelf_trending_series), trendS, ranked = true)
         fun top(l: List<Channel>) = VmLogic.topRated(l, 10)
         val topM = top(movieList)
         if (topM.isNotEmpty()) out += Shelf(tx(R.string.shelf_top_movies), topM, ranked = true)
