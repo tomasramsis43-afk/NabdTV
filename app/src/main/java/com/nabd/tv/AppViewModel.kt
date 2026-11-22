@@ -213,6 +213,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /* ───────── home shelves ───────── */
     private fun histChannel(h: HistoryEntry) = Channel(-1, h.name, h.url, h.logo, h.group)
 
+    /** TMDB weekly trending + top-rated charts (null until loaded / without a TMDB key). */
+    var tmdbCharts by mutableStateOf<TmdbCharts.Charts?>(null); private set
+    private var chartsAt = 0L
+    private val movieTitleIdx by derivedStateOf { TmdbCharts.indexOf(movieList) }
+    private val seriesTitleIdx by derivedStateOf { TmdbCharts.indexOf(seriesList) }
+
+    /** Loads the TMDB charts (cached 6 h). Call again with [force] after the key changes. */
+    fun refreshTmdbCharts(force: Boolean = false) {
+        val key = store.tmdbKey
+        if (key.isBlank()) { tmdbCharts = null; return }
+        if (!force && tmdbCharts != null && System.currentTimeMillis() - chartsAt < 6 * 3_600_000L) return
+        viewModelScope.launch {
+            val c = withContext(Dispatchers.IO) { runCatching { TmdbCharts.load(key) }.getOrNull() }
+            if (c != null) { tmdbCharts = c; chartsAt = System.currentTimeMillis() }
+            else if (force) tmdbCharts = null
+        }
+    }
+
     val shelves by derivedStateOf {
         rev
         val out = ArrayList<Shelf>()
@@ -230,18 +248,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val rec = VmLogic.topRated((movieList + seriesList).filter { it.group in liked && it.url !in seen }, 20)
             if (rec.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_recommended), rec)
         }
-        // Trending worldwide: foreign (non-Arabic) titles only, well rated and recently added.
-        fun trend(l: List<Channel>) = VmLogic.trending(l.filter { !Origin.isArabic(it.name, it.group) && parental.visible(it) }, 10)
-        val trendM = trend(movieList)
-        if (trendM.size >= 3) out += Shelf(tx(R.string.x_shelf_trending_movies), trendM, ranked = true)
-        val trendS = trend(seriesList)
-        if (trendS.size >= 3) out += Shelf(tx(R.string.x_shelf_trending_series), trendS, ranked = true)
-        // Ranked rows are international only: Arabic titles are excluded here too.
-        fun top(l: List<Channel>) = VmLogic.topRated(l.filter { !Origin.isArabic(it.name, it.group) }, 10)
-        val topM = top(movieList)
-        if (topM.isNotEmpty()) out += Shelf(tx(R.string.shelf_top_movies), topM, ranked = true)
-        val topS = top(seriesList)
-        if (topS.isNotEmpty()) out += Shelf(tx(R.string.shelf_top_series), topS, ranked = true)
+        // Trending / Top rated: ONLY from TMDB's own charts (needs the TMDB key in Settings), matched to the library
+        // by exact title + year. No key (or no network yet) = these four rows are simply not shown.
+        tmdbCharts?.let { ch ->
+            val ok = { c: Channel -> parental.visible(c) }
+            val trendM = TmdbCharts.pick(movieTitleIdx, ch.trendMovies, 10, ok)
+            if (trendM.size >= 3) out += Shelf(tx(R.string.x_shelf_trending_movies), trendM, ranked = true)
+            val trendS = TmdbCharts.pick(seriesTitleIdx, ch.trendSeries, 10, ok)
+            if (trendS.size >= 3) out += Shelf(tx(R.string.x_shelf_trending_series), trendS, ranked = true)
+            val topM = TmdbCharts.pick(movieTitleIdx, ch.topMovies, 10, ok)
+            if (topM.size >= 3) out += Shelf(tx(R.string.shelf_top_movies), topM, ranked = true)
+            val topS = TmdbCharts.pick(seriesTitleIdx, ch.topSeries, 10, ok)
+            if (topS.size >= 3) out += Shelf(tx(R.string.shelf_top_series), topS, ranked = true)
+        }
         val newMovies = movieList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { movieList.take(30) }
         if (newMovies.isNotEmpty()) out += Shelf(tx(R.string.shelf_new_movies), newMovies)
         val newSeries = seriesList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { seriesList.take(30) }
@@ -288,6 +307,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         RefreshWorker.schedule(app)
         if (repo.playlistUrl.isNotBlank()) { load(false); refreshRecs() }
         checkUpdate(false)
+        refreshTmdbCharts()
         viewModelScope.launch { while (true) { kotlinx.coroutines.delay(20 * 60_000L); checkUpdate(false) } }
     }
 
