@@ -101,11 +101,13 @@ object Artwork {
             gate.withPermit {
                 ensureLoaded(d)
                 synchronized(index) { index.optJSONObject(k) }?.let { e ->
-                    if (e.optString("s") == "ok") {
+                    // A cached answer without a trailer is looked up again after a few hours (TMDB gains videos over time).
+                    val stale = e.optString("trailer").isBlank() && System.currentTimeMillis() - e.optLong("t") > 6L * 3600 * 1000
+                    if (e.optString("s") == "ok" && !stale) {
                         val ar = e.optJSONArray("cast") ?: JSONArray()
                         val people = (0 until ar.length()).map { i -> ar.getJSONObject(i).let { Person(it.optString("n"), it.optString("p").ifBlank { null }, it.optString("r"), it.optInt("i")) } }
                         return@withPermit Extras(people, e.optString("trailer")).also { xmem[k] = it }
-                    } else if (System.currentTimeMillis() - e.optLong("t") < NEG_TTL) return@withPermit null
+                    } else if (e.optString("s") != "ok" && System.currentTimeMillis() - e.optLong("t") < NEG_TTL) return@withPermit null
                 }
                 try {
                     val key = tmdbKey()
@@ -125,11 +127,12 @@ object Artwork {
                         val pp = c.optString("profile_path").takeIf { it.isNotBlank() }?.let { "https://image.tmdb.org/t/p/w185$it" }
                         people += Person(n, pp, c.optString("character"), c.optInt("id"))
                     }
-                    val vids = getObj("https://api.themoviedb.org/3/$t/$id/videos?api_key=${Uri.encode(key)}&include_video_language=$lang,en").optJSONArray("results")
+                    val vids = getObj("https://api.themoviedb.org/3/$t/$id/videos?api_key=${Uri.encode(key)}&include_video_language=$lang,en,null").optJSONArray("results")
                     var trailer = ""
                     if (vids != null) {
                         val cands = (0 until vids.length()).map { vids.getJSONObject(it) }
-                            .filter { it.optString("site") == "YouTube" && it.optString("type") == "Trailer" && it.optString("key").isNotBlank() }
+                            .filter { it.optString("site") == "YouTube" && it.optString("type") in listOf("Trailer", "Teaser") && it.optString("key").isNotBlank() }
+                            .sortedBy { if (it.optString("type") == "Trailer") 0 else 1 }
                         trailer = (cands.firstOrNull { it.optString("iso_639_1") == lang && it.optBoolean("official") }
                             ?: cands.firstOrNull { it.optString("iso_639_1") == lang } ?: cands.firstOrNull { it.optBoolean("official") } ?: cands.firstOrNull())
                             ?.optString("key").orEmpty()
