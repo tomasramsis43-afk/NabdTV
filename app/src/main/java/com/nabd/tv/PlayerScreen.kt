@@ -189,7 +189,7 @@ fun PlayerScreen(vm: AppViewModel) {
                 val t = (player.currentPosition + delta).coerceIn(0L, maxOf(0L, max))
                 player.seekTo(t)
                 ui.position = t
-                hud((if (delta < 0) "⏪ " else "⏩ ") + fmtTime(t))
+                ui.ping++   // no centre-screen time text; the timeline shows the position
             },
             seekTo = { t -> player.seekTo(t); ui.position = t; ui.ping++ },
             restart = {
@@ -203,7 +203,7 @@ fun PlayerScreen(vm: AppViewModel) {
             jumpTo = { t ->
                 val max = if (player.duration > 0) player.duration - 500L else Long.MAX_VALUE
                 val target = t.coerceIn(0L, maxOf(0L, max))
-                player.seekTo(target); ui.position = target; hud("⏱ ${fmtTime(target)}")
+                player.seekTo(target); ui.position = target; ui.ping++
             },
             nextVideo = { vm.playNeighbor(1) },
             prevVideo = { vm.playNeighbor(-1) },
@@ -972,7 +972,6 @@ fun PlayerScreen(vm: AppViewModel) {
                             onSeekCommit = { target ->
                                 player.seekTo(target)
                                 ui.position = target
-                                hud((if (target >= player.currentPosition) "⏩ " else "⏪ ") + fmtTime(target))
                                 feedback.clear()
                             },
                             onBrightness = { delta ->
