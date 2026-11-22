@@ -92,7 +92,7 @@ fun DetailScreen(vm: AppViewModel) {
             }
 
             Column(
-                Modifier.fillMaxWidth().height((d.heightDp - (if (isSeries) 270 else 80)).coerceAtLeast(240).dp)
+                Modifier.fillMaxWidth().height((d.heightDp * 0.6f).toInt().coerceAtLeast(200).dp)
                     .padding(horizontal = maxOf(edge.start, edge.end)),
                 verticalArrangement = Arrangement.Bottom, horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -120,8 +120,13 @@ fun DetailScreen(vm: AppViewModel) {
                                 ?.filter { it.isNotEmpty() }?.take(if (narrow) 1 else 2)?.forEach { MetaChip(it) }
                         }
                 }
-                Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
+            }
+            // Buttons and description sit side by side under the artwork (not on top of it).
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = maxOf(edge.start, edge.end)),
+                horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.Top
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.Start) {
                     if (!isSeries) {
                         val h = vm.store.historyOf(c.url)
                         val label = if (h != null && !h.finished && h.position > 10_000) tr(R.string.detail_resume, h.position / 60000) else tr(R.string.detail_play)
@@ -137,11 +142,12 @@ fun DetailScreen(vm: AppViewModel) {
                             ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
                         } catch (_: Exception) { vm.say(S(R.string.detail_no_viewer)) }
                     }
+                Column(Modifier.weight(1f)) {
                 }
                     if (info != null && info.plot.isNotBlank() && !(isSeries && shortScreen)) {
-                            Spacer(Modifier.height(8.dp))
+                            Spacer(Modifier.height(0.dp))
                             Text(
-                                info.plot, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.widthIn(max = 640.dp), fontSize = if (narrow) 12.sp else 13.sp, lineHeight = 19.sp,
+                                info.plot, modifier = Modifier.widthIn(max = 640.dp), fontSize = if (narrow) 12.sp else 13.sp, lineHeight = 19.sp,
                                 color = Color(0xFFE3E6F0), maxLines = if (narrow || isSeries) 2 else 3, overflow = TextOverflow.Ellipsis
                             )
                         }
@@ -152,8 +158,9 @@ fun DetailScreen(vm: AppViewModel) {
                                 maxLines = 1, overflow = TextOverflow.Ellipsis
                             )
                         }
-                Spacer(Modifier.height(10.dp))
+                }
             }
+            Spacer(Modifier.height(10.dp))
 
             if (isSeries) {
                 Row(
