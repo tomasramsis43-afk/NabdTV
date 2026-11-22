@@ -62,20 +62,11 @@ private fun DrawScope.drawVIc(ic: VIc, c: Color, rtl: Boolean) {
         VIc.Next -> { tri(p(6f, 5.5f), p(15f, 12f), p(6f, 18.5f)); bar(16.8f, 5.5f, 2.6f, 13f) }
         VIc.Prev -> { tri(p(18f, 5.5f), p(9f, 12f), p(18f, 18.5f)); bar(4.6f, 5.5f, 2.6f, 13f) }
         VIc.Fwd10, VIc.Back10 -> {
+            // Plain double chevron: the skip step is configurable, so no fixed number is drawn.
             val mirror = ic == VIc.Back10
             dsScale(if (mirror) -1f else 1f, 1f, pivot = Offset(size.width / 2, size.height / 2)) {
-                drawArc(c, -60f, 300f, false, p(4f, 5f), Size(16f * u, 16f * u), style = st)
-                // arrow head at the end of the sweep (top-left), pointing clockwise
-                val a = Math.toRadians(-120.0)
-                val cx = 12f; val cy = 13f; val r = 8f
-                val px = cx + r * cos(a).toFloat(); val py = cy + r * sin(a).toFloat()
-                val tx = -sin(a).toFloat(); val ty = cos(a).toFloat()
-                val nx = -ty; val ny = tx
-                tri(
-                    p(px + 3.4f * tx, py + 3.4f * ty),
-                    p(px - 1.2f * tx + 2.6f * nx, py - 1.2f * ty + 2.6f * ny),
-                    p(px - 1.2f * tx - 2.6f * nx, py - 1.2f * ty - 2.6f * ny)
-                )
+                drawPath(Path().apply { moveTo(6.5f * u, 6f * u); lineTo(12.5f * u, 12f * u); lineTo(6.5f * u, 18f * u) }, c, style = st)
+                drawPath(Path().apply { moveTo(12f * u, 6f * u); lineTo(18f * u, 12f * u); lineTo(12f * u, 18f * u) }, c, style = st)
             }
         }
         VIc.Subs -> {
@@ -88,12 +79,7 @@ private fun DrawScope.drawVIc(ic: VIc, c: Color, rtl: Boolean) {
                 drawCircle(c, 1.2f * u, p(5f, y)); line(9f, y, 20f, y)
             }
         }
-        VIc.Settings -> {
-            line(4f, 7f, 20f, 7f); line(4f, 12f, 20f, 12f); line(4f, 17f, 20f, 17f)
-            for ((x, y) in listOf(9f to 7f, 15.5f to 12f, 8f to 17f)) {
-                drawCircle(Color(0xFF101522), 2.9f * u, p(x, y)); drawCircle(c, 2.9f * u, p(x, y), style = st)
-            }
-        }
+        VIc.Settings -> { for (y in listOf(5.5f, 12f, 18.5f)) drawCircle(c, 1.9f * u, p(12f, y)) }
         VIc.Back -> {
             val x = { v: Float -> if (rtl) 24f - v else v }
             drawPath(Path().apply { moveTo(x(15f) * u, 5f * u); lineTo(x(8f) * u, 12f * u); lineTo(x(15f) * u, 19f * u) }, c, style = st)
@@ -120,9 +106,6 @@ fun VIcon(ic: VIc, tint: Color, size: Dp, modifier: Modifier = Modifier) {
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     Box(modifier.size(size), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) { drawVIc(ic, tint, rtl) }
-        if (ic == VIc.Back10 || ic == VIc.Fwd10) {
-            Text("10", fontSize = (size.value * 0.3f).sp, fontWeight = FontWeight.Bold, color = tint, modifier = Modifier.padding(top = size * 0.12f))
-        }
     }
 }
 
@@ -136,13 +119,12 @@ fun VodBtn(
     val sc by animateFloatAsState(if (focused) 1.14f else 1f, tween(130), label = "vbtn")
     val bg = when {
         focused -> Color.White
-        primary -> AccentFill
-        else -> Color(0x33FFFFFF)
+        primary -> Color(0x33FFFFFF)
+        else -> Color.Transparent
     }
     val fg = when {
         !enabled -> Color(0x55FFFFFF)
         focused -> Color(0xFF101522)
-        primary -> OnAccent
         else -> Color.White
     }
     Box(
@@ -150,7 +132,7 @@ fun VodBtn(
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocus() }
             .clip(CircleShape).background(bg)
-            .border(if (focused) 2.dp else 1.dp, if (focused) Color.White else Color(0x33FFFFFF), CircleShape)
+            .then(if (focused) Modifier.border(2.dp, Color.White, CircleShape) else Modifier)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) { VIcon(ic, fg, size * 0.5f) }
@@ -181,22 +163,19 @@ fun BoxScope.VodOverlay(
 ) {
     val dev = LocalDevice.current
     val narrow = dev.widthDp < 600
-    val side = if (dev.tv) 56.dp else 48.dp
-    val big = if (dev.tv) 72.dp else 62.dp
+    val side = if (dev.tv) 48.dp else 42.dp
+    val big = if (dev.tv) 56.dp else 48.dp
     val pad = if (dev.tv) 48.dp else 14.dp
 
-    // Top
+    // Top: just the back button (and PiP / lock on touch); the picture stays clean.
     Row(
         Modifier.align(Alignment.TopCenter).fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(Color(0xB3000000), Color.Transparent)))
-            .padding(horizontal = pad, vertical = if (dev.tv) 22.dp else 8.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .background(Brush.verticalGradient(listOf(Color(0x80000000), Color.Transparent)))
+            .padding(horizontal = pad, vertical = if (dev.tv) 18.dp else 6.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         VodBtn(VIc.Back, size = 44.dp, onFocus = onInteract, onClick = onBack)
-        Column(Modifier.weight(1f)) {
-            Text(title, fontSize = if (dev.tv) 22.sp else 17.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
-            if (!subtitle.isNullOrBlank()) Text(subtitle, fontSize = 12.sp, color = Accent, maxLines = 1)
-        }
+        Spacer(Modifier.weight(1f))
         if (dev.touch) {
             VodBtn(VIc.Pip, size = 44.dp, onFocus = onInteract, onClick = onPip)
             VodBtn(VIc.Lock, size = 44.dp, onFocus = onInteract, onClick = onLock)
@@ -209,17 +188,20 @@ fun BoxScope.VodOverlay(
             .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE6000000))))
             .padding(horizontal = pad, vertical = if (dev.tv) 20.dp else 10.dp)
     ) {
+        Text(title, fontSize = if (dev.tv) 20.sp else 16.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+        if (!subtitle.isNullOrBlank()) Text(subtitle, fontSize = 11.sp, color = Color(0x99FFFFFF), maxLines = 1)
+        Spacer(Modifier.height(6.dp))
         if (ui.duration > 0) {
             PlayerTimeline(
                 ui = ui, seekInterval = seekInterval, thumbnails = thumbnails,
                 onSeekBy = onSeekBy, onSeekTo = onSeekTo, onInteract = onInteract,
                 modifier = Modifier, focusRequester = timelineFocus, onToggle = onToggle
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(4.dp))
         }
         val transport: @Composable () -> Unit = {
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                Row(horizontalArrangement = Arrangement.spacedBy(if (dev.tv) 18.dp else 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(horizontalArrangement = Arrangement.spacedBy(if (dev.tv) 14.dp else if (narrow) 2.dp else 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (hasPrev) VodBtn(VIc.Prev, size = side, onFocus = onInteract, onClick = onPrev)
                     VodBtn(VIc.Back10, size = side, onFocus = onInteract) { onSeekBy(-seekInterval * 1_000L) }
                     VodBtn(if (ui.wantPlay) VIc.Pause else VIc.Play, size = big, primary = true, onFocus = onInteract, onClick = onToggle)
@@ -229,21 +211,17 @@ fun BoxScope.VodOverlay(
             }
         }
         val options: @Composable () -> Unit = {
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
-                CaptionBtn(VIc.Subs, tr(R.string.cap_subs_audio), side, onInteract, onSubs)
-                if (hasEpisodes) CaptionBtn(VIc.Episodes, tr(R.string.detail_episodes), side, onInteract, onEpisodes)
-                CaptionBtn(VIc.Settings, tr(R.string.cap_settings), side, onInteract, onSettings)
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                VodBtn(VIc.Subs, size = side, onFocus = onInteract, onClick = onSubs)
+                if (hasEpisodes) VodBtn(VIc.Episodes, size = side, onFocus = onInteract, onClick = onEpisodes)
+                VodBtn(VIc.Settings, size = side, onFocus = onInteract, onClick = onSettings)
             }
         }
-        if (narrow) {
-            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                transport(); options()
-            }
-        } else {
-            Box(Modifier.fillMaxWidth()) {
-                Box(Modifier.align(Alignment.Center)) { transport() }
-                Box(Modifier.align(Alignment.CenterEnd)) { options() }
-            }
+        // One bar: playback controls on the start side, options on the other.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            transport()
+            Spacer(Modifier.weight(1f))
+            options()
         }
     }
 }
@@ -320,7 +298,7 @@ fun BoxScope.LiveOverlay(
         }
         val transport: @Composable () -> Unit = {
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                Row(horizontalArrangement = Arrangement.spacedBy(if (dev.tv) 18.dp else 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(horizontalArrangement = Arrangement.spacedBy(if (dev.tv) 14.dp else if (narrow) 2.dp else 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     VodBtn(VIc.Back10, size = side, onFocus = onInteract, onClick = onRewind)
                     VodBtn(if (ui.wantPlay) VIc.Pause else VIc.Play, size = big, primary = true, focusRequester = playFocus, onFocus = onInteract, onClick = onToggle)
                     VodBtn(VIc.Fwd10, size = side, onFocus = onInteract) { if (behindLive) onLiveEdge() else onSeekBy(seekInterval * 1_000L) }
