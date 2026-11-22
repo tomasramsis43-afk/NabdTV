@@ -21,6 +21,9 @@ import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
@@ -48,7 +51,6 @@ fun DetailScreen(vm: AppViewModel) {
     val info = vm.info
     BackHandler { vm.closeDetail() }
     val playFocus = remember { FocusRequester() }
-    LaunchedEffect(c.url) { if (!isSeries) { kotlinx.coroutines.delay(150); runCatching { playFocus.requestFocus() } } }
     val d = LocalDevice.current
     val edge = edgePad(d)
     val narrow = d.widthDp < 600
@@ -82,7 +84,7 @@ fun DetailScreen(vm: AppViewModel) {
 
         Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(top = 10.dp)) {
             Row(Modifier.fillMaxWidth().padding(start = edge.start, end = edge.end), verticalAlignment = Alignment.CenterVertically) {
-                MBtn(tr(R.string.detail_back), filled = false) { vm.closeDetail() }
+                if (!d.tv) MBtn(tr(R.string.detail_back), filled = false) { vm.closeDetail() }
                 Spacer(Modifier.weight(1f))
                 Text(
                     typeLabel, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White,
@@ -91,13 +93,21 @@ fun DetailScreen(vm: AppViewModel) {
                 )
             }
 
+            // Hero: only the artwork with the logo (or title) and the info chips. It fills the screen, so the buttons start below the fold.
             Column(
-                Modifier.fillMaxWidth().height((d.heightDp * 0.6f).toInt().coerceAtLeast(200).dp)
+                Modifier.fillMaxWidth().height((d.heightDp - 8).coerceAtLeast(240).dp).zIndex(1f)
                     .padding(horizontal = maxOf(edge.start, edge.end)),
                 verticalArrangement = Arrangement.Bottom, horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Logo (or the plain title) in the middle; it fades away together with the big image when the page scrolls.
-                Column(Modifier.graphicsLayer { alpha = (1f - scroll.value / 300f).coerceIn(0f, 1f) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                // The logo / title never disappears: it rides up with the scroll and stays pinned at the top until the end of the page.
+                val stickTop = with(androidx.compose.ui.platform.LocalDensity.current) { (if (d.tv) 14.dp else 8.dp).toPx() }
+                var naturalY by remember { mutableStateOf(-1f) }
+                Column(
+                    Modifier.onGloballyPositioned { naturalY = it.positionInRoot().y + scroll.value }
+                        .graphicsLayer { translationY = if (naturalY < 0f) 0f else (scroll.value - (naturalY - stickTop)).coerceAtLeast(0f) }
+                        .drawBehind { drawRect(Scrim.copy(alpha = (scroll.value / 400f).coerceIn(0f, 0.75f))) },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                         TitleLogo(
                             c.name, kindOf(c), info?.year?.take(4)?.toIntOrNull(),
                             height = if (narrow) 48.dp else if (d.tv) 72.dp else 60.dp,
@@ -109,7 +119,8 @@ fun DetailScreen(vm: AppViewModel) {
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis
                             )
                         }
-                        Spacer(Modifier.height(8.dp))
+                }
+                Spacer(Modifier.height(8.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
                             (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let {
                                 MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D))
@@ -119,14 +130,10 @@ fun DetailScreen(vm: AppViewModel) {
                             info?.genre?.takeIf { it.isNotBlank() }?.split(',', '،', '/')?.map { it.trim() }
                                 ?.filter { it.isNotEmpty() }?.take(if (narrow) 1 else 2)?.forEach { MetaChip(it) }
                         }
-                }
+                Spacer(Modifier.height(14.dp))
             }
-            // Buttons and description sit side by side under the artwork (not on top of it).
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = maxOf(edge.start, edge.end)),
-                horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.Top
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.Start) {
+            Spacer(Modifier.height(14.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
                     if (!isSeries) {
                         val h = vm.store.historyOf(c.url)
                         val label = if (h != null && !h.finished && h.position > 10_000) tr(R.string.detail_resume, h.position / 60000) else tr(R.string.detail_play)
@@ -142,12 +149,12 @@ fun DetailScreen(vm: AppViewModel) {
                             ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
                         } catch (_: Exception) { vm.say(S(R.string.detail_no_viewer)) }
                     }
-                Column(Modifier.weight(1f)) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = maxOf(edge.start, edge.end)), horizontalAlignment = Alignment.CenterHorizontally) {
                 }
                     if (info != null && info.plot.isNotBlank() && !(isSeries && shortScreen)) {
                             Spacer(Modifier.height(0.dp))
                             Text(
-                                info.plot, modifier = Modifier.widthIn(max = 640.dp), fontSize = if (narrow) 12.sp else 13.sp, lineHeight = 19.sp,
+                                info.plot, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.widthIn(max = 640.dp), fontSize = if (narrow) 12.sp else 13.sp, lineHeight = 19.sp,
                                 color = Color(0xFFE3E6F0), maxLines = if (narrow || isSeries) 2 else 3, overflow = TextOverflow.Ellipsis
                             )
                         }
@@ -158,7 +165,6 @@ fun DetailScreen(vm: AppViewModel) {
                                 maxLines = 1, overflow = TextOverflow.Ellipsis
                             )
                         }
-                }
             }
             Spacer(Modifier.height(10.dp))
 
@@ -255,7 +261,7 @@ private fun Episodes(vm: AppViewModel, s: Channel, d: Device, edge: EdgePad) {
     LaunchedEffect(eps.size, vm.season) {
         if (eps.isNotEmpty()) {
             runCatching { listState.scrollToItem(target) }
-            if (d.tv) {
+            if (d.tv && remembered != null) {
                 kotlinx.coroutines.delay(200)
                 runCatching { epFocus.requestFocus() }
             }
