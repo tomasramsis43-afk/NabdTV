@@ -63,7 +63,7 @@ fun ContinueRow(vm: AppViewModel, d: Device, items: List<ContinueItem>, start: D
 }
 
 @Composable
-private fun ContinueCard(vm: AppViewModel, d: Device, item: ContinueItem) {
+internal fun ContinueCard(vm: AppViewModel, d: Device, item: ContinueItem) {
     val shape = RoundedCornerShape(Radius.poster)
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val img by produceState(initialValue = item.image, item.key, item.episodeUrl, item.image) {

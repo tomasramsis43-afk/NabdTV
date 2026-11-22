@@ -23,6 +23,7 @@ const val GROUP_ALL = "الكل"
 const val GROUP_FAV = "★ المفضلة"
 const val GROUP_RECENT = "◷ شاهدت مؤخراً"
 const val GROUP_NEW = "🆕 المضاف حديثاً"
+const val GROUP_CONT = "▶ متابعة المشاهدة"
 private const val NEW_LIMIT = 300
 const val GROUP_CUSTOM = "◆ "
 
@@ -151,6 +152,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val ordered = names.filter { it in pinned } + names.filter { it !in pinned }
         val special = mutableListOf(GROUP_ALL, GROUP_FAV)
         if (base.any { it.added > 0 }) special += GROUP_NEW
+        // Continue watching lives in its own category under "recently added" (movies in Movies, episodes in Series).
+        if (tab != Tab.Live && continueItems.any { it.kind == (if (tab == Tab.Movies) Kind.Movie else Kind.Series) }) special += GROUP_CONT
         if (tab == Tab.Live) {
             special += GROUP_RECENT
             special += store.customGroups().keys.map { GROUP_CUSTOM + it }
@@ -161,6 +164,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun groupLabel(g: String): String =
         if (g == GROUP_ALL) tx(R.string.group_all) else if (g == GROUP_FAV) tx(R.string.group_fav)
         else if (g == GROUP_RECENT) tx(R.string.group_recent) else if (g == GROUP_NEW) tx(R.string.group_new)
+        else if (g == GROUP_CONT) tx(R.string.group_continue)
         else if (g.startsWith("★") || g.startsWith("◷") || g.startsWith("◆") || g.startsWith("🆕")) g
         else (if (g in store.pinnedGroups) "📌 " else "") + Classifier.cleanGroup(g, store.filterList) +
             (if (g in store.lockedGroups) " 🔒" else "")
@@ -1165,7 +1169,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun groupMenu(g: String) {
-        if (g == GROUP_ALL || g == GROUP_FAV || g == GROUP_RECENT || g == GROUP_NEW) return
+        if (g == GROUP_ALL || g == GROUP_FAV || g == GROUP_RECENT || g == GROUP_NEW || g == GROUP_CONT) return
         val items = ArrayList<Pair<String, () -> Unit>>()
         if (g.startsWith(GROUP_CUSTOM)) {
             items += tx(R.string.menu_delete_group) to { removeCustomGroup(g.removePrefix(GROUP_CUSTOM)) }

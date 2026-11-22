@@ -415,17 +415,28 @@ private fun BrowseTab(vm: AppViewModel, d: Device) {
 
     SideEffect { vm.firstKey = items.firstOrNull()?.let { it.url + it.id } }
 
-    // Continue watching for this category: movies in Movies, episodes in Series; inside a provider category only its own items.
-    val allCont = vm.continueItems
-    val inAll = vm.group == GROUP_ALL || vm.group == GROUP_FAV || vm.group == GROUP_RECENT || vm.group == GROUP_NEW || vm.group.startsWith("\u25C6")
+    // Continue watching has its own category (GROUP_CONT): movies in Movies, episodes in Series.
     val cont = when (vm.tab) {
-        Tab.Movies -> allCont.filter { it.kind == Kind.Movie }
-        Tab.Series -> allCont.filter { it.kind == Kind.Series }
+        Tab.Movies -> vm.continueItems.filter { it.kind == Kind.Movie }
+        Tab.Series -> vm.continueItems.filter { it.kind == Kind.Series }
         else -> emptyList()
-    }.filter { vm.query.isBlank() && (inAll || it.group == vm.group) }
+    }
+    val showCont = vm.group == GROUP_CONT && vm.tab != Tab.Live
 
     @Composable
     fun Grid(modifier: Modifier) {
+        if (showCont) {
+            if (cont.isEmpty()) Text(tr(R.string.no_results), color = TextSecondary, fontSize = 15.sp)
+            LazyVerticalGrid(
+                state = vm.gridState(vm.tab.name + "|" + GROUP_CONT),
+                columns = GridCells.Adaptive(if (d.tv) 300.dp else 240.dp),
+                horizontalArrangement = Arrangement.spacedBy(d.gap), verticalArrangement = Arrangement.spacedBy(d.gap + 6.dp),
+                contentPadding = PaddingValues(start = 2.dp, end = 2.dp, top = 4.dp, bottom = 24.dp), modifier = modifier
+            ) {
+                items(cont, key = { it.key }) { ContinueCard(vm, d, it) }
+            }
+            return
+        }
         if (items.isEmpty() && (vm.loading || vm.vodLoading)) { SkeletonGrid(d); return }
         if (items.isEmpty()) Text(tr(R.string.no_results), color = TextSecondary, fontSize = 15.sp)
         LazyVerticalGrid(
@@ -454,8 +465,7 @@ private fun BrowseTab(vm: AppViewModel, d: Device) {
             }
             Spacer(Modifier.width(d.gap + 6.dp))
             Column(Modifier.weight(1f)) {
-                ContinueRow(vm, d, cont, 2.dp, 2.dp)
-                Text(tr(R.string.items_count, items.size), color = TextMuted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
+                Text(tr(R.string.items_count, if (showCont) cont.size else items.size), color = TextMuted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
                 Grid(Modifier.weight(1f))
             }
         }
@@ -469,7 +479,6 @@ private fun BrowseTab(vm: AppViewModel, d: Device) {
                 if (vm.tab == Tab.Live) item { TabChip(tr(R.string.multi_chip, vm.multi.size), false) { vm.openMulti() } }
             }
             Spacer(Modifier.height(4.dp))
-            ContinueRow(vm, d, cont, 2.dp, 2.dp)
             Grid(Modifier.weight(1f))
         }
     }
