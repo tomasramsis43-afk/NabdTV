@@ -414,7 +414,69 @@ class Store(private val ctx: Context) {
         saveHist()
     }
 
-    fun clearHistory() { hist().clear(); saveHist() }
+    fun clearHistory() { hist().clear(); saveHist(); epMetas().clear(); saveEpMetas(); cursors().clear(); saveCursors() }
+
+    /* ---------- episode metadata + current episode per series (Continue watching) ---------- */
+    private var epMetaCache: LinkedHashMap<String, EpMeta>? = null
+
+    private fun epMetas(): LinkedHashMap<String, EpMeta> {
+        epMetaCache?.let { return it }
+        val m = LinkedHashMap<String, EpMeta>()
+        runCatching {
+            val o = JSONObject(p.getString("epmeta", "{}"))
+            for (k in o.keys()) {
+                val j = o.getJSONObject(k)
+                m[k] = EpMeta(j.optString("s"), j.optString("n"), j.optInt("se"), j.optInt("e"), j.optString("t"), j.optString("i").ifEmpty { null })
+            }
+        }
+        epMetaCache = m
+        return m
+    }
+
+    private fun saveEpMetas() {
+        val o = JSONObject()
+        epMetas().forEach { (k, e) ->
+            o.put(k, JSONObject().put("s", e.seriesUrl).put("n", e.seriesName).put("se", e.season).put("e", e.num).put("t", e.title).put("i", e.image ?: ""))
+        }
+        p.edit().putString("epmeta", o.toString()).apply()
+    }
+
+    fun epMeta(url: String): EpMeta? = epMetas()[url]
+
+    fun saveEpMeta(url: String, m: EpMeta) {
+        val all = epMetas()
+        all.remove(url); all[url] = m
+        while (all.size > 600) all.remove(all.keys.first())
+        saveEpMetas()
+    }
+
+    private var cursorCache: LinkedHashMap<String, Pair<String, Long>>? = null
+
+    private fun cursors(): LinkedHashMap<String, Pair<String, Long>> {
+        cursorCache?.let { return it }
+        val m = LinkedHashMap<String, Pair<String, Long>>()
+        runCatching {
+            val o = JSONObject(p.getString("contcursor", "{}"))
+            for (k in o.keys()) { val j = o.getJSONObject(k); m[k] = j.optString("u") to j.optLong("t") }
+        }
+        cursorCache = m
+        return m
+    }
+
+    private fun saveCursors() {
+        val o = JSONObject()
+        cursors().forEach { (k, v) -> o.put(k, JSONObject().put("u", v.first).put("t", v.second)) }
+        p.edit().putString("contcursor", o.toString()).apply()
+    }
+
+    /** The episode Continue watching currently shows for a series (last played, or picked with the prev/next arrows). */
+    fun contCursor(seriesUrl: String): Pair<String, Long>? = cursors()[seriesUrl]
+
+    fun setContCursor(seriesUrl: String, episodeUrl: String) {
+        val c = cursors(); c.remove(seriesUrl); c[seriesUrl] = episodeUrl to System.currentTimeMillis()
+        while (c.size > 300) c.remove(c.keys.first())
+        saveCursors()
+    }
 
     /* ---------- stream health ---------- */
     private var healthCache: HashMap<String, HealthRecord>? = null

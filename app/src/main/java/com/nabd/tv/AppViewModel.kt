@@ -234,9 +234,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val shelves by derivedStateOf {
         rev
         val out = ArrayList<Shelf>()
-        val cont = history.filter { it.kind != Kind.Live && !it.finished && it.progress > 0.02f && parental.visible(histChannel(it)) }
-            .take(20).map { histChannel(it) }
-        if (cont.isNotEmpty()) out += Shelf(tx(R.string.shelf_continue), cont)
+        // "Continue watching" is its own landscape row (see continueItems / ContinueUi.kt), no longer a poster shelf.
         // Favourites: only what the user actually starred (any kind), already filtered by parental rules.
         val favItems = all.filter { it.url in favs && parental.visible(it) }.take(40)
         if (favItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_fav), favItems)
@@ -765,8 +763,107 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         screen = Screen.Player
     }
 
-    fun playEpisode(s: Channel, e: Episode) =
+    fun playEpisode(s: Channel, e: Episode) {
+        // Remember the episode (image, number, title) and make it the series' current episode for Continue watching.
+        store.saveEpMeta(e.url, EpMeta(s.url, s.name, e.season, e.num, e.title, e.image))
+        store.setContCursor(s.url, e.url)
+        if (detail?.url == s.url && episodes.isNotEmpty()) epListCache[s.url] = episodes
+        bump()
         play(Channel(-1, "${s.name} · ${tx(R.string.ep_label, e.season, e.num)}", e.url, s.logo, s.group), PlayMode.Vod)
+    }
+
+    /* ---------- Continue watching (movies + series episodes) ---------- */
+    private val epListCache = HashMap<String, List<Episode>>()
+    private val imageCache = HashMap<String, String?>()
+
+    /** Newest first: unfinished movies, and one card per series showing its current episode with that episode's own image. */
+    val continueItems: List<ContinueItem> by derivedStateOf {
+        rev
+        val out = ArrayList<ContinueItem>()
+        val seen = HashSet<String>()
+        for (h in history) {
+            if (h.kind == Kind.Live) continue
+            val meta = store.epMeta(h.url)
+            if (meta == null) {
+                if (h.kind == Kind.Movie && !h.finished && h.progress > 0.02f && parental.visible(histChannel(h)))
+                    out += ContinueItem("m:" + h.url, Kind.Movie, h.name, "", "", null, h.progress, histChannel(h), null, h.url, 0, 0, h.group, h.last, h.logo)
+                continue
+            }
+            if (!seen.add(meta.seriesUrl)) continue
+            val cur = store.contCursor(meta.seriesUrl)
+            val epUrl = cur?.first ?: h.url
+            val m = store.epMeta(epUrl) ?: continue
+            val th = historyByUrl[epUrl]
+            val picked = cur != null && cur.first != h.url
+            val inProgress = th != null && !th.finished && th.progress > 0.02f
+            if (!inProgress && !picked) continue
+            if (!parental.visible(Channel(-1, m.seriesName, m.seriesUrl, h.logo, h.group))) continue
+            out += ContinueItem(
+                "s:" + m.seriesUrl, Kind.Series, m.seriesName, m.title, tx(R.string.ep_label, m.season, m.num), m.image,
+                if (inProgress) th!!.progress else 0f,
+                Channel(-1, "${m.seriesName} · ${tx(R.string.ep_label, m.season, m.num)}", epUrl, h.logo, h.group),
+                m.seriesUrl, epUrl, m.season, m.num, h.group, maxOf(th?.last ?: 0L, cur?.second ?: 0L, h.last), h.logo
+            )
+        }
+        out.sortedByDescending { it.last }.take(30)
+    }
+
+    /** Landscape image for a card that has none yet: a movie's backdrop, or the episode's still (TVmaze / TMDB). */
+    suspend fun continueImage(it: ContinueItem): String? {
+        if (imageCache.containsKey(it.key + it.episodeUrl)) return imageCache[it.key + it.episodeUrl]
+        val img = try {
+            if (it.seriesUrl == null) repo.vodInfo(it.play, Kind.Movie)?.backdrop
+            else repo.episodeStills(it.title, it.season)[it.num]?.also { still ->
+                val m = store.epMeta(it.episodeUrl)
+                if (m != null) { store.saveEpMeta(it.episodeUrl, m.copy(image = still)); bump() }
+            }
+        } catch (_: Exception) { null }
+        if (img != null) imageCache[it.key + it.episodeUrl] = img
+        return img
+    }
+
+    fun playContinue(it: ContinueItem) {
+        val sUrl = it.seriesUrl
+        if (sUrl == null) { play(it.play); return }
+        detail = Channel(-1, it.title, sUrl, it.poster, it.group); info = null
+        episodes = epListCache[sUrl].orEmpty(); season = it.season
+        store.setContCursor(sUrl, it.episodeUrl)
+        play(it.play, PlayMode.Vod)
+        val sid = sUrl.removePrefix("series:").toIntOrNull()
+        if (episodes.isEmpty() && sid != null) viewModelScope.launch {
+            try {
+                val l = repo.loadEpisodes(sid)
+                epListCache[sUrl] = l
+                if (detail?.url == sUrl) episodes = l
+            } catch (_: Exception) { }
+        }
+    }
+
+    /** Moves a series card to the next (+1) or previous (-1) episode. Tapping the card then plays that episode. */
+    fun continueStep(it: ContinueItem, delta: Int) {
+        val sUrl = it.seriesUrl ?: return
+        val sid = sUrl.removePrefix("series:").toIntOrNull() ?: return
+        viewModelScope.launch {
+            val eps = epListCache[sUrl] ?: try { repo.loadEpisodes(sid).also { epListCache[sUrl] = it } }
+                catch (e: Exception) { say(friendly(e)); return@launch }
+            val t = if (delta > 0) VmLogic.nextEpisode(eps, it.episodeUrl) else VmLogic.previousEpisode(eps, it.episodeUrl)
+            if (t == null) { say(tx(if (delta > 0) R.string.x_cont_no_next else R.string.x_cont_no_prev)); return@launch }
+            val still = try { repo.episodeStills(it.title, t.season)[t.num] } catch (_: Exception) { null }
+            store.saveEpMeta(t.url, EpMeta(sUrl, it.title, t.season, t.num, t.title, still ?: t.image))
+            store.setContCursor(sUrl, t.url)
+            bump()
+        }
+    }
+
+    fun continueMenu(it: ContinueItem) {
+        val items = ArrayList<Pair<String, () -> Unit>>()
+        if (it.seriesUrl != null) {
+            items += tx(R.string.x_cont_next) to { continueStep(it, 1) }
+            items += tx(R.string.x_cont_prev) to { continueStep(it, -1) }
+        }
+        items += tx(R.string.details) to { openDetail(Channel(-1, it.title, it.seriesUrl ?: it.episodeUrl, it.poster, it.group)) }
+        menu = MenuRequest(if (it.badge.isNotEmpty()) "${it.title} · ${it.badge}" else it.title, items)
+    }
 
     /** Episode that follows the one currently playing, if any (for auto-next). */
     fun nextEpisodeOf(c: Channel): Episode? {

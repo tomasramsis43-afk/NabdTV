@@ -191,6 +191,7 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
         )
     }
     val edge = edgePad(d)
+    val contItems = vm.continueItems
     Column(Modifier.fillMaxSize()) {
         // Edge to edge, starts at the very top of the screen: the floating header sits on this artwork.
         HomeHero(vm, focus, vm.homeInfo, d, palette, Modifier.fillMaxWidth().height(d.heroHeight).then(swipe))
@@ -201,6 +202,7 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
             verticalArrangement = Arrangement.spacedBy(if (d.tv) 14.dp else 12.dp),
             contentPadding = PaddingValues(bottom = 28.dp)
         ) {
+            if (contItems.isNotEmpty()) item(key = "continue-row") { ContinueRow(vm, d, contItems, edge.start, edge.end) }
             items(shelves, key = { it.title }) { s ->
                 Column {
                     Row(
@@ -413,6 +415,15 @@ private fun BrowseTab(vm: AppViewModel, d: Device) {
 
     SideEffect { vm.firstKey = items.firstOrNull()?.let { it.url + it.id } }
 
+    // Continue watching for this category: movies in Movies, episodes in Series; inside a provider category only its own items.
+    val allCont = vm.continueItems
+    val inAll = vm.group == GROUP_ALL || vm.group == GROUP_FAV || vm.group == GROUP_RECENT || vm.group == GROUP_NEW || vm.group.startsWith("\u25C6")
+    val cont = when (vm.tab) {
+        Tab.Movies -> allCont.filter { it.kind == Kind.Movie }
+        Tab.Series -> allCont.filter { it.kind == Kind.Series }
+        else -> emptyList()
+    }.filter { vm.query.isBlank() && (inAll || it.group == vm.group) }
+
     @Composable
     fun Grid(modifier: Modifier) {
         if (items.isEmpty() && (vm.loading || vm.vodLoading)) { SkeletonGrid(d); return }
@@ -443,8 +454,9 @@ private fun BrowseTab(vm: AppViewModel, d: Device) {
             }
             Spacer(Modifier.width(d.gap + 6.dp))
             Column(Modifier.weight(1f)) {
+                ContinueRow(vm, d, cont, 2.dp, 2.dp)
                 Text(tr(R.string.items_count, items.size), color = TextMuted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
-                Grid(Modifier.fillMaxSize())
+                Grid(Modifier.weight(1f))
             }
         }
     } else {
@@ -457,7 +469,8 @@ private fun BrowseTab(vm: AppViewModel, d: Device) {
                 if (vm.tab == Tab.Live) item { TabChip(tr(R.string.multi_chip, vm.multi.size), false) { vm.openMulti() } }
             }
             Spacer(Modifier.height(4.dp))
-            Grid(Modifier.fillMaxSize())
+            ContinueRow(vm, d, cont, 2.dp, 2.dp)
+            Grid(Modifier.weight(1f))
         }
     }
 }

@@ -91,4 +91,17 @@ data class Reminder(val id: String, val channelName: String, val title: String, 
 /** Clean TMDB artwork for a library title: a wide backdrop and TMDB's own 0-10 rating ("8.4"). */
 data class TmdbArt(val image: String, val rating: String?)
 
+/** Episode details remembered when an episode is played, so Continue watching can show the episode itself. */
+data class EpMeta(val seriesUrl: String, val seriesName: String, val season: Int, val num: Int, val title: String, val image: String?)
+
+/**
+ * One card of "Continue watching": a movie, or the current episode of a series (with its own landscape image).
+ * [seriesUrl] is null for movies. [episodeUrl] is the playable URL (movie or episode).
+ */
+data class ContinueItem(
+    val key: String, val kind: Kind, val title: String, val subtitle: String, val badge: String, val image: String?,
+    val progress: Float, val play: Channel, val seriesUrl: String?, val episodeUrl: String,
+    val season: Int, val num: Int, val group: String, val last: Long, val poster: String?
+)
+
 data class Shelf(val title: String, val items: List<Channel>, val ranked: Boolean = false, val art: Map<String, TmdbArt> = emptyMap())
