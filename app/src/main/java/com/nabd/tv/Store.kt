@@ -18,13 +18,19 @@ class Store(private val ctx: Context) {
 
     data class Profile(val id: String, val name: String, val kids: Boolean)
 
+    // profiles() / parentalLevel are read once PER CHANNEL when lists are filtered (tens of thousands of times): parse only when the stored text changed.
+    @Volatile private var profBox: Pair<String, List<Profile>>? = null   // one object: readers on other threads never see a half-updated pair
+
     fun profiles(): List<Profile> {
+        val raw = g.getString("profiles", "[]") ?: "[]"
+        profBox?.let { if (it.first == raw) return it.second }
         val out = ArrayList<Profile>()
         runCatching {
-            val a = JSONArray(g.getString("profiles", "[]"))
+            val a = JSONArray(raw)
             for (i in 0 until a.length()) a.getJSONObject(i).let { out += Profile(it.getString("id"), it.optString("n"), it.optBoolean("k")) }
         }
         if (out.none { it.id == "main" }) out.add(0, Profile("main", "الرئيسي", false))
+        profBox = raw to out
         return out
     }
 
@@ -329,8 +335,15 @@ class Store(private val ctx: Context) {
 
     /* ---------- parental control ---------- */
     var parentalLevel: Maturity
-        get() = if (currentProfile.kids) Maturity.Kids else runCatching { Maturity.valueOf(p.getString("parentalLevel", "Teen")!!) }.getOrDefault(Maturity.Teen)
+        get() = if (currentProfile.kids) Maturity.Kids else levelOf(p.getString("parentalLevel", "Teen") ?: "Teen")
         set(v) = p.edit().putString("parentalLevel", v.name).apply()
+    @Volatile private var levelBox: Pair<String, Maturity>? = null
+    private fun levelOf(raw: String): Maturity {
+        levelBox?.let { if (it.first == raw) return it.second }
+        val m = runCatching { Maturity.valueOf(raw) }.getOrDefault(Maturity.Teen)
+        levelBox = raw to m
+        return m
+    }
     var hideLocked: Boolean
         get() = p.getBoolean("hideLocked", false)
         set(v) = p.edit().putBoolean("hideLocked", v).apply()

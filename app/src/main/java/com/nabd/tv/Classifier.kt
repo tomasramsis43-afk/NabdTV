@@ -21,14 +21,15 @@ object Classifier {
         Genre.Entertainment to listOf("entertain", "ترفيه", "show", "variety", "reality", "برامج")
     )
 
-    private val cache = HashMap<String, Genre>(4096)
+    // Lists filter every channel on each refresh: the cache must hold the whole library (a 20k cap made every pass start from scratch).
+    private val cache = java.util.concurrent.ConcurrentHashMap<String, Genre>(8192)
 
     /** Detects a genre using the group (category) first, then the channel name. */
     fun genre(name: String, group: String): Genre {
         val key = "$group|$name"
         cache[key]?.let { return it }
         val g = detect(group.lowercase(Locale.ROOT)) ?: detect(name.lowercase(Locale.ROOT)) ?: Genre.General
-        if (cache.size > 20_000) cache.clear()
+        if (cache.size > 200_000) cache.clear()
         cache[key] = g
         return g
     }

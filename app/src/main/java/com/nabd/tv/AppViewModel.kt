@@ -141,6 +141,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val base: List<Channel>
         get() = when (tab) { Tab.Movies -> movieList; Tab.Series -> seriesList; else -> liveList }
 
+    // Booleans only: the category list is not rebuilt every time the continue-watching list changes.
+    private val hasContMovies by derivedStateOf { continueItems.any { it.kind == Kind.Movie } }
+    private val hasContSeries by derivedStateOf { continueItems.any { it.kind == Kind.Series } }
+
     val groups by derivedStateOf {
         rev
         val pinned = store.pinnedGroups
@@ -153,7 +157,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val special = mutableListOf(GROUP_ALL, GROUP_FAV)
         if (base.any { it.added > 0 }) special += GROUP_NEW
         // Continue watching lives in its own category under "recently added" (movies in Movies, episodes in Series).
-        if (tab != Tab.Live && continueItems.any { it.kind == (if (tab == Tab.Movies) Kind.Movie else Kind.Series) }) special += GROUP_CONT
+        if ((tab == Tab.Movies && hasContMovies) || (tab == Tab.Series && hasContSeries)) special += GROUP_CONT
         if (tab == Tab.Live) {
             special += GROUP_RECENT
             special += store.customGroups().keys.map { GROUP_CUSTOM + it }
@@ -789,7 +793,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (h.kind == Kind.Live) continue
             val meta = store.epMeta(h.url)
             if (meta == null) {
-                if (h.kind == Kind.Movie && !h.finished && h.progress > 0.02f && parental.visible(histChannel(h)))
+                if (h.kind == Kind.Movie && !h.finished && (h.progress > 0.02f || h.position > 15_000L) && parental.visible(histChannel(h)))
                     out += ContinueItem("m:" + h.url, Kind.Movie, h.name, "", "", null, h.progress, histChannel(h), null, h.url, 0, 0, h.group, h.last, h.logo)
                 continue
             }
@@ -799,7 +803,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val m = store.epMeta(epUrl) ?: continue
             val th = historyByUrl[epUrl]
             val picked = cur != null && cur.first != h.url
-            val inProgress = th != null && !th.finished && th.progress > 0.02f
+            val inProgress = th != null && !th.finished && (th.progress > 0.02f || th.position > 15_000L)
             if (!inProgress && !picked) continue
             if (!parental.visible(Channel(-1, m.seriesName, m.seriesUrl, h.logo, h.group))) continue
             out += ContinueItem(
