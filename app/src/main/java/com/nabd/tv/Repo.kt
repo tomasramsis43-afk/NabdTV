@@ -378,7 +378,25 @@ class Repo(private val ctx: Context, val store: Store) {
         return if (Regex("""[A-Za-z0-9_-]{11}""").matches(t)) t else ""
     }
 
-    suspend fun vodInfo(c: Channel, kind: Kind): VodInfo? = withContext(Dispatchers.IO) {
+    // Opening the same title again must not hit the provider (and TMDB) again: keep recent details in memory for a while.
+    private val infoCache = object : LinkedHashMap<String, Pair<Long, VodInfo>>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Long, VodInfo>>?) = size > 80
+    }
+    private fun infoKey(c: Channel, kind: Kind) = "${kind.name}|${c.url}|" + store.tmdbKey.isNotBlank()
+
+    /** Details loaded in the last 30 minutes, or null. Safe to call on the main thread. */
+    fun cachedInfo(c: Channel, kind: Kind): VodInfo? = synchronized(infoCache) {
+        infoCache[infoKey(c, kind)]?.takeIf { System.currentTimeMillis() - it.first < 30 * 60_000L }?.second
+    }
+
+    suspend fun vodInfo(c: Channel, kind: Kind): VodInfo? {
+        cachedInfo(c, kind)?.let { return it }
+        val r = loadVodInfo(c, kind)
+        if (r != null) synchronized(infoCache) { infoCache[infoKey(c, kind)] = System.currentTimeMillis() to r }
+        return r
+    }
+
+    private suspend fun loadVodInfo(c: Channel, kind: Kind): VodInfo? = withContext(Dispatchers.IO) {
         var info: VodInfo? = null
         if (xt() != null) {
             try {

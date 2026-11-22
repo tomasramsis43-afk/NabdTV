@@ -601,7 +601,7 @@ fun PlayerScreen(vm: AppViewModel) {
 
     // Each engine rebuild creates a new ExoPlayer; the old one must be released (audio focus, decoder, network).
     DisposableEffect(player) {
-        onDispose { runCatching { player.release() } }
+        onDispose { runCatching { player.playWhenReady = false; player.release() } }   // silence at once, even if release waits on the network
     }
 
     LaunchedEffect(ch.url, player) {

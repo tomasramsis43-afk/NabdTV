@@ -654,7 +654,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openDetail(c: Channel) = guard(c) {
         val k = kindOf(c)
-        detail = c; info = null; episodes = emptyList(); season = 1; error = null; epFocusUrl = null; castWorks = emptyList()
+        detail = c; info = repo.cachedInfo(c, k); episodes = emptyList(); season = 1; error = null; epFocusUrl = null; castWorks = emptyList()
         back = Screen.Main; screen = Screen.Detail
         viewModelScope.launch {
             val i = repo.vodInfo(c, k)
@@ -1011,8 +1011,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val wasFinished = store.historyOf(c.url)?.finished == true
         store.recordWatch(c, kindOf(c), pos, dur, false)
         if (!wasFinished && store.historyOf(c.url)?.finished == true) { traktMarkWatched(c); advanceAfterFinish(c) }
-        if (parental.visible(c)) store.historyOf(c.url)?.let { WatchNext.sync(ctx, it) }   // Android TV "Watch Next" row
-        NabdWidget.refresh(ctx)   // phone home-screen widget
+        // The last save happens while the player is being torn down (after stop()), so Continue watching must refresh here.
+        if (screen != Screen.Player) history = store.history()
+        // Launcher/widget updates touch content providers: keep them off the main thread so leaving the player stays quick.
+        val entry = if (parental.visible(c)) store.historyOf(c.url) else null
+        viewModelScope.launch(Dispatchers.IO) {
+            entry?.let { WatchNext.sync(ctx, it) }   // Android TV "Watch Next" row
+            NabdWidget.refresh(ctx)                  // phone home-screen widget
+        }
     }
 
     /* ───────── Trakt ───────── */
