@@ -236,7 +236,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (trendM.size >= 3) out += Shelf(tx(R.string.x_shelf_trending_movies), trendM, ranked = true)
         val trendS = trend(seriesList)
         if (trendS.size >= 3) out += Shelf(tx(R.string.x_shelf_trending_series), trendS, ranked = true)
-        fun top(l: List<Channel>) = VmLogic.topRated(l, 10)
+        // Ranked rows are international only: Arabic titles are excluded here too.
+        fun top(l: List<Channel>) = VmLogic.topRated(l.filter { !Origin.isArabic(it.name, it.group) }, 10)
         val topM = top(movieList)
         if (topM.isNotEmpty()) out += Shelf(tx(R.string.shelf_top_movies), topM, ranked = true)
         val topS = top(seriesList)
