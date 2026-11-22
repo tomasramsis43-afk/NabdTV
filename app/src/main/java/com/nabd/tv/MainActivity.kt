@@ -88,6 +88,16 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun App(vm: AppViewModel) {
+    // First launch of the process with a playlist configured: logo + loading screen, then a cross-fade into the app.
+    // (Setup, a Watch Next resume straight into the player and later re-entries skip it.)
+    val showSplash = !vm.splashDone && vm.screen != Screen.Setup && vm.screen != Screen.Player
+    androidx.compose.animation.Crossfade(targetState = showSplash, animationSpec = androidx.compose.animation.core.tween(450), label = "splashFade") { splash ->
+        if (splash) SplashScreen(vm) else AppContent(vm)
+    }
+}
+
+@Composable
+private fun AppContent(vm: AppViewModel) {
     // Video screens use every pixel (even under the camera notch); the rest keep clear of the notch and the keyboard.
     val full = vm.screen == Screen.Player || vm.screen == Screen.MultiView
     // Home and Detail bleed their artwork under the notch; their foreground content applies the cut-out padding itself (edgePad).

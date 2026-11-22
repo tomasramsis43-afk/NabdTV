@@ -693,4 +693,6 @@
     <string name="x_cont_no_next">There is no later episode</string>
     <string name="x_cont_no_prev">This is the first episode</string>
     <string name="group_continue">▶ Continue watching</string>
+
+    <string name="splash_loading">Loading your content</string>
 </resources>

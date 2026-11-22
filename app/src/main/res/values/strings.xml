@@ -693,4 +693,6 @@
     <string name="x_cont_no_next">لا توجد حلقة بعد هذه</string>
     <string name="x_cont_no_prev">هذه أول حلقة</string>
     <string name="group_continue">▶ متابعة المشاهدة</string>
+
+    <string name="splash_loading">جارٍ تحميل بياناتك</string>
 </resources>
