@@ -202,9 +202,16 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
         // Edge to edge, starts at the very top of the screen: the floating header sits on this artwork.
         HomeHero(vm, focus, vm.homeInfo, d, palette, Modifier.fillMaxWidth().height(d.heroHeight).then(swipe))
         Spacer(Modifier.height(4.dp))
+        // Rows that scroll up under the hero dissolve softly instead of being cut by a hard line; at the very top nothing is faded.
+        val homeState = vm.listState("home")
+        val topFade = remember(homeState) {
+            derivedStateOf {
+                if (homeState.firstVisibleItemIndex > 0) 1f else (homeState.firstVisibleItemScrollOffset / 48f).coerceIn(0f, 1f)
+            }
+        }
         LazyColumn(
-            state = vm.listState("home"),
-            modifier = Modifier.weight(1f),
+            state = homeState,
+            modifier = Modifier.weight(1f).fadeTopEdge(40.dp) { topFade.value },
             verticalArrangement = Arrangement.spacedBy(if (d.tv) 14.dp else 12.dp),
             contentPadding = PaddingValues(bottom = 28.dp)
         ) {

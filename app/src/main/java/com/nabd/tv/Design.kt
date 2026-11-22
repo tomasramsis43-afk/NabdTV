@@ -200,6 +200,29 @@ fun edgePad(d: Device): EdgePad {
 
 
 /**
+ * Soft top edge for a scrolling list: instead of being cut by a hard line, content fades out over [height]
+ * (real transparency, so any background shows through). [amount] is 0..1 and is read at draw time:
+ * 0 leaves the list untouched (e.g. while it sits at the very top), 1 is the full fade.
+ */
+fun Modifier.fadeTopEdge(height: Dp = 40.dp, amount: () -> Float = { 1f }): Modifier = this
+    .graphicsLayer {
+        compositingStrategy = if (amount() > 0.01f) androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+        else androidx.compose.ui.graphics.CompositingStrategy.Auto
+    }
+    .drawWithContent {
+        drawContent()
+        val a = amount().coerceIn(0f, 1f)
+        if (a > 0.01f) {
+            val h = height.toPx().coerceAtMost(size.height)
+            drawRect(
+                brush = Brush.verticalGradient(0f to Color.Black.copy(alpha = 1f - a), 1f to Color.Black, startY = 0f, endY = h),
+                size = androidx.compose.ui.geometry.Size(size.width, h),
+                blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
+            )
+        }
+    }
+
+/**
  * Dissolves the bottom of a layer into whatever is behind it (real transparency, not a colour fill),
  * so artwork melts into the page background with no visible rectangular edge.
  */
