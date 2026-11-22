@@ -190,8 +190,9 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
             }
         )
     }.then(
-        // Touch: tapping the big image opens that movie / series page (live channels start playing).
-        if (d.tv) Modifier else Modifier.clickable(
+        // Tapping (or pressing OK on) the big image opens that movie / series page (live channels start playing).
+        // On TV the same clickable makes the hero the focus target: OK on the remote opens the title.
+        Modifier.clickable(
             interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null
         ) { if (kindOf(focus) == Kind.Live) vm.play(focus) else vm.openDetail(focus) }
     )
@@ -259,7 +260,6 @@ private fun HomeHero(
     modifier: Modifier = Modifier
 ) {
     val kind = kindOf(c)
-    val typeLabel = when (kind) { Kind.Movie -> tr(R.string.detail_type_movie); Kind.Series -> tr(R.string.detail_type_series); Kind.Live -> tr(R.string.type_live) }
     val primaryLabel = when (kind) { Kind.Series -> tr(R.string.detail_episodes); Kind.Movie -> tr(R.string.play); Kind.Live -> tr(R.string.watch) }
     val art = info?.backdrop ?: c.logo
 
@@ -283,9 +283,6 @@ private fun HomeHero(
         Box(Modifier.fillMaxSize().textSideScrim(if (wide) 0.95f else 0.78f))
         Box(Modifier.fillMaxWidth().fillMaxHeight(0.42f).background(Brush.verticalGradient(listOf(Scrim.copy(alpha = 0.72f), Color.Transparent))))
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.0f to Color.Transparent, 0.38f to Scrim.copy(alpha = 0.18f), 0.74f to Scrim.copy(alpha = 0.70f), 1f to Scrim.copy(alpha = 0.90f))))
-        Box(Modifier.fillMaxSize().drawBehind {
-            drawCircle(Brush.radialGradient(listOf(palette.glow, Color.Transparent), center = Offset(size.width * 0.5f, 0f), radius = size.width * 0.6f), radius = size.width * 0.6f, center = Offset(size.width * 0.5f, 0f))
-        })
 
         }
         // 3. Info block: anchored to the start side, bottom of the artwork; the right/centre of the image stays clear.
@@ -294,24 +291,8 @@ private fun HomeHero(
                 .then(if (wide) Modifier.fillMaxWidth(0.55f) else Modifier.fillMaxWidth())
                 .padding(start = edge.start, end = edge.end, bottom = if (d.tv) 22.dp else 12.dp)
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(typeLabel, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp, color = readableOnArt(palette.accent), modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(palette.primary.copy(alpha = 0.26f)).padding(horizontal = 8.dp, vertical = 3.dp))
-                if (c.hasCatchup) MetaChip(tr(R.string.catchup_chip), fg = Color(0xFFE7E9F2), bg = Color(0x26FFFFFF))
-                if (c.url in vm.favs) Text(tr(R.string.detail_fav_on), fontSize = 12.sp, color = Accent2)
-            }
-            Spacer(Modifier.height(if (d.tv) 10.dp else 6.dp))
             TitleLogo(c.name, kindOf(c), null, height = if (d.tv) 58.dp else if (d.widthDp >= 600) 50.dp else 40.dp) {
                 Text(c.name, style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.65f), Offset(0f, 3f), 14f)), fontSize = if (d.tv) 26.sp else if (d.widthDp >= 600) 22.sp else 18.sp, lineHeight = if (d.tv) 32.sp else if (d.widthDp >= 600) 28.sp else 23.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-            Spacer(Modifier.height(if (d.tv) 14.dp else 9.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(if (d.tv) 12.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
-                // Touch: the whole image is the button (tap = open the title page), so no Play / Details / favourite here.
-                // Remote (TV) has no tapping, so it keeps them.
-                if (d.tv) {
-                    MBtn(primaryLabel, tint = buttonTone(palette.primary)) { if (kind == Kind.Series) vm.openDetail(c) else vm.play(c) }
-                    if (kind != Kind.Live) MBtn(tr(R.string.details), filled = false, tint = palette.accent) { vm.openDetail(c) }
-                    HeroFav(vm, c, palette, d)
-                }
             }
         }
     }
