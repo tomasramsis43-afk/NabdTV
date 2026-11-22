@@ -57,9 +57,12 @@ fun DetailScreen(vm: AppViewModel) {
     Box(Modifier.fillMaxSize().appBackground()) {
         // Full-bleed backdrop: wide artwork to the screen edges, dissolving into the page (no frame, no card).
         Box(Modifier.fillMaxWidth().fillMaxHeight(0.72f).fadeOutBottom(0.55f)) {
+            // Phone held upright: the portrait poster fills the tall page; wide screens (landscape phone, tablet, TV): the wide backdrop.
+            val upright = d.portrait && !d.tv
+            val art = if (upright) info?.poster?.takeIf { it.isNotBlank() } ?: c.logo ?: info?.backdrop else info?.backdrop ?: c.logo
             AsyncImage(
-                model = info?.backdrop ?: c.logo, contentDescription = null,
-                contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, -0.45f), modifier = Modifier.fillMaxSize()
+                model = art, contentDescription = null,
+                contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, if (upright) -0.2f else -0.45f), modifier = Modifier.fillMaxSize()
             )
             Box(Modifier.fillMaxSize().textSideScrim(if (narrow) 0.78f else 0.95f))
             Box(
