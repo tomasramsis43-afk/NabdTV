@@ -259,7 +259,8 @@ fun PosterCard(
     focusKey: String = ch.url + ch.id,
     onFocusExtra: (() -> Unit)? = null,
     tmdbArt: TmdbArt? = null,   // clean TMDB backdrop + TMDB rating (used for the wide card)
-    adaptive: Boolean = false   // true = card follows the screen orientation: portrait poster (2:3) / landscape backdrop (16:9)
+    adaptive: Boolean = false,  // true = card follows the screen orientation: portrait poster (2:3) / landscape backdrop (16:9)
+    rank: Int? = null           // trending position: drawn inside the card, bottom-left
 ) {
     val progress = vm.historyByUrl[ch.url]?.progress ?: 0f
     val locked = vm.parental.needsPin(ch)
@@ -310,6 +311,27 @@ fun PosterCard(
             if (progress > 0.02f) {
                 Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color(0x66000000))) {
                     Box(Modifier.fillMaxHeight().fillMaxWidth(progress).background(Accent))
+                }
+            }
+            if (rank != null) {
+                // Trend number: inside the card on the physical left (same in Arabic and English layouts).
+                androidx.compose.runtime.CompositionLocalProvider(
+                    androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr
+                ) {
+                    Box(Modifier.matchParentSize()) {
+                        Box(
+                            Modifier.align(Alignment.BottomStart).fillMaxWidth().fillMaxHeight(0.42f)
+                                .background(Brush.verticalGradient(0f to Color.Transparent, 1f to OverlayScrim))
+                        )
+                        Text(
+                            "$rank", fontSize = if (d.tv) 44.sp else 34.sp, fontWeight = FontWeight.Black, maxLines = 1, softWrap = false,
+                            style = androidx.compose.ui.text.TextStyle(
+                                color = Color.White,
+                                shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.75f), androidx.compose.ui.geometry.Offset(0f, 3f), 10f)
+                            ),
+                            modifier = Modifier.align(Alignment.BottomStart).padding(start = 9.dp, bottom = 5.dp)
+                        )
+                    }
                 }
             }
             if (focused) Box(Modifier.matchParentSize().border(2.dp, Accent, shape))

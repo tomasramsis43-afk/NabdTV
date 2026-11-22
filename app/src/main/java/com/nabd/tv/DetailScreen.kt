@@ -104,22 +104,8 @@ fun DetailScreen(vm: AppViewModel) {
                 verticalArrangement = Arrangement.Bottom, horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // The logo / title never disappears: it rides up with the scroll and stays pinned at the top until the end of the page.
-                val stickTop = with(androidx.compose.ui.platform.LocalDensity.current) { (if (d.tv) 14.dp else 8.dp).toPx() }
-                var naturalY by remember { mutableStateOf(-1f) }
-                Column(
-                    Modifier.onGloballyPositioned { naturalY = it.positionInRoot().y + scroll.value }
-                        .graphicsLayer { translationY = if (naturalY < 0f) 0f else (scroll.value - (naturalY - stickTop)).coerceAtLeast(0f) }
-                        .drawBehind {
-                            // Only once the logo is pinned: a soft full-width fade behind it (never a box around the logo itself).
-                            val pinned = if (naturalY < 0f) 0f else (scroll.value - (naturalY - stickTop)).coerceAtLeast(0f)
-                            val a = (pinned / 90f).coerceIn(0f, 0.85f)
-                            if (a > 0f) drawRect(
-                                Brush.verticalGradient(listOf(Scrim.copy(alpha = a), Color.Transparent)),
-                                topLeft = Offset(-size.width, -stickTop), size = androidx.compose.ui.geometry.Size(size.width * 3f, size.height + stickTop + 28.dp.toPx())
-                            )
-                        },
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                // The logo / title scrolls away with the page (it is no longer pinned).
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         TitleLogo(
                             c.name, kindOf(c), info?.year?.take(4)?.toIntOrNull(),
                             height = if (narrow) 48.dp else if (d.tv) 72.dp else 60.dp,
@@ -135,61 +121,69 @@ fun DetailScreen(vm: AppViewModel) {
                 Spacer(Modifier.height(if (d.tv) 150.dp else 110.dp))   // lifts the logo / title a little higher on the artwork
             }
             Spacer(Modifier.height(14.dp))
-                val focusMgr = androidx.compose.ui.platform.LocalFocusManager.current
+            val focusMgr = androidx.compose.ui.platform.LocalFocusManager.current
             val scope = rememberCoroutineScope()
-            FlowRow(
-                Modifier.fillMaxWidth().padding(horizontal = maxOf(edge.start, edge.end)).onPreviewKeyEvent { e ->
-                    // Up from the buttons: back to the artwork (nothing focused), so the next Down reveals the buttons again.
-                    if (e.key == androidx.compose.ui.input.key.Key.DirectionUp && e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) {
-                        focusMgr.clearFocus(); scope.launch { scroll.animateScrollTo(0) }; true
-                    } else false
-                },
-                horizontalArrangement = Arrangement.spacedBy(9.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                    if (!isSeries) {
-                        val h = vm.store.historyOf(c.url)
-                        val label = if (h != null && !h.finished && h.position > 10_000) tr(R.string.detail_resume, h.position / 60000) else tr(R.string.detail_play)
-                        MBtn(label, tint = buttonTone(btnPal.primary), modifier = Modifier.focusRequester(playFocus)) { vm.play(c) }
-                    }
-                    MBtn(if (c.url in vm.favs) tr(R.string.detail_fav_on) else tr(R.string.detail_fav_off), filled = false, tint = btnPal.accent) { vm.toggleFav(c) }
-                    val ctx = androidx.compose.ui.platform.LocalContext.current
-                    val trailerId = info?.trailer.orEmpty()
-                    MBtn(if (trailerId.isNotBlank()) tr(R.string.detail_trailer) else tr(R.string.detail_trailer_search), filled = false, tint = btnPal.accent) {
-                        val url = if (trailerId.isNotBlank()) "https://www.youtube.com/watch?v=$trailerId"
-                        else "https://www.youtube.com/results?search_query=" + android.net.Uri.encode(c.name + " trailer")
-                        try {
-                            ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
-                        } catch (_: Exception) { vm.say(S(R.string.detail_no_viewer)) }
-                    }
-            Spacer(Modifier.height(12.dp))
-            Box(Modifier.fillMaxWidth().padding(horizontal = maxOf(edge.start, edge.end))) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
-                            (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let {
-                                MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D))
-                            }
-                            info?.year?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
-                            info?.duration?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
-                            info?.genre?.takeIf { it.isNotBlank() }?.split(',', '،', '/')?.map { it.trim() }
-                                ?.filter { it.isNotEmpty() }?.take(if (narrow) 1 else 2)?.forEach { MetaChip(it) }
+            val ctx = androidx.compose.ui.platform.LocalContext.current
+            // Buttons, info chips and the synopsis box sit on the physical left of the page (same in Arabic and English).
+            CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = maxOf(edge.start, edge.end)), horizontalAlignment = Alignment.Start) {
+                    FlowRow(
+                        Modifier.onPreviewKeyEvent { e ->
+                            // Up from the buttons: back to the artwork (nothing focused), so the next Down reveals the buttons again.
+                            if (e.key == androidx.compose.ui.input.key.Key.DirectionUp && e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) {
+                                focusMgr.clearFocus(); scope.launch { scroll.animateScrollTo(0) }; true
+                            } else false
+                        },
+                        horizontalArrangement = Arrangement.spacedBy(9.dp, Alignment.Start), verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (!isSeries) {
+                            val h = vm.store.historyOf(c.url)
+                            val label = if (h != null && !h.finished && h.position > 10_000) tr(R.string.detail_resume, h.position / 60000) else tr(R.string.detail_play)
+                            MBtn(label, tint = buttonTone(btnPal.primary), modifier = Modifier.focusRequester(playFocus)) { vm.play(c) }
                         }
-            }
-            Spacer(Modifier.height(10.dp))
-            Column(Modifier.fillMaxWidth().padding(horizontal = maxOf(edge.start, edge.end)), horizontalAlignment = Alignment.CenterHorizontally) {
-                }
+                        MBtn(if (c.url in vm.favs) tr(R.string.detail_fav_on) else tr(R.string.detail_fav_off), filled = false, tint = btnPal.accent) { vm.toggleFav(c) }
+                        val trailerId = info?.trailer.orEmpty()
+                        MBtn(if (trailerId.isNotBlank()) tr(R.string.detail_trailer) else tr(R.string.detail_trailer_search), filled = false, tint = btnPal.accent) {
+                            val url = if (trailerId.isNotBlank()) "https://www.youtube.com/watch?v=$trailerId"
+                            else "https://www.youtube.com/results?search_query=" + android.net.Uri.encode(c.name + " trailer")
+                            try {
+                                ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                            } catch (_: Exception) { vm.say(S(R.string.detail_no_viewer)) }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.Start), verticalAlignment = Alignment.CenterVertically) {
+                        (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let {
+                            MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D))
+                        }
+                        info?.year?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
+                        info?.duration?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
+                        info?.genre?.takeIf { it.isNotBlank() }?.split(',', '،', '/')?.map { it.trim() }
+                            ?.filter { it.isNotEmpty() }?.take(if (narrow) 1 else 2)?.forEach { MetaChip(it) }
+                    }
                     if (info != null && info.plot.isNotBlank() && !(isSeries && shortScreen)) {
-                            Spacer(Modifier.height(0.dp))
+                        Spacer(Modifier.height(10.dp))
+                        val boxShape = RoundedCornerShape(14.dp)
+                        // Synopsis in its own box, under the buttons.
+                        Box(
+                            Modifier.fillMaxWidth(if (narrow) 1f else 0.62f).widthIn(max = 620.dp)
+                                .clip(boxShape).background(Color.Black.copy(alpha = 0.38f)).border(1.dp, Color.White.copy(alpha = 0.12f), boxShape)
+                                .padding(horizontal = 14.dp, vertical = 11.dp)
+                        ) {
                             Text(
-                                info.plot, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.widthIn(max = 640.dp), fontSize = if (narrow) 12.sp else 13.sp, lineHeight = 19.sp,
-                                color = Color(0xFFE3E6F0), maxLines = if (narrow || isSeries) 2 else 3, overflow = TextOverflow.Ellipsis
+                                info.plot, textAlign = androidx.compose.ui.text.style.TextAlign.Left, fontSize = if (narrow) 12.sp else 13.sp, lineHeight = 19.sp,
+                                color = Color(0xFFE3E6F0), maxLines = if (narrow) 4 else 5, overflow = TextOverflow.Ellipsis
                             )
                         }
-                        if (info != null && info.cast.isNotBlank() && !shortScreen) {
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                tr(R.string.detail_cast, info.cast), fontSize = 11.5.sp, color = Color(0xFFC3C8D8),
-                                maxLines = 1, overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                    }
+                    if (info != null && info.cast.isNotBlank() && !shortScreen) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            tr(R.string.detail_cast, info.cast), fontSize = 11.5.sp, color = Color(0xFFC3C8D8), textAlign = androidx.compose.ui.text.style.TextAlign.Left,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth(if (narrow) 1f else 0.62f)
+                        )
+                    }
+                }
             }
             Spacer(Modifier.height(10.dp))
 

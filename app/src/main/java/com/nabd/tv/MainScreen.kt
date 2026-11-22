@@ -224,7 +224,7 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
                     }
                     LazyRow(
                         state = vm.listState("row:" + s.title),
-                        horizontalArrangement = Arrangement.spacedBy(if (s.ranked) d.gap + 16.dp else d.gap),
+                        horizontalArrangement = Arrangement.spacedBy(d.gap),
                         contentPadding = PaddingValues(start = edge.start, end = edge.end, top = 4.dp, bottom = 4.dp)
                     ) {
                         itemsIndexed(s.items) { i, c -> HomeCard(vm, d, s, c, i + 1) }
@@ -325,17 +325,6 @@ private fun HeroFav(vm: AppViewModel, c: Channel, palette: ArtworkPalette, d: De
 private fun HomeCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel, rank: Int) {
     val key = s.title + "|" + ch.url + ch.id
     Row(verticalAlignment = Alignment.Bottom) {
-        if (s.ranked) {
-            Text(
-                "$rank", fontSize = if (d.tv) 46.sp else 36.sp, fontWeight = FontWeight.Black,
-                maxLines = 1, softWrap = false,
-                style = androidx.compose.ui.text.TextStyle(
-                    color = Accent.copy(alpha = 0.85f),
-                    drawStyle = Stroke(width = 2.5f, join = androidx.compose.ui.graphics.StrokeJoin.Round)
-                ),
-                modifier = Modifier.padding(end = 6.dp).offset(y = 0.dp)
-            )
-        }
         val art = s.art[ch.url]
         PosterCard(
             vm, ch,
@@ -343,7 +332,8 @@ private fun HomeCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel, rank: I
             focusKey = key,
             onFocusExtra = { vm.homeFocus = ch },
             tmdbArt = art,
-            adaptive = true
+            adaptive = true,
+            rank = if (s.ranked) rank else null
         )
     }
 }

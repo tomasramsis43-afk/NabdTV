@@ -253,7 +253,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // "Continue watching" is its own landscape row (see continueItems / ContinueUi.kt), no longer a poster shelf.
         // Favourites: only what the user actually starred (any kind), already filtered by parental rules.
         val favItems = all.filter { it.url in favs && parental.visible(it) }.take(40)
-        if (favItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_fav), favItems)
         // Daily trending rows (movies + series) are ALWAYS shown. Source: TMDB's own charts when the TMDB key is set and enough of
         // those titles exist in the library (wide TMDB artwork + TMDB rating); otherwise the provider's own data.
         val ch = tmdbCharts
@@ -274,6 +273,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (newMovies.isNotEmpty()) out += Shelf(tx(R.string.shelf_new_movies), newMovies)
         val newSeries = seriesList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { seriesList.take(30) }
         if (newSeries.isNotEmpty()) out += Shelf(tx(R.string.shelf_new_series), newSeries)
+        // Order: daily trending (movies, series) → new movies → new series → favourites → recently watched.
+        if (favItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_fav), favItems)
         val doneItems = history.filter { it.kind != Kind.Live && it.finished && parental.visible(histChannel(it)) }.take(20).map { histChannel(it) }
         if (doneItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_recent), doneItems)
         out
