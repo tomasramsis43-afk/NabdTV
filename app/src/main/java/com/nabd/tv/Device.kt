@@ -70,6 +70,12 @@ data class Device(val form: FormFactor, val widthDp: Int, val heightDp: Int) {
         else -> (heightDp * 0.50f).dp.coerceIn(180.dp, 240.dp)
     }
 
+    /**
+     * TV home with one row at a time: the poster takes ~58% of the screen height, the single visible row gets the rest
+     * (never less than ~200dp, so a row with its title and card captions always fits).
+     */
+    val oneRowHeroHeight: Dp get() = minOf(heightDp * 0.58f, heightDp - 200f).dp.coerceIn(150.dp, 420.dp)
+
     /** Columns for dashboard-style screens (settings). */
     val dashboardColumns: Int get() = when {
         tv -> 4

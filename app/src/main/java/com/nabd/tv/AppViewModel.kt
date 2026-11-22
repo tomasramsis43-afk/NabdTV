@@ -282,6 +282,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Item currently focused on Home; drives the big preview on TV/tablet. */
     var homeFocus by mutableStateOf<Channel?>(null)
+    /** TV home shows one row at a time: index of the visible row (continue-watching first, then the shelves). Survives opening a title. */
+    var homeRow by mutableIntStateOf(0)
     var homeInfo by mutableStateOf<VodInfo?>(null); private set
     var homeInfoUrl: String? = null; private set
     suspend fun loadHomeInfo(c: Channel) {

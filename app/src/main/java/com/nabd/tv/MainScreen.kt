@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.animateFloat
@@ -19,6 +20,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -44,6 +46,13 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
@@ -200,8 +209,10 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
     val contItems = vm.continueItems
     Column(Modifier.fillMaxSize()) {
         // Edge to edge, starts at the very top of the screen: the floating header sits on this artwork.
-        HomeHero(vm, focus, vm.homeInfo, d, palette, Modifier.fillMaxWidth().height(d.heroHeight).then(swipe))
+        HomeHero(vm, focus, vm.homeInfo, d, palette, Modifier.fillMaxWidth().height(if (d.tv) d.oneRowHeroHeight else d.heroHeight).then(swipe))
         Spacer(Modifier.height(4.dp))
+        // TV: the poster stays put and only ONE row is shown under it; Up / Down swap the row (see OneRowHome).
+        if (d.tv) OneRowHome(vm, d, shelves, contItems, Modifier.weight(1f).fillMaxWidth()) else {
         // Rows that scroll up under the hero dissolve softly instead of being cut by a hard line; at the very top nothing is faded.
         val homeState = vm.listState("home")
         val topFade = remember(homeState) {
@@ -236,6 +247,106 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
                     ) {
                         itemsIndexed(s.items) { i, c -> HomeCard(vm, d, s, c, i + 1) }
                     }
+                }
+            }
+        }
+        }
+    }
+}
+
+/**
+ * TV home, one row at a time. The poster stays where it is (taller, ~58% of the screen) and under it only ONE row is
+ * visible - nothing above or below it. Down / Up on the remote fade the row out and the next / previous one in
+ * (continue watching, trending movies, trending series, ...). Up on the first row falls through to the poster and the
+ * header as before; Down on the last row does nothing. The row you were on (and the card in it) is remembered when you
+ * open a title and come back. Dots on the right show where you are.
+ */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun OneRowHome(vm: AppViewModel, d: Device, shelves: List<Shelf>, cont: List<ContinueItem>, modifier: Modifier) {
+    val edge = edgePad(d)
+    val hasCont = cont.isNotEmpty()
+    val count = shelves.size + if (hasCont) 1 else 0
+    if (count == 0) return
+    val idx = vm.homeRow.coerceIn(0, count - 1)
+    fun shelfAt(i: Int): Shelf? = shelves.getOrNull(if (hasCont) i - 1 else i)
+    fun firstKeyOf(i: Int): String? = shelfAt(i)?.let { sh -> sh.items.firstOrNull()?.let { sh.title + "|" + it.url + it.id } }
+
+    val rowFocus = remember { FocusRequester() }
+    val pendingFocus = remember { BooleanArray(1) }
+    val lastKey = remember { HashMap<Int, String>() }
+    var shown by remember { mutableIntStateOf(idx) }       // the row on screen (changes only while it is faded out)
+    val fade = remember { Animatable(1f) }
+
+    // Entry point for "go to the content" from the header / after returning from a title.
+    SideEffect { vm.firstKey = firstKeyOf(shown.coerceIn(0, count - 1)) ?: "home-row" }
+    DisposableEffect(Unit) {
+        vm.cardFocus["home-row"] = rowFocus
+        onDispose { if (vm.cardFocus["home-row"] === rowFocus) vm.cardFocus.remove("home-row") }
+    }
+
+    LaunchedEffect(idx) {
+        if (shown != idx) {
+            fade.animateTo(0f, tween(110))
+            shown = idx
+        }
+        if (pendingFocus[0]) {
+            pendingFocus[0] = false
+            // The new row is composed after the swap: take focus as soon as one of its cards exists.
+            for (attempt in 0 until 12) {
+                delay(35)
+                val fr = lastKey[idx]?.let { vm.cardFocus[it] } ?: firstKeyOf(idx)?.let { vm.cardFocus[it] } ?: rowFocus
+                if (runCatching { fr.requestFocus(); true }.getOrDefault(false)) break
+            }
+        }
+        fade.animateTo(1f, tween(140))
+    }
+
+    BoxWithConstraints(
+        modifier.focusRequester(rowFocus).focusGroup().onPreviewKeyEvent { e ->
+            if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            val held = e.nativeKeyEvent.repeatCount > 0     // holding the key does not race through all the rows
+            when (e.key) {
+                Key.DirectionDown -> { if (!held && idx < count - 1) { pendingFocus[0] = true; vm.homeRow = idx + 1 }; true }
+                Key.DirectionUp -> if (idx > 0) { if (!held) { pendingFocus[0] = true; vm.homeRow = idx - 1 }; true } else false
+                else -> false
+            }
+        }
+    ) {
+        // Card width from the height that is really left under the poster (title + caption + padding ~ 84dp).
+        val cardW = ((maxHeight - 84.dp) * (16f / 9f)).coerceIn(120.dp, d.shelfPoster * 2.6f)
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = fade.value }) {
+            val s = shown.coerceIn(0, count - 1)
+            val shelf = shelfAt(s)
+            if (shelf == null) {
+                ContinueRow(vm, d, cont, edge.start, edge.end, Modifier.padding(top = 8.dp))
+            } else {
+                Column(Modifier.padding(top = 8.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = edge.start, end = edge.end, bottom = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            shelf.title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Ink,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
+                        )
+                        Text("${shelf.items.size}", fontSize = 12.sp, color = TextMuted)
+                    }
+                    LazyRow(
+                        state = vm.listState("row:" + shelf.title),
+                        horizontalArrangement = Arrangement.spacedBy(d.gap),
+                        contentPadding = PaddingValues(start = edge.start, end = edge.end, top = 4.dp, bottom = 4.dp)
+                    ) {
+                        itemsIndexed(shelf.items) { i, c -> HomeCard(vm, d, shelf, c, i + 1, cardW) { k -> lastKey[s] = k } }
+                    }
+                }
+            }
+        }
+        // Position dots: always on the physical right edge.
+        androidx.compose.runtime.CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Column(Modifier.align(Alignment.CenterEnd).padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                repeat(count) { i ->
+                    Box(Modifier.size(6.dp).clip(CircleShape).background(if (i == idx) Color.White else Color(0x664B5280)))
                 }
             }
         }
@@ -329,15 +440,15 @@ private fun HeroFav(vm: AppViewModel, c: Channel, palette: ArtworkPalette, d: De
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun HomeCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel, rank: Int) {
+private fun HomeCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel, rank: Int, wideWidth: Dp? = null, onFocused: (String) -> Unit = {}) {
     val key = s.title + "|" + ch.url + ch.id
     Row(verticalAlignment = Alignment.Bottom) {
         val art = s.art[ch.url]
         PosterCard(
             vm, ch,
-            modifier = Modifier.width(if (!d.portrait && kindOf(ch) != Kind.Live) d.shelfPoster * 2.6f else d.shelfPoster),
+            modifier = Modifier.width(if (!d.portrait && kindOf(ch) != Kind.Live) (wideWidth ?: (d.shelfPoster * 2.6f)) else d.shelfPoster),
             focusKey = key,
-            onFocusExtra = { vm.homeFocus = ch },
+            onFocusExtra = { vm.homeFocus = ch; onFocused(key) },
             tmdbArt = art,
             adaptive = true,
             rank = if (s.ranked) rank else null
