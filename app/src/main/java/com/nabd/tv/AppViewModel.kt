@@ -213,7 +213,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /* ───────── home shelves ───────── */
     private fun histChannel(h: HistoryEntry) = Channel(-1, h.name, h.url, h.logo, h.group)
 
-    /** TMDB weekly trending + top-rated charts (null until loaded / without a TMDB key). */
+    /** TMDB daily trending + top-rated charts (null until loaded / without a TMDB key). */
     var tmdbCharts by mutableStateOf<TmdbCharts.Charts?>(null); private set
     private var chartsAt = 0L
     private val movieTitleIdx by derivedStateOf { TmdbCharts.indexOf(movieList) }

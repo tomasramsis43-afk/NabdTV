@@ -8,7 +8,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /**
- * "Trending" and "Top rated" come ONLY from TMDB (their weekly trending and top_rated charts), never from the
+ * "Trending" and "Top rated" come ONLY from TMDB (their daily trending and top_rated charts), never from the
  * provider's own ratings. The charts are matched against the library afterwards by exact title (+ year), so a row
  * only ever contains titles the user can actually play, in TMDB's order.
  */
@@ -56,8 +56,8 @@ object TmdbCharts {
             return byId.values.map { Entry(it.names, it.year, it.backdrop, it.rating) }
         }
         val c = Charts(
-            trendMovies = chart("trending/movie/week", true),
-            trendSeries = chart("trending/tv/week", false),
+            trendMovies = chart("trending/movie/day", true),
+            trendSeries = chart("trending/tv/day", false),
             topMovies = chart("movie/top_rated", true),
             topSeries = chart("tv/top_rated", false)
         )

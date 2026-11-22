@@ -674,8 +674,8 @@
     <string name="cap_channels">Channels</string>
     <string name="ep_number">Episode %1$02d</string>
 
-    <string name="x_shelf_trending_movies">Trending movies worldwide</string>
-    <string name="x_shelf_trending_series">Trending series worldwide</string>
+    <string name="x_shelf_trending_movies">Today's trending movies</string>
+    <string name="x_shelf_trending_series">Today's trending series</string>
     <string name="x_logos_toggle">Official title logos (Wikimedia)</string>
     <string name="detail_trailer">Trailer</string>
     <string name="detail_trailer_search">Search trailer</string>
