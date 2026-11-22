@@ -45,6 +45,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -178,7 +179,7 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
     val rtl = LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
     val swipe = if (d.tv) Modifier else Modifier.pointerInput(focus.url, shelves.size, rtl) {
         var total = 0f
-        androidx.compose.foundation.gestures.detectHorizontalDragGestures(
+        detectHorizontalDragGestures(
             onDragStart = { total = 0f },
             onHorizontalDrag = { _, dx -> total += dx },
             onDragEnd = {
