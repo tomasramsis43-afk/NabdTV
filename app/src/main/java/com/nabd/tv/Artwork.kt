@@ -181,6 +181,15 @@ object Artwork {
     private val NO_EXTRAS = Extras(emptyList(), "")
     private val xmem = ConcurrentHashMap<String, Extras>()
 
+    /** Exact TMDB match for a title (overview, year, rating); null without a key or without a verified match. Blocking: call off the main thread. */
+    fun hit(rawTitle: String, kind: Kind, yearHint: Int?): JSONObject? {
+        val key = tmdbKey().ifBlank { return null }
+        if (kind == Kind.Live) return null
+        val (title, y) = LogoMatch.clean(rawTitle)
+        if (title.isBlank()) return null
+        return runCatching { tmdbMatch(key, title, kind, yearHint ?: y) }.getOrNull()
+    }
+
     /** First TMDB search result whose title equals [title] exactly (after normalising) and whose year agrees. */
     private fun tmdbMatch(key: String, title: String, kind: Kind, year: Int?): JSONObject? {
         val t = if (kind == Kind.Series) "tv" else "movie"

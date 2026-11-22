@@ -109,7 +109,15 @@ fun DetailScreen(vm: AppViewModel) {
                 Column(
                     Modifier.onGloballyPositioned { naturalY = it.positionInRoot().y + scroll.value }
                         .graphicsLayer { translationY = if (naturalY < 0f) 0f else (scroll.value - (naturalY - stickTop)).coerceAtLeast(0f) }
-                        .drawBehind { drawRect(Scrim.copy(alpha = (scroll.value / 400f).coerceIn(0f, 0.75f))) },
+                        .drawBehind {
+                            // Only once the logo is pinned: a soft full-width fade behind it (never a box around the logo itself).
+                            val pinned = if (naturalY < 0f) 0f else (scroll.value - (naturalY - stickTop)).coerceAtLeast(0f)
+                            val a = (pinned / 90f).coerceIn(0f, 0.85f)
+                            if (a > 0f) drawRect(
+                                Brush.verticalGradient(listOf(Scrim.copy(alpha = a), Color.Transparent)),
+                                topLeft = Offset(-size.width, -stickTop), size = androidx.compose.ui.geometry.Size(size.width * 3f, size.height + stickTop + 28.dp.toPx())
+                            )
+                        },
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                         TitleLogo(
