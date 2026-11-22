@@ -71,7 +71,7 @@ internal fun ContinueCard(vm: AppViewModel, d: Device, item: ContinueItem) {
     }
     Focusable(
         onClick = { vm.playContinue(item) }, onLongClick = { vm.continueMenu(item) },
-        modifier = Modifier.width(if (item.kind == Kind.Series) d.shelfPoster * 1.0f else d.shelfPoster * 2.1f), shape = shape
+        modifier = Modifier.width(if (item.kind == Kind.Series) d.shelfPoster * 0.85f else d.shelfPoster * 1.7f), shape = shape
     ) {
         // Series: the poster itself (portrait) with the episode badge and progress; movies: landscape backdrop.
         Box(Modifier.fillMaxWidth().aspectRatio(if (item.kind == Kind.Series) 2f / 3f else 16f / 9f).clip(shape).background(SurfHigh)) {
