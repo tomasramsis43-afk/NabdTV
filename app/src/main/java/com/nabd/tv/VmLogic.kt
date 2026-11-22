@@ -8,6 +8,17 @@ object VmLogic {
         return if (i >= 0) episodes.getOrNull(i + 1) else null
     }
 
+    /**
+     * The episode's OWN picture, or null. Providers often send the series cover as every episode's image; a picture
+     * equal to the series poster, or shared by several episodes, is not an episode image and must not be used.
+     */
+    fun episodeImage(e: Episode, all: List<Episode>, seriesPoster: String?): String? {
+        val img = e.image?.takeIf { it.isNotBlank() } ?: return null
+        if (img == seriesPoster) return null
+        if (all.count { it.image == img } > 1) return null
+        return img
+    }
+
     /** Episode before [url] in [episodes], or null when [url] is not in the list or is the first one. */
     fun previousEpisode(episodes: List<Episode>, url: String): Episode? {
         val i = episodes.indexOfFirst { it.url == url }

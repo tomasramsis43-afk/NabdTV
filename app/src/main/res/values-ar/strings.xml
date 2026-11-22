@@ -687,4 +687,9 @@
     <string name="prov_none">%1$s: لا يوجد عمل للفحص</string>
     <string name="prov_fields">الصورة %1$s · الخلفية %2$s · التريلر %3$s · الممثلون %4$s · القصة %5$s</string>
     <string name="prov_eps">الحلقات %1$d · منها بصور %2$d</string>
+
+    <string name="x_cont_next">الحلقة التالية</string>
+    <string name="x_cont_prev">الحلقة السابقة</string>
+    <string name="x_cont_no_next">لا توجد حلقة بعد هذه</string>
+    <string name="x_cont_no_prev">هذه أول حلقة</string>
 </resources>

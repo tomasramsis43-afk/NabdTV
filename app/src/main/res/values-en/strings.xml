@@ -687,4 +687,9 @@
     <string name="prov_none">%1$s: nothing to check</string>
     <string name="prov_fields">Poster %1$s · Backdrop %2$s · Trailer %3$s · Cast %4$s · Plot %5$s</string>
     <string name="prov_eps">Episodes %1$d · with images %2$d</string>
+
+    <string name="x_cont_next">Next episode</string>
+    <string name="x_cont_prev">Previous episode</string>
+    <string name="x_cont_no_next">There is no later episode</string>
+    <string name="x_cont_no_prev">This is the first episode</string>
 </resources>
