@@ -298,17 +298,6 @@ private fun HomeHero(
             TitleLogo(c.name, kindOf(c), null, height = if (d.tv) 58.dp else if (d.widthDp >= 600) 50.dp else 40.dp) {
                 Text(c.name, style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.65f), Offset(0f, 3f), 14f)), fontSize = if (d.tv) 26.sp else if (d.widthDp >= 600) 22.sp else 18.sp, lineHeight = if (d.tv) 32.sp else if (d.widthDp >= 600) 28.sp else 23.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-                (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let { MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D)) }
-                info?.year?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
-                info?.duration?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
-                info?.genre?.takeIf { it.isNotBlank() }?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(if (d.tv) 2 else 1)?.forEach { MetaChip(it) }
-            }
-            if (!shortScreen) info?.plot?.takeIf { it.isNotBlank() }?.let {
-                Spacer(Modifier.height(if (d.tv) 8.dp else 5.dp))
-                Text(it, fontSize = if (d.tv) 14.sp else 12.5.sp, lineHeight = if (d.tv) 20.sp else 17.sp, color = Color(0xFFE3E6F0), maxLines = if (d.tv) 3 else 2, overflow = TextOverflow.Ellipsis)
-            }
             Spacer(Modifier.height(if (d.tv) 14.dp else 9.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(if (d.tv) 12.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
                 MBtn(primaryLabel, tint = buttonTone(palette.primary)) { if (kind == Kind.Series) vm.openDetail(c) else vm.play(c) }
