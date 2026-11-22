@@ -8,6 +8,20 @@ object VmLogic {
         return if (i >= 0) episodes.getOrNull(i + 1) else null
     }
 
+    private val EP_NAME = Regex("^(.*?)\\s·\\s(?:\\u0645(\\d+)\\s\\u062D(\\d+)|S(\\d+)\\sE(\\d+))$")
+
+    /**
+     * Old history entries are named "Series · م1 ح2" (Arabic) or "Series · S01 E02" (English) and carry no episode
+     * metadata. Returns (series name, season, episode) or null when [name] is not an episode label.
+     */
+    fun parseEpisodeName(name: String): Triple<String, Int, Int>? {
+        val m = EP_NAME.find(name.trim()) ?: return null
+        val season = m.groupValues[2].ifEmpty { m.groupValues[4] }.toIntOrNull() ?: return null
+        val num = m.groupValues[3].ifEmpty { m.groupValues[5] }.toIntOrNull() ?: return null
+        val series = m.groupValues[1].trim()
+        return if (series.isEmpty()) null else Triple(series, season, num)
+    }
+
     /**
      * The episode's OWN picture, or null. Providers often send the series cover as every episode's image; a picture
      * equal to the series poster, or shared by several episodes, is not an episode image and must not be used.

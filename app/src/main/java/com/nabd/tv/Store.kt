@@ -71,6 +71,11 @@ class Store(private val ctx: Context) {
     var hideDead: Boolean
         get() = g.getBoolean("hideDead", true)
         set(v) = g.edit().putBoolean("hideDead", v).apply()
+    /** When the lists were last refreshed from the provider (drives the quiet background refresh). */
+    var lastSyncAt: Long
+        get() = g.getLong("lastSyncAt", 0L)
+        set(v) = g.edit().putLong("lastSyncAt", v).apply()
+
     var autoRefresh: Boolean
         get() = g.getBoolean("autoRefresh", true)
         set(v) = g.edit().putBoolean("autoRefresh", v).apply()

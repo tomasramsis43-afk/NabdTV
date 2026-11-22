@@ -224,8 +224,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** TMDB daily trending + top-rated charts (null until loaded / without a TMDB key). */
     var tmdbCharts by mutableStateOf<TmdbCharts.Charts?>(null); private set
     private var chartsAt = 0L
-    private val movieTitleIdx by derivedStateOf { TmdbCharts.indexOf(movieList) }
-    private val seriesTitleIdx by derivedStateOf { TmdbCharts.indexOf(seriesList) }
+    // Title indexes used to match the TMDB charts. Built ONCE per loaded list on a background thread. (They used to be rebuilt
+    // on the UI thread after every state bump, normalising every title of a 50k-item library each time: it froze TV boxes.)
+    private var movieTitleIdx by mutableStateOf<Map<String, List<Pair<Channel, Int?>>>>(emptyMap())
+    private var seriesTitleIdx by mutableStateOf<Map<String, List<Pair<Channel, Int?>>>>(emptyMap())
 
     /** Loads the TMDB charts (cached 6 h). Call again with [force] after the key changes. */
     fun refreshTmdbCharts(force: Boolean = false) {
@@ -249,7 +251,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Daily trending rows (movies + series) are ALWAYS shown. Source: TMDB's own charts when the TMDB key is set and enough of
         // those titles exist in the library (wide TMDB artwork + TMDB rating); otherwise the provider's own data.
         val ch = tmdbCharts
-        val ok = { c: Channel -> parental.visible(c) }
+        val hid = store.hiddenChannels
+        val ok = { c: Channel -> parental.visible(c) && c.url !in hid }
         fun row(
             title: String, idx: Map<String, List<Pair<Channel, Int?>>>, entries: List<TmdbCharts.Entry>?,
             fallback: () -> List<Channel>
@@ -318,6 +321,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         checkUpdate(false)
         if (store.tmdbKey.isNotBlank()) TmdbCharts.loadCached(ctx)?.let { (c, at) -> tmdbCharts = c; chartsAt = at }   // instant rows, refreshed below when older than 6 h
         refreshTmdbCharts()
+        viewModelScope.launch { androidx.compose.runtime.snapshotFlow { movies }.collect { l -> movieTitleIdx = withContext(Dispatchers.Default) { TmdbCharts.indexOf(l) } } }
+        viewModelScope.launch { androidx.compose.runtime.snapshotFlow { series }.collect { l -> seriesTitleIdx = withContext(Dispatchers.Default) { TmdbCharts.indexOf(l) } } }
+        refreshInBackgroundIfStale()
         viewModelScope.launch { while (true) { kotlinx.coroutines.delay(20 * 60_000L); checkUpdate(false) } }
     }
 
@@ -336,11 +342,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         else -> tx(R.string.x_rec_ok)
     }
 
+    /**
+     * Stale-while-revalidate: the cached lists are on screen at once. If they are older than 12 h, refresh quietly in the
+     * background (after startup has settled) and swap the new data in; offline or on a server error the cache simply stays.
+     */
+    private fun refreshInBackgroundIfStale() {
+        if (!store.autoRefresh || repo.playlistUrl.isBlank()) return
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(90_000L)
+            if (System.currentTimeMillis() - store.lastSyncAt < 12 * 3_600_000L) return@launch
+            try {
+                val fresh = repo.load(true)
+                if (fresh.isNotEmpty()) all = fresh
+                if (hasXtream) { fetchVod(Tab.Movies, true, silent = true); fetchVod(Tab.Series, true, silent = true) }
+                store.lastSyncAt = System.currentTimeMillis()
+                bump()
+            } catch (_: Exception) { }
+        }
+    }
+
     fun load(force: Boolean) {
         viewModelScope.launch {
             loading = true; error = null
             try {
                 all = repo.load(force)
+                if (force) store.lastSyncAt = System.currentTimeMillis()
                 group = GROUP_ALL
                 screen = Screen.Main
                 preloadVod()
@@ -795,13 +821,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val imageCache = HashMap<String, String?>()
 
     /** Newest first: unfinished movies, and one card per series showing its current episode with that episode's own image. */
+    /** Series of the library by normalised name; only names that identify ONE series are usable. */
+    private val uniqueSeriesByName: Map<String, Channel> by derivedStateOf {
+        series.groupBy { LogoMatch.norm(it.name) }.filterValues { it.size == 1 }.mapValues { it.value[0] }   // raw list: rebuilt only when it is (re)loaded
+    }
+
+    /** History from before Continue watching existed has no episode metadata: rebuild it from the entry's name. */
+    private fun legacyMeta(h: HistoryEntry): EpMeta? {
+        if (h.kind != Kind.Series) return null
+        val (name, season, num) = VmLogic.parseEpisodeName(h.name) ?: return null
+        val s = uniqueSeriesByName[LogoMatch.norm(name)] ?: return null
+        return EpMeta(s.url, s.name, season, num, "", null)
+    }
+
     val continueItems: List<ContinueItem> by derivedStateOf {
         rev
         val out = ArrayList<ContinueItem>()
         val seen = HashSet<String>()
         for (h in history) {
             if (h.kind == Kind.Live) continue
-            val meta = store.epMeta(h.url)
+            val meta = store.epMeta(h.url) ?: legacyMeta(h)
             if (meta == null) {
                 if (h.kind == Kind.Movie && !h.finished && (h.progress > 0.02f || h.position > 15_000L) && parental.visible(histChannel(h)))
                     out += ContinueItem("m:" + h.url, Kind.Movie, h.name, "", "", null, h.progress, histChannel(h), null, h.url, 0, 0, h.group, h.last, h.logo)
@@ -810,7 +849,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (!seen.add(meta.seriesUrl)) continue
             val cur = store.contCursor(meta.seriesUrl)
             val epUrl = cur?.first ?: h.url
-            val m = store.epMeta(epUrl) ?: continue
+            val m = store.epMeta(epUrl) ?: (if (epUrl == h.url) meta else null) ?: continue
             val th = historyByUrl[epUrl]
             val picked = cur != null && cur.first != h.url
             val inProgress = th != null && !th.finished && (th.progress > 0.02f || th.position > 15_000L)
@@ -832,8 +871,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val img = try {
             if (it.seriesUrl == null) repo.vodInfo(it.play, Kind.Movie)?.backdrop
             else repo.episodeStills(it.title, it.season)[it.num]?.also { still ->
-                val m = store.epMeta(it.episodeUrl)
-                if (m != null) { store.saveEpMeta(it.episodeUrl, m.copy(image = still)); bump() }
+                val m = store.epMeta(it.episodeUrl) ?: EpMeta(it.seriesUrl, it.title, it.season, it.num, it.subtitle, null)
+                store.saveEpMeta(it.episodeUrl, m.copy(image = still)); bump()
             }
         } catch (_: Exception) { null }
         if (img != null) imageCache[it.key + it.episodeUrl] = img
