@@ -20,6 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
@@ -55,35 +57,30 @@ fun DetailScreen(vm: AppViewModel) {
     val palette = rememberArtworkPalette(info?.backdrop ?: c.logo)
     val typeLabel = tr(if (isSeries) R.string.detail_type_series else R.string.detail_type_movie)
 
+    val scroll = rememberScrollState()
+    val blurStep by remember { derivedStateOf { (scroll.value / 70).coerceIn(0, 5) } }
+    val logoFile = rememberTitleLogo(c.name, kindOf(c), info?.year?.take(4)?.toIntOrNull())
+    val logoPal = rememberArtworkPalette(logoFile?.let { "file://" + it.absolutePath })
+    // Buttons take the logo's dominant colour; no logo (or a colourless one) falls back to the artwork palette, kept readable by buttonTone.
+    val btnPal = if (logoFile != null) logoPal else palette
+
     Box(Modifier.fillMaxSize().appBackground()) {
         // Full-bleed backdrop: wide artwork to the screen edges, dissolving into the page (no frame, no card).
         Box(Modifier.fillMaxWidth().fillMaxHeight(0.72f).fadeOutBottom(0.55f)) {
             // Phone held upright: the portrait poster fills the tall page; wide screens (landscape phone, tablet, TV): the wide backdrop.
             val upright = d.portrait && !d.tv
             // Same adaptive image system as the home screen: poster when upright, backdrop when wide; either falls back to the other.
-            AdaptiveArtImage(vm, c, landscape = !upright, modifier = Modifier.fillMaxSize())
+            AdaptiveArtImage(vm, c, landscape = !upright, modifier = Modifier.fillMaxSize().then(if (blurStep > 0) Modifier.blur((blurStep * 5).dp, androidx.compose.ui.draw.BlurredEdgeTreatment.Rectangle) else Modifier))
+            if (blurStep > 0) Box(Modifier.fillMaxSize().background(Scrim.copy(alpha = blurStep * 0.1f)))
             Box(Modifier.fillMaxSize().textSideScrim(if (narrow) 0.78f else 0.95f))
             Box(
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(0.0f to Scrim.copy(alpha = 0.55f), 0.30f to Color.Transparent, 0.62f to Scrim.copy(alpha = 0.55f), 1f to Scrim.copy(alpha = 0.90f))
                 )
             )
-            Box(
-                Modifier.fillMaxSize().drawBehind {
-                    drawCircle(
-                        Brush.radialGradient(
-                            listOf(palette.glow, Color.Transparent),
-                            center = Offset(size.width * 0.15f, size.height * 0.05f),
-                            radius = size.width * 0.5f
-                        ),
-                        radius = size.width * 0.5f,
-                        center = Offset(size.width * 0.15f, size.height * 0.05f)
-                    )
-                }
-            )
         }
 
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 10.dp)) {
+        Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(top = 10.dp)) {
             Row(Modifier.fillMaxWidth().padding(start = edge.start, end = edge.end), verticalAlignment = Alignment.CenterVertically) {
                 MBtn(tr(R.string.detail_back), filled = false) { vm.closeDetail() }
                 Spacer(Modifier.weight(1f))
@@ -95,33 +92,25 @@ fun DetailScreen(vm: AppViewModel) {
             }
 
             Column(
-                Modifier.fillMaxWidth().height((d.heightDp - (if (isSeries) 270 else 80)).coerceAtLeast(240).dp).padding(start = edge.start, end = edge.end),
-                verticalArrangement = Arrangement.Bottom
+                Modifier.fillMaxWidth().height((d.heightDp - (if (isSeries) 270 else 80)).coerceAtLeast(240).dp)
+                    .padding(horizontal = maxOf(edge.start, edge.end)),
+                verticalArrangement = Arrangement.Bottom, horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                    if (!narrow && !shortScreen) {
-                        val shape = RoundedCornerShape(14.dp)
-                        Box(
-                            Modifier.width(if (d.tv) 132.dp else 116.dp).aspectRatio(2f / 3f)
-                                .softShadow(shape, 16.dp, palette.primary).clip(shape).background(SurfHigh)
-                        ) {
-                            val poster = info?.poster?.takeIf { it.isNotBlank() } ?: c.logo
-                            AsyncImage(model = poster, contentDescription = c.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                        }
-                    }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.Bottom) {
+                // Logo (or the plain title) in the middle; it fades away together with the big image when the page scrolls.
+                Column(Modifier.graphicsLayer { alpha = (1f - scroll.value / 300f).coerceIn(0f, 1f) }, horizontalAlignment = Alignment.CenterHorizontally) {
                         TitleLogo(
                             c.name, kindOf(c), info?.year?.take(4)?.toIntOrNull(),
-                            height = if (narrow) 44.dp else if (d.tv) 72.dp else 60.dp
+                            height = if (narrow) 48.dp else if (d.tv) 72.dp else 60.dp,
+                            alignment = Alignment.Center
                         ) {
                             Text(
                                 c.name, style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.65f), Offset(0f, 3f), 14f)), fontSize = if (narrow) 18.sp else if (d.tv) 26.sp else 22.sp,
                                 lineHeight = if (d.tv) 32.sp else 28.sp,
-                                fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis
                             )
                         }
                         Spacer(Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
                             (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let {
                                 MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D))
                             }
@@ -130,10 +119,29 @@ fun DetailScreen(vm: AppViewModel) {
                             info?.genre?.takeIf { it.isNotBlank() }?.split(',', '،', '/')?.map { it.trim() }
                                 ?.filter { it.isNotEmpty() }?.take(if (narrow) 1 else 2)?.forEach { MetaChip(it) }
                         }
-                        if (info != null && info.plot.isNotBlank() && !(isSeries && shortScreen)) {
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
+                    if (!isSeries) {
+                        val h = vm.store.historyOf(c.url)
+                        val label = if (h != null && !h.finished && h.position > 10_000) tr(R.string.detail_resume, h.position / 60000) else tr(R.string.detail_play)
+                        MBtn(label, tint = buttonTone(btnPal.primary), modifier = Modifier.focusRequester(playFocus)) { vm.play(c) }
+                    }
+                    MBtn(if (c.url in vm.favs) tr(R.string.detail_fav_on) else tr(R.string.detail_fav_off), filled = false, tint = btnPal.accent) { vm.toggleFav(c) }
+                    val ctx = androidx.compose.ui.platform.LocalContext.current
+                    val trailerId = info?.trailer.orEmpty()
+                    MBtn(if (trailerId.isNotBlank()) tr(R.string.detail_trailer) else tr(R.string.detail_trailer_search), filled = false, tint = btnPal.accent) {
+                        val url = if (trailerId.isNotBlank()) "https://www.youtube.com/watch?v=$trailerId"
+                        else "https://www.youtube.com/results?search_query=" + android.net.Uri.encode(c.name + " trailer")
+                        try {
+                            ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                        } catch (_: Exception) { vm.say(S(R.string.detail_no_viewer)) }
+                    }
+                }
+                    if (info != null && info.plot.isNotBlank() && !(isSeries && shortScreen)) {
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                info.plot, fontSize = if (narrow) 12.sp else 13.sp, lineHeight = 19.sp,
+                                info.plot, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.widthIn(max = 640.dp), fontSize = if (narrow) 12.sp else 13.sp, lineHeight = 19.sp,
                                 color = Color(0xFFE3E6F0), maxLines = if (narrow || isSeries) 2 else 3, overflow = TextOverflow.Ellipsis
                             )
                         }
@@ -144,26 +152,6 @@ fun DetailScreen(vm: AppViewModel) {
                                 maxLines = 1, overflow = TextOverflow.Ellipsis
                             )
                         }
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (!isSeries) {
-                        val h = vm.store.historyOf(c.url)
-                        val label = if (h != null && !h.finished && h.position > 10_000) tr(R.string.detail_resume, h.position / 60000) else tr(R.string.detail_play)
-                        MBtn(label, tint = buttonTone(palette.primary), modifier = Modifier.focusRequester(playFocus)) { vm.play(c) }
-                    }
-                    MBtn(if (c.url in vm.favs) tr(R.string.detail_fav_on) else tr(R.string.detail_fav_off), filled = false, tint = palette.accent) { vm.toggleFav(c) }
-                    val ctx = androidx.compose.ui.platform.LocalContext.current
-                    val trailerId = info?.trailer.orEmpty()
-                    MBtn(if (trailerId.isNotBlank()) tr(R.string.detail_trailer) else tr(R.string.detail_trailer_search), filled = false, tint = palette.accent) {
-                        val url = if (trailerId.isNotBlank()) "https://www.youtube.com/watch?v=$trailerId"
-                        else "https://www.youtube.com/results?search_query=" + android.net.Uri.encode(c.name + " trailer")
-                        try {
-                            ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
-                        } catch (_: Exception) { vm.say(S(R.string.detail_no_viewer)) }
-                    }
-                }
                 Spacer(Modifier.height(10.dp))
             }
 
