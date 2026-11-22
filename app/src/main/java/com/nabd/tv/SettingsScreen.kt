@@ -341,6 +341,7 @@ private fun AppearancePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit
     val cx = LocalContext.current
     Group(S(R.string.a_768ba958)) {
         Toggle(S(R.string.a_3318a3c3), vm.darkPref) { vm.setDark(it) }
+        Toggle(S(R.string.x_logos_toggle), s.titleLogos) { upd { s.titleLogos = it; Logos.enabled = it } }
         Row2(S(R.string.a_ca5c3624), tr(Tab.valueOf(s.startSection).labelRes)) {
             vm.menu = MenuRequest(S(R.string.a_ca5c3624), Tab.entries.map { t -> Lang.str(cx, t.labelRes) to { upd { s.startSection = t.name } } })
         }

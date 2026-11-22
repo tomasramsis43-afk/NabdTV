@@ -107,11 +107,16 @@ fun DetailScreen(vm: AppViewModel) {
                         }
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.Bottom) {
-                        Text(
-                            c.name, style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.65f), Offset(0f, 3f), 14f)), fontSize = if (narrow) 18.sp else if (d.tv) 26.sp else 22.sp,
-                            lineHeight = if (d.tv) 32.sp else 28.sp,
-                            fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis
-                        )
+                        TitleLogo(
+                            c.name, kindOf(c), info?.year?.take(4)?.toIntOrNull(),
+                            height = if (narrow) 64.dp else if (d.tv) 104.dp else 88.dp
+                        ) {
+                            Text(
+                                c.name, style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.65f), Offset(0f, 3f), 14f)), fontSize = if (narrow) 18.sp else if (d.tv) 26.sp else 22.sp,
+                                lineHeight = if (d.tv) 32.sp else 28.sp,
+                                fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis
+                            )
+                        }
                         Spacer(Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
                             (info?.rating?.takeIf { it.isNotBlank() } ?: ratingBadge(c))?.let {

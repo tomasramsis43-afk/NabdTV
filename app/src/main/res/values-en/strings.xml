@@ -676,4 +676,5 @@
 
     <string name="x_shelf_trending_movies">Trending movies worldwide</string>
     <string name="x_shelf_trending_series">Trending series worldwide</string>
+    <string name="x_logos_toggle">Official title logos (Wikimedia)</string>
 </resources>

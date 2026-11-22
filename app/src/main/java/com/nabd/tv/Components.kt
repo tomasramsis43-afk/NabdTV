@@ -294,6 +294,9 @@ fun PosterCard(
                     Brush.verticalGradient(0.6f to Color.Transparent, 1f to OverlayScrim)
                 )
             )
+            if (vm.store.titleLogos && kindOf(ch) != Kind.Live) {
+                PosterLogo(ch.name, kindOf(ch), if (d.tv) 40.dp else 34.dp, Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.8f).padding(bottom = 10.dp))
+            }
             ratingBadge(ch)?.let { r -> RatingPill(r, Modifier.align(Alignment.TopStart).padding(6.dp)) }
             Row(
                 Modifier.align(Alignment.TopEnd).padding(6.dp),
