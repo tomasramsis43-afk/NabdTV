@@ -365,8 +365,17 @@ class Repo(private val ctx: Context, val store: Store) {
         rating = str(i, "rating").ifBlank { str(i, "rating_5based") },
         year = (str(i, "releasedate").ifBlank { str(i, "releaseDate") }).take(4),
         backdrop = firstOf(i, "backdrop_path"),
-        duration = str(i, "duration")
+        duration = str(i, "duration"),
+        trailer = youtubeId(str(i, "youtube_trailer").ifBlank { str(i, "trailer") })
     )
+
+    /** Providers send either a bare YouTube id or a full URL. */
+    private fun youtubeId(raw: String): String {
+        val t = raw.trim()
+        if (t.isEmpty()) return ""
+        Regex("""(?:v=|youtu\.be/|embed/)([A-Za-z0-9_-]{11})""").find(t)?.let { return it.groupValues[1] }
+        return if (Regex("""[A-Za-z0-9_-]{11}""").matches(t)) t else ""
+    }
 
     suspend fun vodInfo(c: Channel, kind: Kind): VodInfo? = withContext(Dispatchers.IO) {
         var info: VodInfo? = null
@@ -385,6 +394,14 @@ class Repo(private val ctx: Context, val store: Store) {
             if (t != null) info = if (info == null) t else info.copy(
                 plot = t.plot, rating = info.rating.ifBlank { t.rating }, year = info.year.ifBlank { t.year },
                 backdrop = info.backdrop ?: t.backdrop
+            )
+        }
+        // Cast photos and a trailer from TMDB (only with a key and an exact match) fill what the provider lacks.
+        if (kind != Kind.Live) {
+            val ex = Artwork.extras(c.name, kind, info?.year?.toIntOrNull())
+            if (ex != null) info = (info ?: VodInfo()).copy(
+                trailer = info?.trailer.orEmpty().ifBlank { ex.trailer },
+                people = ex.people
             )
         }
         // Provider gave no backdrop: look for a verified landscape one (never a poster stretched wide).

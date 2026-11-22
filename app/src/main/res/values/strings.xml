@@ -677,4 +677,9 @@
     <string name="x_shelf_trending_movies">أفلام رائجة عالمياً</string>
     <string name="x_shelf_trending_series">مسلسلات رائجة عالمياً</string>
     <string name="x_logos_toggle">شعارات العناوين الرسمية (ويكي ميديا)</string>
+    <string name="detail_trailer">التريلر</string>
+    <string name="detail_trailer_search">بحث عن التريلر</string>
+    <string name="detail_cast_title">الممثلون</string>
+    <string name="detail_no_viewer">لا يوجد تطبيق لفتح الفيديو على هذا الجهاز</string>
+    <string name="detail_cast_works">أعمال أخرى لأبطال العمل</string>
 </resources>

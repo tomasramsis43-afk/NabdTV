@@ -635,14 +635,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var episodes by mutableStateOf<List<Episode>>(emptyList()); private set
     var epLoading by mutableStateOf(false); private set
     var season by mutableStateOf(1); private set
+    /** Other titles from the library featuring the lead actors of the open title (needs TMDB). */
+    var castWorks by mutableStateOf<List<Channel>>(emptyList()); private set
     /** Episode last focused / started in the gallery, so returning from playback lands on the same card. */
     var epFocusUrl: String? = null
 
     fun openDetail(c: Channel) = guard(c) {
         val k = kindOf(c)
-        detail = c; info = null; episodes = emptyList(); season = 1; error = null; epFocusUrl = null
+        detail = c; info = null; episodes = emptyList(); season = 1; error = null; epFocusUrl = null; castWorks = emptyList()
         back = Screen.Main; screen = Screen.Detail
-        viewModelScope.launch { info = repo.vodInfo(c, k) }
+        viewModelScope.launch {
+            val i = repo.vodInfo(c, k)
+            info = i
+            if (detail?.url == c.url && i != null) loadCastWorks(c, i)
+        }
         if (k == Kind.Series) {
             epLoading = true
             viewModelScope.launch {
@@ -654,6 +660,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 epLoading = false
             }
         }
+    }
+
+    /** Library titles starring the first few cast members (matched by exact normalised title), most recent additions first. */
+    private suspend fun loadCastWorks(c: Channel, i: VodInfo) {
+        val ids = i.people.filter { it.id > 0 }.take(3).map { it.id }
+        if (ids.isEmpty()) return
+        val titles = HashSet<String>()
+        ids.forEach { titles += Artwork.filmography(it) }
+        if (titles.isEmpty()) return
+        val found = withContext(Dispatchers.Default) {
+            val self = LogoMatch.norm(LogoMatch.clean(c.name).first)
+            (movieList + seriesList).filter { x ->
+                x.url != c.url && LogoMatch.norm(LogoMatch.clean(x.name).first).let { it != self && it in titles }
+            }.distinctBy { LogoMatch.norm(LogoMatch.clean(it.name).first) }.take(20)
+        }
+        if (detail?.url == c.url) castWorks = found
     }
 
     fun closeDetail() { restoreFocus = true; screen = Screen.Main }

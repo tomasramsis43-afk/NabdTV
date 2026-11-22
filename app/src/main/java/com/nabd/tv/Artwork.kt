@@ -88,6 +88,114 @@ object Artwork {
           catch (_: Exception) { null }
     }
 
+    /** Cast (with photos) and a YouTube trailer id for a verified TMDB match; null without a key or match. */
+    suspend fun extras(rawTitle: String, kind: Kind, yearHint: Int?): Extras? {
+        val d = dir ?: return null
+        if (kind == Kind.Live || tmdbKey().isBlank()) return null
+        val (title, y) = LogoMatch.clean(rawTitle)
+        if (title.isBlank()) return null
+        val year = yearHint ?: y
+        val k = "extras:${kind.name}:${LogoMatch.norm(title)}:${year ?: 0}"
+        xmem[k]?.let { return it.takeIf { e -> e !== NO_EXTRAS } }
+        return kotlinx.coroutines.withContext(Dispatchers.IO) {
+            gate.withPermit {
+                ensureLoaded(d)
+                synchronized(index) { index.optJSONObject(k) }?.let { e ->
+                    if (e.optString("s") == "ok") {
+                        val ar = e.optJSONArray("cast") ?: JSONArray()
+                        val people = (0 until ar.length()).map { i -> ar.getJSONObject(i).let { Person(it.optString("n"), it.optString("p").ifBlank { null }, it.optString("r"), it.optInt("i")) } }
+                        return@withPermit Extras(people, e.optString("trailer")).also { xmem[k] = it }
+                    } else if (System.currentTimeMillis() - e.optLong("t") < NEG_TTL) return@withPermit null
+                }
+                try {
+                    val key = tmdbKey()
+                    val t = if (kind == Kind.Series) "tv" else "movie"
+                    val hit = tmdbMatch(key, title, kind, year)
+                    if (hit == null) {
+                        synchronized(index) { index.put(k, JSONObject().put("s", "none").put("t", System.currentTimeMillis())) }; save(d)
+                        xmem[k] = NO_EXTRAS; return@withPermit null
+                    }
+                    val id = hit.optInt("id")
+                    val lang = if (LogoMatch.hasArabic(title)) "ar" else "en"
+                    val credits = getObj("https://api.themoviedb.org/3/$t/$id/credits?api_key=${Uri.encode(key)}&language=$lang").optJSONArray("cast")
+                    val people = ArrayList<Person>()
+                    if (credits != null) for (i in 0 until minOf(credits.length(), 15)) {
+                        val c = credits.getJSONObject(i)
+                        val n = c.optString("name"); if (n.isBlank()) continue
+                        val pp = c.optString("profile_path").takeIf { it.isNotBlank() }?.let { "https://image.tmdb.org/t/p/w185$it" }
+                        people += Person(n, pp, c.optString("character"), c.optInt("id"))
+                    }
+                    val vids = getObj("https://api.themoviedb.org/3/$t/$id/videos?api_key=${Uri.encode(key)}&include_video_language=$lang,en").optJSONArray("results")
+                    var trailer = ""
+                    if (vids != null) {
+                        val cands = (0 until vids.length()).map { vids.getJSONObject(it) }
+                            .filter { it.optString("site") == "YouTube" && it.optString("type") == "Trailer" && it.optString("key").isNotBlank() }
+                        trailer = (cands.firstOrNull { it.optString("iso_639_1") == lang && it.optBoolean("official") }
+                            ?: cands.firstOrNull { it.optString("iso_639_1") == lang } ?: cands.firstOrNull { it.optBoolean("official") } ?: cands.firstOrNull())
+                            ?.optString("key").orEmpty()
+                    }
+                    val ex = Extras(people, trailer)
+                    val arr = JSONArray(); people.forEach { arr.put(JSONObject().put("n", it.name).put("p", it.photo ?: "").put("r", it.role).put("i", it.id)) }
+                    synchronized(index) { index.put(k, JSONObject().put("s", "ok").put("cast", arr).put("trailer", trailer).put("t", System.currentTimeMillis())) }
+                    save(d); xmem[k] = ex; ex
+                } catch (_: Exception) { null }
+            }
+        }
+    }
+
+    data class Extras(val people: List<Person>, val trailer: String)
+
+    private val fmem = ConcurrentHashMap<Int, Set<String>>()
+
+    /** Normalised titles (movies and series) an actor appeared in, from TMDB; empty without a key or on failure. */
+    suspend fun filmography(personId: Int): Set<String> {
+        val d = dir ?: return emptySet()
+        if (personId <= 0 || tmdbKey().isBlank()) return emptySet()
+        fmem[personId]?.let { return it }
+        return kotlinx.coroutines.withContext(Dispatchers.IO) {
+            gate.withPermit {
+                ensureLoaded(d)
+                val k = "person:$personId"
+                synchronized(index) { index.optJSONObject(k) }?.let { e ->
+                    val a = e.optJSONArray("t") ?: JSONArray()
+                    return@withPermit (0 until a.length()).map { a.getString(it) }.toSet().also { fmem[personId] = it }
+                }
+                try {
+                    val arr = getObj("https://api.themoviedb.org/3/person/$personId/combined_credits?api_key=${Uri.encode(tmdbKey())}&language=ar").optJSONArray("cast")
+                    val out = LinkedHashSet<String>()
+                    if (arr != null) for (i in 0 until arr.length()) {
+                        val c = arr.getJSONObject(i)
+                        if (c.optString("media_type") !in listOf("movie", "tv")) continue
+                        for (n in listOf("title", "name", "original_title", "original_name")) c.optString(n).takeIf { it.isNotBlank() }?.let { out += LogoMatch.norm(it) }
+                    }
+                    out.remove("")
+                    synchronized(index) { index.put(k, JSONObject().put("t", JSONArray(out.toList())).put("time", System.currentTimeMillis())) }
+                    save(d); fmem[personId] = out; out
+                } catch (_: Exception) { emptySet() }
+            }
+        }
+    }
+    private val NO_EXTRAS = Extras(emptyList(), "")
+    private val xmem = ConcurrentHashMap<String, Extras>()
+
+    /** First TMDB search result whose title equals [title] exactly (after normalising) and whose year agrees. */
+    private fun tmdbMatch(key: String, title: String, kind: Kind, year: Int?): JSONObject? {
+        val t = if (kind == Kind.Series) "tv" else "movie"
+        val want = LogoMatch.norm(title)
+        val res = getObj("https://api.themoviedb.org/3/search/$t?api_key=${Uri.encode(key)}&language=${if (LogoMatch.hasArabic(title)) "ar" else "en"}&query=${Uri.encode(title)}")
+            .optJSONArray("results") ?: return null
+        for (i in 0 until minOf(res.length(), 8)) {
+            val r = res.getJSONObject(i)
+            val names = listOf(r.optString("title"), r.optString("name"), r.optString("original_title"), r.optString("original_name"))
+            if (names.none { it.isNotBlank() && LogoMatch.norm(it) == want }) continue
+            val date = r.optString("release_date").ifBlank { r.optString("first_air_date") }
+            val ry = date.take(4).toIntOrNull()
+            if (year != null && ry != null && kotlin.math.abs(ry - year) > 1) continue
+            return r
+        }
+        return null
+    }
+
     private fun tmdb(type: String, title: String, kind: Kind, year: Int?): Art? {
         val key = tmdbKey().ifBlank { return null }
         val t = if (kind == Kind.Series) "tv" else "movie"

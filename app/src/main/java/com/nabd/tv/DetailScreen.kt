@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
@@ -81,7 +82,7 @@ fun DetailScreen(vm: AppViewModel) {
             )
         }
 
-        Column(Modifier.fillMaxSize().padding(top = 10.dp)) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 10.dp)) {
             Row(Modifier.fillMaxWidth().padding(start = edge.start, end = edge.end), verticalAlignment = Alignment.CenterVertically) {
                 MBtn(tr(R.string.detail_back), filled = false) { vm.closeDetail() }
                 Spacer(Modifier.weight(1f))
@@ -93,7 +94,7 @@ fun DetailScreen(vm: AppViewModel) {
             }
 
             Column(
-                Modifier.fillMaxWidth().weight(1f).padding(start = edge.start, end = edge.end),
+                Modifier.fillMaxWidth().height((d.heightDp - (if (isSeries) 270 else 80)).coerceAtLeast(240).dp).padding(start = edge.start, end = edge.end),
                 verticalArrangement = Arrangement.Bottom
             ) {
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
@@ -154,6 +155,15 @@ fun DetailScreen(vm: AppViewModel) {
                         MBtn(label, tint = buttonTone(palette.primary), modifier = Modifier.focusRequester(playFocus)) { vm.play(c) }
                     }
                     MBtn(if (c.url in vm.favs) tr(R.string.detail_fav_on) else tr(R.string.detail_fav_off), filled = false, tint = palette.accent) { vm.toggleFav(c) }
+                    val ctx = androidx.compose.ui.platform.LocalContext.current
+                    val trailerId = info?.trailer.orEmpty()
+                    MBtn(if (trailerId.isNotBlank()) tr(R.string.detail_trailer) else tr(R.string.detail_trailer_search), filled = false, tint = palette.accent) {
+                        val url = if (trailerId.isNotBlank()) "https://www.youtube.com/watch?v=$trailerId"
+                        else "https://www.youtube.com/results?search_query=" + android.net.Uri.encode(c.name + " trailer")
+                        try {
+                            ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                        } catch (_: Exception) { vm.say(S(R.string.detail_no_viewer)) }
+                    }
                 }
                 Spacer(Modifier.height(10.dp))
             }
@@ -168,10 +178,52 @@ fun DetailScreen(vm: AppViewModel) {
                 }
                 // The gallery spans the full width (cards scroll to the screen edge) and wraps its own height.
                 Episodes(vm, c, d, edge)
-            } else {
-                Spacer(Modifier.height(24.dp))
+            }
+            CastRow(info, edge)
+            WorksRow(vm, edge)
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+private fun castPeople(info: VodInfo?): List<Person> {
+    if (info == null) return emptyList()
+    if (info.people.isNotEmpty()) return info.people
+    return info.cast.split(',', '،', '/', '|', ';').map { it.trim() }.filter { it.length > 1 }.distinct().take(12).map { Person(it) }
+}
+
+/** One round photo per actor (initials when there is no photo) with the name below. */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun CastRow(info: VodInfo?, edge: EdgePad) {
+    val people = castPeople(info)
+    if (people.isEmpty()) return
+    Spacer(Modifier.height(14.dp))
+    Text(tr(R.string.detail_cast_title), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.padding(start = edge.start, end = edge.end, bottom = 8.dp))
+    LazyRow(contentPadding = PaddingValues(start = edge.start, end = edge.end), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        items(people.size) { i ->
+            val p = people[i]
+            Column(Modifier.width(76.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.size(64.dp).clip(CircleShape).background(SurfHigh).border(1.dp, Hairline, CircleShape), contentAlignment = Alignment.Center) {
+                    if (p.photo != null) AsyncImage(model = p.photo, contentDescription = p.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    else Text(p.name.trim().take(1), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                }
+                Spacer(Modifier.height(5.dp))
+                Text(p.name, fontSize = 11.sp, color = Ink, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center, lineHeight = 14.sp)
             }
         }
+    }
+}
+
+/** Library titles that feature the same lead actors. */
+@Composable
+private fun WorksRow(vm: AppViewModel, edge: EdgePad) {
+    val works = vm.castWorks
+    if (works.isEmpty()) return
+    Spacer(Modifier.height(16.dp))
+    Text(tr(R.string.detail_cast_works), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.padding(start = edge.start, end = edge.end, bottom = 8.dp))
+    LazyRow(contentPadding = PaddingValues(start = edge.start, end = edge.end), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        items(works.size, key = { works[it].url + works[it].id }) { i -> PosterCard(vm, works[i], Modifier.width(112.dp), focusKey = "cw|" + works[i].url) }
     }
 }
 

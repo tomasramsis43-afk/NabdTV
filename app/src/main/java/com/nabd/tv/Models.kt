@@ -42,8 +42,14 @@ data class VodInfo(
     val rating: String = "",
     val year: String = "",
     val backdrop: String? = null,
-    val duration: String = ""
+    val duration: String = "",
+    /** YouTube video id of the trailer (from the provider or TMDB), blank when unknown. */
+    val trailer: String = "",
+    /** Cast with photos when TMDB is available; otherwise built from the [cast] text without photos. */
+    val people: List<Person> = emptyList()
 )
+
+data class Person(val name: String, val photo: String? = null, val role: String = "", val id: Int = 0)
 
 data class HistoryEntry(
     val url: String,
