@@ -24,10 +24,20 @@ object LogoMatch {
     }
 
     /** Lower-case letters and digits only; Arabic spelling variants (hamza forms, ة/ه, ى/ي, tatweel) collapse to one form. */
+    // Compiled once: norm()/clean() run for every title of the library, so building Regex objects per call froze weak TV boxes.
+    private val NON_ALNUM = Regex("[^\\p{L}\\p{N}]")
+    private val PREFIX = Regex("^\\s*[\\[(]?[A-Za-z]{2,4}[\\])]?\\s*[|\\uFF5C]\\s*")
+    private val YEAR_IN_BRACKETS = Regex("[\\[(]\\s*((?:19|20)\\d{2})\\s*[\\])]")
+    private val BRACKETS = Regex("[\\[(].*?[\\])]")
+    private val YEAR_AT_END = Regex("[\\s\\-\\u2013]+((?:19|20)\\d{2})\\s*$")
+    private val QUALITY = Regex("\\b(4K|UHD|FHD|HD|SD|1080p|720p|HDR|BluRay|WEB-?DL)\\b", RegexOption.IGNORE_CASE)
+    private val DUB_TAGS = Regex("(\u0645\u062A\u0631\u062C\u0645|\u0645\u062F\u0628\u0644\u062C|\u0645\u062F\u0628\u0644\u062C\u0629)")
+    private val SPACES = Regex("\\s+")
+
     fun norm(t: String): String = t.lowercase()
         .replace('\u0623', '\u0627').replace('\u0625', '\u0627').replace('\u0622', '\u0627').replace('\u0671', '\u0627')
         .replace('\u0629', '\u0647').replace('\u0649', '\u064A').replace("\u0640", "")
-        .replace(Regex("[^\\p{L}\\p{N}]"), "")
+        .replace(NON_ALNUM, "")
 
     fun hasArabic(t: String) = t.any { it in '\u0600'..'\u06FF' }
 
@@ -35,16 +45,16 @@ object LogoMatch {
     fun clean(raw: String): Pair<String, Int?> {
         var s = raw.trim()
         var year: Int? = null
-        s = s.replace(Regex("^\\s*[\\[(]?[A-Za-z]{2,4}[\\])]?\\s*[|\\uFF5C]\\s*"), "")          // "AR | Title"
-        Regex("[\\[(]\\s*((?:19|20)\\d{2})\\s*[\\])]").find(s)?.let { year = it.groupValues[1].toInt() }
-        s = s.replace(Regex("[\\[(].*?[\\])]"), " ")
-        Regex("[\\s\\-\\u2013]+((?:19|20)\\d{2})\\s*$").find(s)?.let {
+        s = s.replace(PREFIX, "")          // "AR | Title"
+        YEAR_IN_BRACKETS.find(s)?.let { year = it.groupValues[1].toInt() }
+        s = s.replace(BRACKETS, " ")
+        YEAR_AT_END.find(s)?.let {
             if (year == null) year = it.groupValues[1].toInt()
             s = s.removeRange(it.range)
         }
-        s = s.replace(Regex("\\b(4K|UHD|FHD|HD|SD|1080p|720p|HDR|BluRay|WEB-?DL)\\b", RegexOption.IGNORE_CASE), " ")
-        s = s.replace(Regex("(مترجم|مدبلج|مدبلجة)"), " ")
-        s = s.replace(Regex("\\s+"), " ").trim(' ', '-', '\u2013', '|', ':')
+        s = s.replace(QUALITY, " ")
+        s = s.replace(DUB_TAGS, " ")
+        s = s.replace(SPACES, " ").trim(' ', '-', '\u2013', '|', ':')
         return s to year
     }
 
