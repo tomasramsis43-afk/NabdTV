@@ -103,7 +103,10 @@ fun DetailScreen(vm: AppViewModel) {
                             Modifier.width(if (d.tv) 132.dp else 116.dp).aspectRatio(2f / 3f)
                                 .softShadow(shape, 16.dp, palette.primary).clip(shape).background(SurfHigh)
                         ) {
-                            AsyncImage(model = c.logo, contentDescription = c.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                            val poster by produceState(c.logo, c.url, info?.year) {
+                                Artwork.poster(c.name, kindOf(c), info?.year?.take(4)?.toIntOrNull())?.let { value = it.url }
+                            }
+                            AsyncImage(model = poster, contentDescription = c.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                         }
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.Bottom) {

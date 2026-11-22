@@ -387,6 +387,12 @@ class Repo(private val ctx: Context, val store: Store) {
                 backdrop = info.backdrop ?: t.backdrop
             )
         }
+        // Provider gave no backdrop: look for a verified landscape one (never a poster stretched wide).
+        if (kind != Kind.Live && info?.backdrop.isNullOrBlank()) {
+            Artwork.backdrop(c.name, kind, info?.year?.toIntOrNull())?.let { a ->
+                info = (info ?: VodInfo()).copy(backdrop = a.url)
+            }
+        }
         info
     }
 
