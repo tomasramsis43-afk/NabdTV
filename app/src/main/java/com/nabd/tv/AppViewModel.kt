@@ -124,18 +124,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var splashDone by mutableStateOf(false)
 
     /** The first screen has something real to show: cached lists loaded, or an error / the setup screen is needed. */
-    /** True once the big derived lists were computed off the main thread, so the first Home frame does not freeze the UI. */
-    @Volatile var warmed = false; private set
-
-    /** Computes the heavy derived lists (filter / dedupe / shelves / groups) on a background thread; Compose then reads the cached values. */
-    private suspend fun warm() {
-        withContext(Dispatchers.Default) {
-            runCatching { liveList; movieList; seriesList; shelves; groups; continueItems }
-        }
-        warmed = true
-    }
-
-    fun startupReady(): Boolean = screen == Screen.Setup || error != null || (!loading && all.isNotEmpty() && !vodLoading && warmed)
+    fun startupReady(): Boolean = screen == Screen.Setup || error != null || (!loading && all.isNotEmpty() && !vodLoading)
 
     private fun ok(c: Channel, live: Boolean, hidden: Set<String>): Boolean =
         parental.visible(c) && c.url !in hidden && !(live && store.hideDead && health.isDead(c.url))
@@ -314,8 +303,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val h = history
             val f = favs
+            val pool = liveList + movieList + seriesList
             val (r, b) = withContext(Dispatchers.Default) {
-                val pool = liveList + movieList + seriesList
                 Recommender.recommend(pool, h, f, 24) to Recommender.becauseYouWatched(pool, h, 20)
             }
             recs = r; because = b
@@ -385,7 +374,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 all = repo.load(force)
                 if (force) store.lastSyncAt = System.currentTimeMillis()
                 group = GROUP_ALL
-                warm()
                 screen = Screen.Main
                 preloadVod()
                 pendingResume?.let { pendingResume = null; playResume(it) }
@@ -415,7 +403,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (!silent) error = null
         try {
             if (t == Tab.Movies) movies = repo.loadMovies(force) else series = repo.loadSeries(force)
-            warm()
             refreshRecs()
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
