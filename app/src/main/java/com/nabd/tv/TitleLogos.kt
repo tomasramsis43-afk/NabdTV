@@ -37,6 +37,8 @@ object Logos {
     private const val NEG_TTL = 14L * 24 * 3600 * 1000
 
     @Volatile var enabled = true
+    /** Optional TMDB key entered by the user in Settings. Blank = TMDB is never contacted. */
+    @Volatile var tmdbKey: () -> String = { "" }
     private var dir: File? = null
     private val http = OkHttpClient.Builder().connectTimeout(12, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -50,7 +52,9 @@ object Logos {
         dir = File(ctx.applicationContext.filesDir, "logos").also { it.mkdirs(); File(it, "manual").mkdirs() }
     }
 
-    private fun key(kind: Kind, title: String, year: Int?) = "${kind.name}:${LogoMatch.norm(title)}:${year ?: 0}"
+    // The key changes when a TMDB key is added, so earlier "no logo" answers do not hide what TMDB can find.
+    private fun key(kind: Kind, title: String, year: Int?) =
+        "${kind.name}:${LogoMatch.norm(title)}:${year ?: 0}" + if (tmdbKey().isNotBlank()) ":t" else ""
 
     /** Instant, non-blocking lookup (memory only). */
     fun cached(title: String, kind: Kind, year: Int?): File? {
@@ -81,6 +85,11 @@ object Logos {
                 val f = File(d, e.optString("f")); if (f.exists()) { mem[k] = f; return f }
             } else if (System.currentTimeMillis() - e.optLong("t") < NEG_TTL) return null
         }
+        if (tmdbKey().isNotBlank()) {
+            try {
+                tmdbLogo(d, k, title, kind, year)?.let { return it }
+            } catch (_: Exception) { /* fall through to Wikidata */ }
+        }
         return try {
             val lang = if (LogoMatch.hasArabic(title)) "ar" else "en"
             val search = getJson("https://www.wikidata.org/w/api.php?action=wbsearchentities&type=item&limit=10&format=json" +
@@ -102,6 +111,50 @@ object Logos {
             }
         } catch (_: IOException) { null }          // offline / timeout: do not cache a negative answer
           catch (_: Exception) { null }
+    }
+
+    /**
+     * TMDB logo (transparent PNG). The title must match exactly after normalising (Arabic or original title) and the year
+     * must agree when known; the logo language prefers the title's own language, then neutral, then English.
+     */
+    private fun tmdbLogo(d: File, k: String, title: String, kind: Kind, year: Int?): File? {
+        val key = tmdbKey().ifBlank { return null }
+        val type = if (kind == Kind.Series) "tv" else "movie"
+        val want = LogoMatch.norm(title)
+        val ar = LogoMatch.hasArabic(title)
+        val res = getJson("https://api.themoviedb.org/3/search/$type?api_key=${Uri.encode(key)}&language=${if (ar) "ar" else "en"}&query=${Uri.encode(title)}")
+            .optJSONArray("results") ?: return null
+        var id = 0
+        for (i in 0 until minOf(res.length(), 8)) {
+            val r = res.getJSONObject(i)
+            val names = listOf(r.optString("title"), r.optString("name"), r.optString("original_title"), r.optString("original_name"))
+            if (names.none { it.isNotBlank() && LogoMatch.norm(it) == want }) continue
+            val date = r.optString("release_date").ifBlank { r.optString("first_air_date") }
+            val ry = date.take(4).toIntOrNull()
+            if (year != null && ry != null && kotlin.math.abs(ry - year) > 1) continue
+            id = r.optInt("id"); break
+        }
+        if (id == 0) return null
+        val logos = getJson("https://api.themoviedb.org/3/$type/$id/images?api_key=${Uri.encode(key)}&include_image_language=ar,en,null")
+            .optJSONArray("logos") ?: return null
+        val order = if (ar) listOf("ar", "", "en") else listOf("en", "", "ar")
+        var best: JSONObject? = null; var bestScore = Double.NEGATIVE_INFINITY
+        for (i in 0 until logos.length()) {
+            val l = logos.getJSONObject(i)
+            val path = l.optString("file_path")
+            if (path.isBlank() || path.endsWith(".svg", true)) continue
+            val lang = if (l.isNull("iso_639_1")) "" else l.optString("iso_639_1")
+            val rank = order.indexOf(lang).takeIf { it >= 0 } ?: continue
+            val score = -rank * 100.0 + l.optDouble("vote_average", 0.0) * 5 + minOf(l.optInt("width"), 1000) / 1000.0
+            if (score > bestScore) { bestScore = score; best = l }
+        }
+        val path = best?.optString("file_path") ?: return null
+        val bytes = download("https://image.tmdb.org/t/p/w500$path") ?: return null
+        if (!decodes(bytes)) return null
+        val f = File(d, sha(k) + ".png"); f.writeBytes(bytes)
+        synchronized(index) { index.put(k, JSONObject().put("s", "ok").put("f", f.name).put("src", "tmdb").put("id", "$type/$id").put("t", System.currentTimeMillis())) }
+        save(d); mem[k] = f
+        return f
     }
 
     private fun none(d: File, k: String): File? {

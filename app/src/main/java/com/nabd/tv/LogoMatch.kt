@@ -23,7 +23,11 @@ object LogoMatch {
         data class None(val reason: String) : Pick()
     }
 
-    fun norm(t: String): String = t.lowercase().replace(Regex("[^\\p{L}\\p{N}]"), "")
+    /** Lower-case letters and digits only; Arabic spelling variants (hamza forms, ة/ه, ى/ي, tatweel) collapse to one form. */
+    fun norm(t: String): String = t.lowercase()
+        .replace('\u0623', '\u0627').replace('\u0625', '\u0627').replace('\u0622', '\u0627').replace('\u0671', '\u0627')
+        .replace('\u0629', '\u0647').replace('\u0649', '\u064A').replace("\u0640", "")
+        .replace(Regex("[^\\p{L}\\p{N}]"), "")
 
     fun hasArabic(t: String) = t.any { it in '\u0600'..'\u06FF' }
 

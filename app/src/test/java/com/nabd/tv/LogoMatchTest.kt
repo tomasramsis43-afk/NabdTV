@@ -77,4 +77,13 @@ class LogoMatchTest {
         val empty = px(100, 40) { _, _ -> 0 }
         assertFalse(LogoMatch.looksLikeLogo(100, 40, empty))
     }
+
+    @Test fun arabicSpellingVariantsMatch() {
+        assertEquals(LogoMatch.norm("الاختيار"), LogoMatch.norm("الإختيار"))
+        assertEquals(LogoMatch.norm("أولاد رزق"), LogoMatch.norm("اولاد رزق"))
+        assertEquals(LogoMatch.norm("باب الحارة"), LogoMatch.norm("بـاب  الحاره"))
+        assertEquals(LogoMatch.norm("جعفر العمدة"), LogoMatch.norm("جعفر العمده"))
+        assertEquals("breakingbad", LogoMatch.norm("Breaking-Bad!"))
+        assertFalse(LogoMatch.norm("الفيل الأزرق") == LogoMatch.norm("الفيل الأزرق 2"))
+    }
 }

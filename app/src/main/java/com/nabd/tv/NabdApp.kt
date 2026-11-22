@@ -14,6 +14,7 @@ class NabdApp : Application(), ImageLoaderFactory {
         super.onCreate()
         Lang.load(this)
         Logos.init(this)
+        Store(this).let { st -> Logos.tmdbKey = { st.tmdbKey } }
         CrashLog.install(this)
         CrashReporter.sendPendingAsync(this)
         UpdateWorker.sync(this)   // cancels the background updater unless the user enabled it
