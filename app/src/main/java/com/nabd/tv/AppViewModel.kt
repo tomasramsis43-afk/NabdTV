@@ -240,19 +240,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Favourites: only what the user actually starred (any kind), already filtered by parental rules.
         val favItems = all.filter { it.url in favs && parental.visible(it) }.take(40)
         if (favItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_fav), favItems)
-        // Trending / Top rated: ONLY from TMDB's own charts (needs the TMDB key in Settings), matched to the library
-        // by exact title + year. No key (or no network yet) = these four rows are simply not shown.
-        tmdbCharts?.let { ch ->
-            val ok = { c: Channel -> parental.visible(c) }
-            fun row(title: String, idx: Map<String, List<Pair<Channel, Int?>>>, e: List<TmdbCharts.Entry>) {
-                val (items, art) = TmdbCharts.pick(idx, e, 10, ok)
-                if (items.size >= 3) out += Shelf(title, items, ranked = true, art = art)
-            }
-            row(tx(R.string.x_shelf_trending_movies), movieTitleIdx, ch.trendMovies)
-            row(tx(R.string.x_shelf_trending_series), seriesTitleIdx, ch.trendSeries)
-            row(tx(R.string.shelf_top_movies), movieTitleIdx, ch.topMovies)
-            row(tx(R.string.shelf_top_series), seriesTitleIdx, ch.topSeries)
+        // Trending / Top rated rows are ALWAYS shown. Source: TMDB's own charts when the TMDB key is set and enough of
+        // those titles exist in the library (wide TMDB artwork + TMDB rating); otherwise the provider's own data.
+        val ch = tmdbCharts
+        val ok = { c: Channel -> parental.visible(c) }
+        fun row(
+            title: String, idx: Map<String, List<Pair<Channel, Int?>>>, entries: List<TmdbCharts.Entry>?,
+            fallback: () -> List<Channel>
+        ) {
+            val (items, art) = if (entries != null) TmdbCharts.pick(idx, entries, 10, ok) else (emptyList<Channel>() to emptyMap())
+            if (items.size >= 3) { out += Shelf(title, items, ranked = true, art = art); return }
+            val f = fallback()
+            if (f.isNotEmpty()) out += Shelf(title, f, ranked = true)
         }
+        row(tx(R.string.x_shelf_trending_movies), movieTitleIdx, ch?.trendMovies) { VmLogic.trending(movieList.filter(ok), 10) }
+        row(tx(R.string.x_shelf_trending_series), seriesTitleIdx, ch?.trendSeries) { VmLogic.trending(seriesList.filter(ok), 10) }
+        row(tx(R.string.shelf_top_movies), movieTitleIdx, ch?.topMovies) { VmLogic.topRated(movieList.filter(ok), 10) }
+        row(tx(R.string.shelf_top_series), seriesTitleIdx, ch?.topSeries) { VmLogic.topRated(seriesList.filter(ok), 10) }
         val newMovies = movieList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { movieList.take(30) }
         if (newMovies.isNotEmpty()) out += Shelf(tx(R.string.shelf_new_movies), newMovies)
         val newSeries = seriesList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { seriesList.take(30) }
