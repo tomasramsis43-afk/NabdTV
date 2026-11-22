@@ -45,6 +45,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Dp
@@ -173,10 +174,25 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
     val heroArt = vm.homeInfo?.backdrop ?: focus.logo
     val palette = rememberArtworkPalette(heroArt)
 
+    // Touch devices: swipe the big hero image sideways to jump to the next / previous title of its row.
+    val rtl = LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
+    val swipe = if (d.tv) Modifier else Modifier.pointerInput(focus.url, shelves.size, rtl) {
+        var total = 0f
+        androidx.compose.foundation.gestures.detectHorizontalDragGestures(
+            onDragStart = { total = 0f },
+            onHorizontalDrag = { _, dx -> total += dx },
+            onDragEnd = {
+                if (kotlin.math.abs(total) > 60.dp.toPx()) {
+                    // Finger moves left = next title (mirrored in RTL).
+                    heroStep(shelves, focus, next = (total < 0f) != rtl)?.let { vm.homeFocus = it }
+                }
+            }
+        )
+    }
     val edge = edgePad(d)
     Column(Modifier.fillMaxSize()) {
         // Edge to edge, starts at the very top of the screen: the floating header sits on this artwork.
-        HomeHero(vm, focus, vm.homeInfo, d, palette, Modifier.fillMaxWidth().height(d.heroHeight))
+        HomeHero(vm, focus, vm.homeInfo, d, palette, Modifier.fillMaxWidth().height(d.heroHeight).then(swipe))
         Spacer(Modifier.height(4.dp))
         LazyColumn(
             state = vm.listState("home"),
@@ -208,6 +224,16 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
             }
         }
     }
+}
+
+/** Next / previous playable title in the row the hero currently comes from (wraps around); null when there is nothing to switch to. */
+private fun heroStep(shelves: List<Shelf>, cur: Channel, next: Boolean): Channel? {
+    val shelf = shelves.firstOrNull { sh -> sh.items.any { it.url == cur.url } } ?: shelves.firstOrNull() ?: return null
+    val items = shelf.items.filter { kindOf(it) != Kind.Live }
+    if (items.size < 2) return null
+    val i = items.indexOfFirst { it.url == cur.url }
+    val n = if (i < 0) 0 else if (next) (i + 1) % items.size else (i - 1 + items.size) % items.size
+    return items[n]
 }
 
 /**
