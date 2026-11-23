@@ -80,10 +80,9 @@ object Updater {
             }
             // Refuse a corrupted or tampered download before it can ever reach the installer.
             val expected = rel.sha256
-            if (expected != null) {
-                val got = md.digest().joinToString("") { "%02x".format(it) }
-                if (got != expected) { out.delete(); error("checksum mismatch") }
-            }
+            if (expected == null) { out.delete(); error("no checksum published for this release") }
+            val got = md.digest().joinToString("") { "%02x".format(it) }
+            if (got != expected) { out.delete(); error("checksum mismatch") }
         }
         out
     }

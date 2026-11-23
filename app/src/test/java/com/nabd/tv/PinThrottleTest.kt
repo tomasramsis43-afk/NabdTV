@@ -38,4 +38,21 @@ class PinThrottleTest {
         repeat(4) { p.recordMiss() }
         assertTrue(p.allowed())
     }
+
+    @Test fun stateIsReportedAndCanBeRestored() {
+        var saved = 0 to 0L
+        val a = PinThrottle(freeAttempts = 4, onChange = { m, b -> saved = m to b }) { t }
+        repeat(5) { a.recordMiss() }
+        assertFalse(a.allowed())
+        // A new instance (app restarted) starting from the saved state is still locked.
+        val b = PinThrottle(freeAttempts = 4, initialMisses = saved.first, initialBlockedUntil = saved.second) { t }
+        assertFalse(b.allowed()); assertEquals(30, b.waitSeconds())
+    }
+
+    @Test fun successClearsSavedState() {
+        var saved = 9 to 9L
+        val p = PinThrottle(onChange = { m, b -> saved = m to b }) { t }
+        p.recordSuccess()
+        assertEquals(0 to 0L, saved)
+    }
 }
