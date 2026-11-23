@@ -80,6 +80,23 @@ fun DetailScreen(vm: AppViewModel) {
     // Buttons take the logo's dominant colour; no logo (or a colourless one) falls back to the artwork palette, kept readable by buttonTone.
     val btnPal = if (logoFile != null) logoPal else palette
 
+    // 0 at the top of the page -> 1 once the hero has mostly scrolled away: the hero logo fades out while the same logo fades in beside the buttons.
+    val heroPx = with(androidx.compose.ui.platform.LocalDensity.current) { ((d.heightDp - 8).coerceAtLeast(240)).dp.toPx() }
+    fun logoProgress(): Float = (scroll.value / (heroPx * 0.45f)).coerceIn(0f, 1f)
+    val titleLogo: @Composable () -> Unit = {
+        TitleLogo(
+            c.name, kindOf(c), null,
+            height = if (narrow) 48.dp else if (d.tv) 72.dp else 60.dp,
+            alignment = Alignment.Center
+        ) {
+            Text(
+                c.name, style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.65f), Offset(0f, 3f), 14f)), fontSize = if (narrow) 18.sp else if (d.tv) 26.sp else 22.sp,
+                lineHeight = if (d.tv) 32.sp else 28.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+
     Box(Modifier.fillMaxSize().appBackground()) {
         // Full-bleed backdrop: wide artwork to the screen edges, dissolving into the page (no frame, no card).
         Box(Modifier.fillMaxWidth().fillMaxHeight(0.72f).fadeOutBottom(0.55f)) {
@@ -128,19 +145,7 @@ fun DetailScreen(vm: AppViewModel) {
             ) {
                 // The logo / title never disappears: it rides up with the scroll and stays pinned at the top until the end of the page.
                 // The logo / title scrolls away with the page (it is no longer pinned).
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        TitleLogo(
-                            c.name, kindOf(c), null,
-                            height = if (narrow) 48.dp else if (d.tv) 72.dp else 60.dp,
-                            alignment = Alignment.Center
-                        ) {
-                            Text(
-                                c.name, style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.65f), Offset(0f, 3f), 14f)), fontSize = if (narrow) 18.sp else if (d.tv) 26.sp else 22.sp,
-                                lineHeight = if (d.tv) 32.sp else 28.sp,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.graphicsLayer { alpha = 1f - logoProgress() }) { titleLogo() }
                 Spacer(Modifier.height(if (d.tv) 150.dp else 110.dp))   // lifts the logo / title a little higher on the artwork
             }
             Spacer(Modifier.height(14.dp))
@@ -149,7 +154,9 @@ fun DetailScreen(vm: AppViewModel) {
             val ctx = androidx.compose.ui.platform.LocalContext.current
             // Buttons, info chips and the synopsis box sit on the physical left of the page (same in Arabic and English).
             CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
-                Column(Modifier.fillMaxWidth().padding(horizontal = maxOf(edge.start, edge.end)), horizontalAlignment = Alignment.Start) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = maxOf(edge.start, edge.end)), verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                    if (narrow) Box(Modifier.fillMaxWidth().padding(bottom = 10.dp).graphicsLayer { alpha = logoProgress() }, contentAlignment = Alignment.Center) { titleLogo() }
                     FlowRow(
                         Modifier.onPreviewKeyEvent { e ->
                             // Up from the buttons: back to the artwork (nothing focused), so the next Down reveals the buttons again.
@@ -206,6 +213,9 @@ fun DetailScreen(vm: AppViewModel) {
                             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth(if (narrow) 1f else 0.62f)
                         )
                     }
+                }
+                // Wide screens: the title / logo comes down with the page and stands on the right, beside the buttons and the synopsis.
+                if (!narrow) Box(Modifier.width(if (d.tv) 300.dp else 240.dp).padding(start = 16.dp).graphicsLayer { alpha = logoProgress() }, contentAlignment = Alignment.TopCenter) { titleLogo() }
                 }
             }
             Spacer(Modifier.height(10.dp))
