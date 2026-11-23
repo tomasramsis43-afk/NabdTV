@@ -721,4 +721,10 @@
     <string name="menu_remove_history">حذف من سجل المشاهدة</string>
     <string name="menu_removed">تم الحذف</string>
     <string name="epg_toggle">تحميل دليل البرامج (EPG)</string>
+    <string name="skip_recap">⏭ تخطي الملخص  (OK)</string>
+    <string name="skip_credits">⏭ تخطي الخاتمة  (OK)</string>
+    <string name="skipped_recap">⏭ تم تخطي الملخص</string>
+    <string name="skipped_credits">⏭ تم تخطي الخاتمة</string>
+    <string name="auto_skip_intro">تخطي المقدمة والملخص تلقائياً</string>
+    <string name="auto_skip_credits">تخطي الخاتمة تلقائياً</string>
 </resources>

@@ -475,6 +475,8 @@ private fun PlaybackPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) 
     Group(S(R.string.a_abf7e07a)) {
         Toggle(S(R.string.a_f6631716), s.rememberPosition) { upd { s.rememberPosition = it } }
         Toggle(S(R.string.a_954384b8), s.autoNext) { upd { s.autoNext = it } }
+        Toggle(S(R.string.auto_skip_intro), s.autoSkip) { upd { s.autoSkip = it } }
+        Toggle(S(R.string.auto_skip_credits), s.autoSkipCredits) { upd { s.autoSkipCredits = it } }
         Toggle(S(R.string.a_add97070), s.loopByDefault) { upd { s.loopByDefault = it } }
         Toggle(S(R.string.a_02217646), s.prefetchNext) { upd { s.prefetchNext = it } }
     }

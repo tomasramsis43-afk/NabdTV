@@ -721,4 +721,10 @@
     <string name="menu_remove_history">Remove from watch history</string>
     <string name="menu_removed">Removed</string>
     <string name="epg_toggle">Load TV guide (EPG)</string>
+    <string name="skip_recap">⏭ Skip recap  (OK)</string>
+    <string name="skip_credits">⏭ Skip credits  (OK)</string>
+    <string name="skipped_recap">⏭ Recap skipped</string>
+    <string name="skipped_credits">⏭ Credits skipped</string>
+    <string name="auto_skip_intro">Auto-skip intro and recap</string>
+    <string name="auto_skip_credits">Auto-skip credits</string>
 </resources>

@@ -11,16 +11,35 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 
-/** Opening (intro) window of one episode, in milliseconds. */
-data class AniIntro(val startMs: Long, val endMs: Long)
+enum class SkipKind { Intro, Recap, Credits }
+
+/**
+ * One skippable window of an episode / movie, in milliseconds.
+ * endMs < 0 means "until the end of the media" (credits that run to the end).
+ */
+data class AniIntro(val startMs: Long, val endMs: Long, val kind: SkipKind = SkipKind.Intro) {
+    /** Compact form for the on-device cache: "i,start,end". */
+    fun pack() = "${kind.name[0].lowercaseChar()},$startMs,$endMs"
+
+    companion object {
+        fun unpack(s: String): AniIntro? {
+            val p = s.split(',')
+            if (p.size != 3) return null
+            val kind = when (p[0]) { "i" -> SkipKind.Intro; "r" -> SkipKind.Recap; "c" -> SkipKind.Credits; else -> return null }
+            return AniIntro(p[1].toLongOrNull() ?: return null, p[2].toLongOrNull() ?: return null, kind)
+        }
+        fun packAll(l: List<AniIntro>) = l.joinToString(";") { it.pack() }
+        fun unpackAll(s: String): List<AniIntro> = s.split(';').mapNotNull { unpack(it) }
+    }
+}
 
 /**
  * Automatic intro detection for anime series.
  *
  * 1. AniList (GraphQL, no key) turns the series title into a MyAnimeList id.
- * 2. AniSkip (community timestamps, no key) returns the opening start / end for that MAL id + episode number.
+ * 2. AniSkip (community timestamps, no key) returns the opening / recap / ending windows for that MAL id + episode number.
  *
- * Everything is cached (memory + SharedPreferences) and every failure returns null, so playback is never affected.
+ * Everything is cached (memory + SharedPreferences) and every failure returns an empty list, so playback is never affected.
  * A manually saved intro end (Store.introEnd) still takes priority in the player.
  */
 object AniSkip {
@@ -28,20 +47,20 @@ object AniSkip {
     private val JSON = "application/json".toMediaType()
 
     private val malCache = ConcurrentHashMap<String, Int>()         // "name|season" -> MAL id (0 = no match this session)
-    private val introCache = ConcurrentHashMap<String, AniIntro>()  // "mal:ep"
+    private val introCache = ConcurrentHashMap<String, List<AniIntro>>()  // "mal:ep"
     private val missCache = ConcurrentHashMap.newKeySet<String>()   // "mal:ep" with no timestamps this session
 
     private const val QUERY =
         "query(\$s:String){Page(perPage:6){media(search:\$s,type:ANIME,format_in:[TV,TV_SHORT,ONA],sort:SEARCH_MATCH)" +
             "{idMal episodes title{romaji english} synonyms}}}"
 
-    suspend fun intro(http: OkHttpClient, ctx: Context, seriesName: String, season: Int?, episode: Int?): AniIntro? =
+    suspend fun segments(http: OkHttpClient, ctx: Context, seriesName: String, season: Int?, episode: Int?): List<AniIntro> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val ep = episode?.takeIf { it > 0 } ?: return@runCatching null
+                val ep = episode?.takeIf { it > 0 } ?: return@runCatching emptyList<AniIntro>()
                 val sn = (season ?: 1).coerceAtLeast(1)
                 val base = cleanName(seriesName)
-                if (base.length < 2) return@runCatching null
+                if (base.length < 2) return@runCatching emptyList<AniIntro>()
                 val prefs = ctx.applicationContext.getSharedPreferences("aniskip", Context.MODE_PRIVATE)
 
                 val malKey = "${norm(base)}|$sn"
@@ -51,24 +70,22 @@ object AniSkip {
                     malCache[malKey] = mal
                     if (mal > 0) prefs.edit().putInt("mal_$malKey", mal).apply()
                 }
-                if (mal <= 0) return@runCatching null
+                if (mal <= 0) return@runCatching emptyList<AniIntro>()
 
                 val key = "$mal:$ep"
                 introCache[key]?.let { return@runCatching it }
-                if (key in missCache) return@runCatching null
-                prefs.getString("op_$key", null)?.split(',')?.takeIf { it.size == 2 }?.let {
-                    val s = it[0].toLongOrNull(); val e = it[1].toLongOrNull()
-                    if (s != null && e != null) return@runCatching AniIntro(s, e).also { r -> introCache[key] = r }
-                }
+                if (key in missCache) return@runCatching emptyList<AniIntro>()
+                prefs.getString("sg_$key", null)?.let { AniIntro.unpackAll(it) }?.takeIf { it.isNotEmpty() }
+                    ?.let { return@runCatching it.also { r -> introCache[key] = r } }
 
                 val found = fetchSkip(http, mal, ep)
-                if (found == null) missCache.add(key)
+                if (found.isEmpty()) missCache.add(key)
                 else {
                     introCache[key] = found
-                    prefs.edit().putString("op_$key", "${found.startMs},${found.endMs}").apply()
+                    prefs.edit().putString("sg_$key", AniIntro.packAll(found)).apply()
                 }
                 found
-            }.getOrNull()
+            }.getOrDefault(emptyList())
         }
 
     /* ---------------- AniList: title -> MAL id ---------------- */
@@ -88,7 +105,7 @@ object AniSkip {
             val m = media.getJSONObject(i)
             val mal = m.optInt("idMal", 0)
             if (mal <= 0) continue
-            val titles = buildList {
+            val titles = buildList<String> {
                 m.optJSONObject("title")?.let { t ->
                     add(t.optString("romaji")); add(t.optString("english"))
                 }
@@ -107,26 +124,40 @@ object AniSkip {
 
     /* ---------------- AniSkip: MAL id + episode -> opening window ---------------- */
 
-    private fun fetchSkip(http: OkHttpClient, mal: Int, episode: Int): AniIntro? {
-        val url = "https://api.aniskip.com/v2/skip-times/$mal/$episode?types=op&types=mixed-op&episodeLength=0"
+    private fun fetchSkip(http: OkHttpClient, mal: Int, episode: Int): List<AniIntro> {
+        val url = "https://api.aniskip.com/v2/skip-times/$mal/$episode" +
+            "?types=op&types=mixed-op&types=ed&types=mixed-ed&types=recap&episodeLength=0"
         val req = Request.Builder().url(url).header("User-Agent", UA).header("Accept", "application/json").build()
         http.newCall(req).execute().use { r ->
-            if (!r.isSuccessful) return null   // 404 = no timestamps for this episode
+            if (!r.isSuccessful) return emptyList()   // 404 = no timestamps for this episode
             val json = JSONObject(r.body?.string().orEmpty())
-            if (!json.optBoolean("found", false)) return null
-            val arr = json.optJSONArray("results") ?: return null
-            var best: AniIntro? = null
+            if (!json.optBoolean("found", false)) return emptyList()
+            val arr = json.optJSONArray("results") ?: return emptyList()
+            val best = HashMap<SkipKind, Pair<Boolean, AniIntro>>()   // kind -> (is the plain, non-"mixed" type, window)
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
                 val type = o.optString("skipType")
-                if (type != "op" && type != "mixed-op") continue
+                val kind = when (type) {
+                    "op", "mixed-op" -> SkipKind.Intro
+                    "recap" -> SkipKind.Recap
+                    "ed", "mixed-ed" -> SkipKind.Credits
+                    else -> continue
+                }
                 val iv = o.optJSONObject("interval") ?: continue
                 val s = (iv.optDouble("startTime", -1.0) * 1000).toLong()
                 val e = (iv.optDouble("endTime", -1.0) * 1000).toLong()
-                if (s < 0 || e - s !in 15_000L..300_000L) continue   // ignore nonsense windows
-                if (best == null || type == "op") best = AniIntro(s, e)
+                val len = e - s
+                val ok = when (kind) {
+                    SkipKind.Intro -> len in 15_000L..300_000L
+                    SkipKind.Recap -> len in 5_000L..300_000L
+                    SkipKind.Credits -> len in 10_000L..900_000L
+                }
+                if (s < 0 || !ok) continue   // ignore nonsense windows
+                val plain = !type.startsWith("mixed")
+                val cur = best[kind]
+                if (cur == null || (plain && !cur.first)) best[kind] = plain to AniIntro(s, e, kind)
             }
-            return best
+            return best.values.map { it.second }.sortedBy { it.startMs }
         }
     }
 
