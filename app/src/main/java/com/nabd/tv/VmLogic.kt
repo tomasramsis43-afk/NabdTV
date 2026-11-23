@@ -22,6 +22,20 @@ object VmLogic {
         return if (series.isEmpty()) null else Triple(series, season, num)
     }
 
+    /**
+     * Is [b] the same title as [a] from another source? Names must match exactly after removing quality tags, brackets and the
+     * year; when both carry a year the years must agree and when only one does, it is NOT the same (remake vs original).
+     */
+    fun sameTitle(a: String, b: String): Boolean {
+        val (ta, ya) = LogoMatch.clean(a); val (tb, yb) = LogoMatch.clean(b)
+        val na = LogoMatch.norm(ta)
+        if (na.isEmpty() || na != LogoMatch.norm(tb)) return false
+        return ya == yb
+    }
+
+    /** The episode with this season and number, or null. */
+    fun episodeIn(eps: List<Episode>, season: Int, num: Int): Episode? = eps.firstOrNull { it.season == season && it.num == num }
+
     /** "Watch later" is stored as a set of "addedAtMillis|url" entries; this rebuilds the list, newest first. Malformed entries are skipped. */
     fun parseWatchLater(entries: Set<String>): List<String> = entries
         .mapNotNull { e -> val i = e.indexOf('|'); if (i <= 0) null else e.substring(0, i).toLongOrNull()?.let { it to e.substring(i + 1) } }

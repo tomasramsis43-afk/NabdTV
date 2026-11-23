@@ -714,4 +714,6 @@
     <string name="x_later_removed">أُزيل من أشاهدها لاحقاً</string>
     <string name="x_shelf_later">أشاهدها لاحقاً</string>
     <string name="x_ne_latest">الأحدث: %1$s</string>
+
+    <string name="x_vod_failover">جارٍ تجربة مصدر آخر لنفس العنوان…</string>
 </resources>

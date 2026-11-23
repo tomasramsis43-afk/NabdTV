@@ -1075,6 +1075,48 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun useAlternative(c: Channel) { tried += c.url; current = c }
 
+    /**
+     * A movie or episode failed to play: try the SAME title from another source (never a different title: see
+     * [VmLogic.sameTitle]). Returns true when something is being tried; an episode lookup is asynchronous and [onNone]
+     * runs if no source has that episode. Each failure comes back here, so sources are tried one after another.
+     */
+    fun tryVodFailover(onNone: () -> Unit): Boolean {
+        val c = current ?: return false
+        if (playMode != PlayMode.Vod) return false
+        val meta = store.epMeta(c.url)
+        if (meta == null) {
+            if (kindOf(c) != Kind.Movie) return false
+            val alt = movies.asSequence()
+                .filter { it.url != c.url && it.url !in tried && health.state(it.url) != Health.Dead && VmLogic.sameTitle(it.name, c.name) }
+                .sortedBy { health.score(it.url) }.firstOrNull() ?: return false
+            tried += alt.url; current = alt
+            return true
+        }
+        val cands = series.filter { it.url != meta.seriesUrl && VmLogic.sameTitle(it.name, meta.seriesName) }.take(4)
+        if (cands.isEmpty()) return false
+        viewModelScope.launch {
+            var switched = false
+            for (s in cands) {
+                val sid = s.url.removePrefix("series:").toIntOrNull() ?: continue
+                val eps = epListCache[s.url] ?: try { repo.loadEpisodes(sid) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
+                    android.util.Log.w("Failover", "episodes of ${s.name} unavailable", e); continue
+                }
+                epListCache[s.url] = eps
+                val e = VmLogic.episodeIn(eps, meta.season, meta.num) ?: continue
+                if (e.url in tried || health.state(e.url) == Health.Dead) continue
+                if (current?.url != c.url) return@launch            // the user already left or changed episode
+                tried += e.url
+                // Continue watching keeps pointing at the ORIGINAL series, whichever source is playing.
+                store.saveEpMeta(e.url, EpMeta(meta.seriesUrl, meta.seriesName, meta.season, meta.num, meta.title, meta.image))
+                store.setContCursor(meta.seriesUrl, e.url)
+                current = Channel(-1, c.name, e.url, c.logo, c.group)
+                bump(); switched = true; break
+            }
+            if (!switched && current?.url == c.url) onNone()
+        }
+        return true
+    }
+
     /** Optional: warm the next and previous channel of the zap list (see [Prefetch]). */
     fun prefetchNeighbors() {
         if (!store.prefetchNext || !zapEnabled) return
