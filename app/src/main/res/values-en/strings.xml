@@ -697,6 +697,7 @@
     <string name="splash_loading">Loading your content</string>
 
     <string name="x_hide_titles">Hide movie and series names under posters</string>
+    <string name="x_hero_rotate">Rotate the home poster automatically when idle</string>
     <string name="player_season_ep">Season %1$d · Episode %2$d</string>
     <string name="player_more">More options</string>
     <string name="tab_subs_audio">Audio</string>
