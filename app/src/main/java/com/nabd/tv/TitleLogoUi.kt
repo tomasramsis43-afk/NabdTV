@@ -31,6 +31,17 @@ fun rememberTitleLogo(title: String, kind: Kind, year: Int? = null): File? {
     return st.value
 }
 
+/** Same lookup, plus whether it has finished (a logo, or a definite "none"), so callers can wait instead of flashing a fallback. */
+@Composable
+fun rememberTitleLogoState(title: String, kind: Kind, year: Int? = null): Pair<File?, Boolean> {
+    if (kind == Kind.Live) return null to true
+    val first = Logos.cached(title, kind, year)
+    val st = produceState(initialValue = first to (first != null), title, kind, year) {
+        value = Logos.get(title, kind, year) to true
+    }
+    return st.value
+}
+
 /**
  * Shows the official logo in a [height] box, or [fallback] (the plain title in the existing text style)
  * when no verified logo exists — never an empty box or a broken image.
@@ -40,8 +51,12 @@ fun TitleLogo(
     title: String, kind: Kind, year: Int?, height: Dp, modifier: Modifier = Modifier,
     alignment: Alignment = Alignment.CenterStart, fallback: @Composable () -> Unit
 ) {
-    val f = rememberTitleLogo(title, kind, year)
+    val (f, settled) = rememberTitleLogoState(title, kind, year)
     var failed by remember(f) { mutableStateOf(false) }
+    // While the lookup is pending the slot stays empty (no title text that is then swapped for the logo); after 2 s the plain title is used.
+    var gaveUp by remember(title) { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(title) { kotlinx.coroutines.delay(2000); gaveUp = true }
+    if (!settled && !gaveUp) { Box(modifier.fillMaxWidth().height(height)); return }
     Crossfade(targetState = f != null && !failed, animationSpec = tween(250), label = "titleLogo") { show ->
         if (show && f != null) {
             // Wide wordmarks (pixel fonts, long names) must not cover the artwork: cap the width as well as the height.

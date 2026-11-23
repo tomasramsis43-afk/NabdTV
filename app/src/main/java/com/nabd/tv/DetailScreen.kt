@@ -65,7 +65,7 @@ fun DetailScreen(vm: AppViewModel) {
 
     val scroll = rememberScrollState()
     val blurStep by remember { derivedStateOf { (scroll.value / 70).coerceIn(0, 5) } }
-    val logoFile = rememberTitleLogo(c.name, kindOf(c), info?.year?.take(4)?.toIntOrNull())
+    val logoFile = rememberTitleLogo(c.name, kindOf(c), null)   // year from the title only: a hint that arrives later would change the key and swap the logo
     val logoPal = rememberArtworkPalette(logoFile?.let { "file://" + it.absolutePath })
     // Buttons take the logo's dominant colour; no logo (or a colourless one) falls back to the artwork palette, kept readable by buttonTone.
     val btnPal = if (logoFile != null) logoPal else palette
@@ -76,7 +76,7 @@ fun DetailScreen(vm: AppViewModel) {
             // Phone held upright: the portrait poster fills the tall page; wide screens (landscape phone, tablet, TV): the wide backdrop.
             val upright = d.portrait && !d.tv
             // Same adaptive image system as the home screen: poster when upright, backdrop when wide; either falls back to the other.
-            AdaptiveArtImage(vm, c, landscape = !upright, modifier = Modifier.fillMaxSize().then(if (blurStep > 0) Modifier.blur((blurStep * 5).dp, androidx.compose.ui.draw.BlurredEdgeTreatment.Rectangle) else Modifier))
+            AdaptiveArtImage(vm, c, landscape = !upright, maxWaitMs = 6000, modifier = Modifier.fillMaxSize().then(if (blurStep > 0) Modifier.blur((blurStep * 5).dp, androidx.compose.ui.draw.BlurredEdgeTreatment.Rectangle) else Modifier))
             if (blurStep > 0) Box(Modifier.fillMaxSize().background(Scrim.copy(alpha = blurStep * 0.1f)))
             Box(Modifier.fillMaxSize().textSideScrim(if (narrow) 0.78f else 0.95f))
             Box(
@@ -107,7 +107,7 @@ fun DetailScreen(vm: AppViewModel) {
                 // The logo / title scrolls away with the page (it is no longer pinned).
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         TitleLogo(
-                            c.name, kindOf(c), info?.year?.take(4)?.toIntOrNull(),
+                            c.name, kindOf(c), null,
                             height = if (narrow) 48.dp else if (d.tv) 72.dp else 60.dp,
                             alignment = Alignment.Center
                         ) {

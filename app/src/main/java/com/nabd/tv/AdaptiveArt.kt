@@ -140,14 +140,16 @@ fun AdaptiveArtImage(
     /** Cards: when only the other-orientation picture exists, fill the frame with it (sharp) instead of the blurred-fit look. */
     cropFallback: Boolean = false,
     /** Phone cards: ask TMDB for the smaller picture sizes. Hero / detail leave this off and keep full quality. */
-    thumb: Boolean = false
+    thumb: Boolean = false,
+    /** How long to keep the frame neutral while the TMDB lookup runs (detail waits longer so the picture is not swapped). */
+    maxWaitMs: Long = 3000
 ) {
     val art = ArtStore.get(ch)
     // The provider's thumbnail is NOT shown first and swapped for the TMDB picture a moment later: while the TMDB lookup
     // is pending the frame stays neutral, then the final picture fades in once. If TMDB has nothing (or is slow / offline)
     // the provider's picture is shown instead.
     var gaveUp by remember(ch.url) { mutableStateOf(false) }
-    LaunchedEffect(ch.url) { delay(3000); gaveUp = true }
+    LaunchedEffect(ch.url) { delay(maxWaitMs); gaveUp = true }
     val waiting = vm.store.tmdbKey.isNotBlank() && !art.settled && !gaveUp
     LaunchedEffect(ch.url, landscape) {
         // Only look something up when the picture this orientation needs is missing.

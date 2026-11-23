@@ -313,7 +313,7 @@ class Store(private val ctx: Context) {
         set(v) = g.edit().putBoolean("prefetchNext", v).apply()
 
     /* ---------- string sets ---------- */
-    private val setCache = HashMap<String, Set<String>>()
+    private val setCache = java.util.concurrent.ConcurrentHashMap<String, Set<String>>()   // read from background threads too
     private fun strSet(k: String): Set<String> = setCache.getOrPut(k) { p.getStringSet(k, emptySet())!!.toSet() }
     private fun putStrSet(k: String, v: Set<String>) { setCache[k] = v.toSet(); p.edit().putStringSet(k, v).apply() }
 
@@ -558,11 +558,11 @@ class Store(private val ctx: Context) {
     }
 
     /* ---------- stream health ---------- */
-    private var healthCache: HashMap<String, HealthRecord>? = null
+    @Volatile private var healthCache: java.util.concurrent.ConcurrentHashMap<String, HealthRecord>? = null
 
-    private fun healthMap(): HashMap<String, HealthRecord> {
+    private fun healthMap(): java.util.concurrent.ConcurrentHashMap<String, HealthRecord> {
         healthCache?.let { return it }
-        val m = HashMap<String, HealthRecord>()
+        val m = java.util.concurrent.ConcurrentHashMap<String, HealthRecord>()
         runCatching {
             val o = JSONObject(g.getString("health", "{}"))
             for (k in o.keys()) {

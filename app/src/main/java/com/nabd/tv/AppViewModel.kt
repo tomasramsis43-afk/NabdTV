@@ -135,20 +135,43 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun ok(c: Channel, live: Boolean, hidden: Set<String>): Boolean =
         parental.visible(c) && c.url !in hidden && !(live && store.hideDead && health.isDead(c.url))
 
-    val liveList by derivedStateOf {
-        rev
+    /**
+     * The filtered lists can be prepared on a background thread: [warmLists] computes them from plain values (the raw list,
+     * `rev`, the stores) and keeps the result tagged with the exact inputs it was built from. The derived lists below use it
+     * when the tag still matches, and otherwise compute as before, so a stale result can never be shown.
+     */
+    private class Pre(val src: List<Channel>, val rev: Int, val list: List<Channel>)
+    @Volatile private var preLive: Pre? = null
+    @Volatile private var preMovie: Pre? = null
+    @Volatile private var preSeries: Pre? = null
+
+    private fun computeLive(src: List<Channel>): List<Channel> {
         val h = store.hiddenChannels
-        val l = all.filter { ok(it, true, h) }
-        if (store.mergeDuplicates) dedupeSources(l) else l
+        val l = src.filter { ok(it, true, h) }
+        return if (store.mergeDuplicates) dedupeSources(l) else l
     }
+    private fun computeVod(src: List<Channel>): List<Channel> { val h = store.hiddenChannels; return src.filter { ok(it, false, h) } }
+
+    suspend fun warmLists() {
+        val r = rev; val a = all; val m = movies; val sr = series
+        withContext(Dispatchers.Default) {
+            runCatching {
+                if (a.isNotEmpty()) preLive = Pre(a, r, computeLive(a))
+                if (m.isNotEmpty()) preMovie = Pre(m, r, computeVod(m))
+                if (sr.isNotEmpty()) preSeries = Pre(sr, r, computeVod(sr))
+            }
+        }
+    }
+
+    val liveList by derivedStateOf { val r = rev; val a = all; preLive?.takeIf { it.src === a && it.rev == r }?.list ?: computeLive(a) }
 
     /** Keeps one entry per channel name (quality tags ignored), preferring the healthiest source. Others stay available as alternatives. */
     private fun dedupeSources(l: List<Channel>): List<Channel> {
         fun rank(c: Channel) = when (health.state(c.url)) { Health.Ok -> 0; Health.Unknown -> 1; Health.Slow -> 2; Health.Dead -> 3 }
         return VmLogic.dedupeSources(l, ::rank)
     }
-    val movieList by derivedStateOf { rev; val h = store.hiddenChannels; movies.filter { ok(it, false, h) } }
-    val seriesList by derivedStateOf { rev; val h = store.hiddenChannels; series.filter { ok(it, false, h) } }
+    val movieList by derivedStateOf { val r = rev; val m = movies; preMovie?.takeIf { it.src === m && it.rev == r }?.list ?: computeVod(m) }
+    val seriesList by derivedStateOf { val r = rev; val sr = series; preSeries?.takeIf { it.src === sr && it.rev == r }?.list ?: computeVod(sr) }
 
     private val base: List<Channel>
         get() = when (tab) { Tab.Movies -> movieList; Tab.Series -> seriesList; else -> liveList }
@@ -425,6 +448,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 all = repo.load(force)
                 if (force) store.lastSyncAt = System.currentTimeMillis()
                 group = GROUP_ALL
+                warmLists()
                 screen = Screen.Main
                 preloadVod()
                 pendingResume?.let { pendingResume = null; playResume(it) }
@@ -454,6 +478,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (!silent) error = null
         try {
             if (t == Tab.Movies) movies = repo.loadMovies(force) else series = repo.loadSeries(force)
+            warmLists()
             refreshRecs()
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
@@ -784,8 +809,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         back = Screen.Main; screen = Screen.Detail
         viewModelScope.launch {
             val i = repo.vodInfo(c, k)
+            if (detail?.url != c.url) return@launch   // another title was opened meanwhile: never let this one's info replace it
             info = i
-            if (detail?.url == c.url && i != null) loadCastWorks(c, i)
+            if (i != null) loadCastWorks(c, i)
         }
         if (k == Kind.Series) {
             epLoading = true
