@@ -15,12 +15,14 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.io.File
+import java.security.MessageDigest
 
 /** In-app update from the repo's latest GitHub Release (tag v2.0.<build>, asset *.apk). */
 object Updater {
     private const val API = "https://api.github.com/repos/tomasramsis43-afk/NabdTV/releases/latest"
 
-    data class Release(val tag: String, val build: Int, val apkUrl: String, val notes: String)
+    /** [sha256] is the lower-case hex digest GitHub publishes for the asset (null for older releases that have none). */
+    data class Release(val tag: String, val build: Int, val apkUrl: String, val notes: String, val sha256: String? = null)
 
     fun currentBuild(ctx: Context): Long =
         PackageInfoCompat.getLongVersionCode(ctx.packageManager.getPackageInfo(ctx.packageName, 0))
@@ -34,16 +36,23 @@ object Updater {
         http.newCall(req).execute().use { r ->
             if (r.code == 404) error(S(R.string.a_4f740e77))
             if (!r.isSuccessful) error("HTTP ${r.code}")
-            val o = JSONObject(r.body!!.string())
+            val o = JSONObject((r.body ?: error("empty response")).string())
             val tag = o.optString("tag_name")
             val build = tag.substringAfterLast('.').toIntOrNull() ?: return@use null
             val assets = o.optJSONArray("assets") ?: return@use null
             var url: String? = null
+            var sha: String? = null
             for (i in 0 until assets.length()) {
                 val a = assets.getJSONObject(i)
-                if (a.optString("name").endsWith(".apk")) { url = a.optString("browser_download_url"); break }
+                if (a.optString("name").endsWith(".apk")) {
+                    url = a.optString("browser_download_url")
+                    // GitHub reports e.g. "sha256:ab12…" for every uploaded asset.
+                    sha = a.optString("digest").removePrefix("sha256:").lowercase().takeIf { it.length == 64 && it.all { c -> c in '0'..'9' || c in 'a'..'f' } }
+                    break
+                }
             }
-            if (url == null || build <= currentBuild(ctx)) null else Release(tag, build, url, o.optString("body"))
+            // Only ever download over HTTPS.
+            if (url == null || !url.startsWith("https://") || build <= currentBuild(ctx)) null else Release(tag, build, url, o.optString("body"), sha)
         }
     }
 
@@ -53,20 +62,27 @@ object Updater {
         val out = File(dir, "NabdTV-${rel.build}.apk")
         http.newCall(Request.Builder().url(rel.apkUrl).header("User-Agent", "NabdTV").build()).execute().use { r ->
             if (!r.isSuccessful) error("HTTP ${r.code}")
-            val body = r.body!!
+            val body = r.body ?: error("empty response")
             val total = body.contentLength()
             var done = 0L
             var last = -1
+            val md = MessageDigest.getInstance("SHA-256")
             body.byteStream().use { i ->
                 out.outputStream().use { o ->
                     val buf = ByteArray(64 * 1024)
                     while (true) {
                         val n = i.read(buf)
                         if (n < 0) break
-                        o.write(buf, 0, n); done += n
+                        o.write(buf, 0, n); md.update(buf, 0, n); done += n
                         if (total > 0) { val p = (done * 100 / total).toInt(); if (p != last) { last = p; onProgress(p) } }
                     }
                 }
+            }
+            // Refuse a corrupted or tampered download before it can ever reach the installer.
+            val expected = rel.sha256
+            if (expected != null) {
+                val got = md.digest().joinToString("") { "%02x".format(it) }
+                if (got != expected) { out.delete(); error("checksum mismatch") }
             }
         }
         out
