@@ -1,6 +1,5 @@
 package com.nabd.tv
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -61,8 +60,6 @@ fun BoxScope.PlayerPopup(
     val pad = if (dev.tv) 48.dp else 14.dp
     val btn = (if (dev.tv) 48.dp else 42.dp) + 4.dp
     val slot = when (kind) { PopupKind.Settings -> 0; PopupKind.Episodes -> 1; PopupKind.Subs -> if (hasEpisodes) 2 else 1 }
-
-    BackHandler { if (sub != null && kind == PopupKind.Settings) onSub(null) else onClose() }
 
     val s = S(R.string.tab_subs_audio)
     val subLabel = PlayerTab.Subtitles.label

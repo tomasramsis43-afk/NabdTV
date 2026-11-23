@@ -826,6 +826,10 @@ fun PlayerScreen(vm: AppViewModel) {
         when {
             // One press closes ONE open layer; with nothing open it leaves. The resume prompt, the next-episode card,
             // the end card and error card no longer swallow Back (Back used to restart the movie / replay / cancel).
+            popup != null -> {
+                if (popupSub != null) popupSub = null else popup = null
+                runCatching { timelineFocus.requestFocus() }
+            }
             ui.sheet != null -> { ui.sheet = null; ui.sheetRev++; runCatching { rootFocus.requestFocus() } }
             ui.showJump -> ui.showJump = false
             ui.panel -> { ui.panel = false; runCatching { rootFocus.requestFocus() } }
