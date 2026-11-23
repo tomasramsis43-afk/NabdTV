@@ -87,13 +87,28 @@ fun PlayerScreen(vm: AppViewModel) {
 
     val seriesKey = if (vod && kindOf(ch) == Kind.Series) vm.detail?.url else null
     val introEnd = seriesKey?.let { store.introEnd(it) } ?: 0L
-    // Automatic opening window (AniSkip for anime, TheIntroDB for movies / other series). A manually saved intro end still wins.
-    var aniIntro by remember(ch.url) { mutableStateOf<AniIntro?>(null) }
+    // Automatic windows (AniSkip for anime, TheIntroDB for movies / other series): intro, recap and credits.
+    // A manually saved intro end still wins over them.
+    var skipSegs by remember(ch.url) { mutableStateOf<List<AniIntro>>(emptyList()) }
     val manualSkip = introEnd > 0 && ui.position < introEnd - 1_500L && vod
-    val autoSkip = !manualSkip && vod &&
-        aniIntro?.let { ui.position >= it.startMs - 2_000L && ui.position < it.endMs - 1_500L } == true
-    val showSkip = manualSkip || autoSkip
-    val skipTarget = if (manualSkip) introEnd else (aniIntro?.endMs ?: 0L)
+    val autoSeg: AniIntro? = if (manualSkip || !vod) null else skipSegs.firstOrNull { sg ->
+        ui.position >= sg.startMs - 2_000L &&
+            if (sg.endMs < 0) ui.duration > 0 && ui.position < ui.duration - 3_000L else ui.position < sg.endMs - 1_500L
+    }
+    val showSkip = manualSkip || autoSeg != null
+    // Credits that run to the end jump to the very end, so the normal next-episode / end card flow starts.
+    val skipTarget: Long = when {
+        manualSkip -> introEnd
+        autoSeg == null -> 0L
+        autoSeg.endMs < 0 -> maxOf(ui.duration - 500L, 0L)
+        ui.duration > 0 -> minOf(autoSeg.endMs, ui.duration - 500L)
+        else -> autoSeg.endMs
+    }
+    val skipLabel = when (autoSeg?.kind) {
+        SkipKind.Recap -> R.string.skip_recap
+        SkipKind.Credits -> R.string.skip_credits
+        else -> R.string.a_0b73fbca
+    }
     val rKey = "ratio2:" + (seriesKey ?: ch.url).hashCode()
 
     // Changing the decoder / buffer profile rebuilds the engine; playback position is carried over.
@@ -128,6 +143,23 @@ fun PlayerScreen(vm: AppViewModel) {
     fun hud(text: String) {
         ui.hudText = text
         ui.ping++
+    }
+
+    /** Jumps over the window the skip button is showing (manual intro end, or an automatic intro / recap / credits window). */
+    fun doSkip() {
+        if (skipTarget <= 0L) return
+        player.seekTo(skipTarget)
+        ui.position = skipTarget
+        hud(
+            S(
+                when {
+                    manualSkip -> R.string.a_53d04dc8
+                    autoSeg?.kind == SkipKind.Recap -> R.string.skipped_recap
+                    autoSeg?.kind == SkipKind.Credits -> R.string.skipped_credits
+                    else -> R.string.a_53d04dc8
+                }
+            )
+        )
     }
 
     fun applyBrightness(value: Float) {
@@ -448,19 +480,19 @@ fun PlayerScreen(vm: AppViewModel) {
         ui.abStart = -1L; ui.abEnd = -1L
     }
 
-    // Automatic intro window. Anime episodes: AniSkip first; other series and movies: TheIntroDB (needs the TMDB key).
+    // Automatic windows. Anime episodes: AniSkip first; other series and movies: TheIntroDB (needs the TMDB key).
     // Silent on any failure, and a manually saved intro end still takes priority.
     LaunchedEffect(ch.url, seriesKey) {
-        aniIntro = null
+        skipSegs = emptyList()
         if (!vod) return@LaunchedEffect
         val http = vm.repo.http
         if (seriesKey != null) {
             val ep = vm.episodes.firstOrNull { it.url == ch.url } ?: return@LaunchedEffect
             val name = vm.detail?.name ?: return@LaunchedEffect
-            aniIntro = AniSkip.intro(http, ctx, name, ep.season, ep.num)
-                ?: TheIntroDb.intro(http, ctx, store.tmdbKey, name, true, ep.season, ep.num)
+            skipSegs = AniSkip.segments(http, ctx, name, ep.season, ep.num)
+                .ifEmpty { TheIntroDb.segments(http, ctx, store.tmdbKey, name, true, ep.season, ep.num) }
         } else if (kindOf(ch) == Kind.Movie) {
-            aniIntro = TheIntroDb.intro(http, ctx, store.tmdbKey, ch.name, false, null, null)
+            skipSegs = TheIntroDb.segments(http, ctx, store.tmdbKey, ch.name, false, null, null)
         }
     }
 
@@ -796,6 +828,16 @@ fun PlayerScreen(vm: AppViewModel) {
             runCatching { rootFocus.requestFocus() }
         }
     }
+    // Optional automatic skipping of detected windows (Settings). Each window is auto-skipped once per episode,
+    // so seeking back into it later shows the button again instead of jumping away.
+    val autoSkipped = remember(ch.url) { mutableSetOf<Long>() }
+    LaunchedEffect(autoSeg?.startMs, autoSeg?.kind, store.autoSkip, store.autoSkipCredits) {
+        val sg = autoSeg ?: return@LaunchedEffect
+        val allowed = if (sg.kind == SkipKind.Credits) store.autoSkipCredits else store.autoSkip
+        if (!allowed || ui.locked || ui.resumeAt > 0L || ui.error != null) return@LaunchedEffect
+        if (!autoSkipped.add(sg.startMs)) return@LaunchedEffect
+        doSkip()
+    }
     LaunchedEffect(ui.nextEp) { if (ui.nextEp != null) { delay(80); runCatching { nextFocus.requestFocus() } } }
     LaunchedEffect(ui.ended) { if (ui.ended) { delay(80); runCatching { endFocus.requestFocus() } } }
 
@@ -901,7 +943,7 @@ fun PlayerScreen(vm: AppViewModel) {
                 Key.DirectionRight -> { scrub(1); ui.overlay = true; ui.ping++; return true }
                 Key.DirectionUp, Key.DirectionDown -> { ui.overlay = true; ui.ping++; return true }
                 Key.DirectionCenter, Key.Enter -> {
-                    if (showSkip) { player.seekTo(skipTarget); hud(S(R.string.a_53d04dc8)) } else actions.togglePlay()
+                    if (showSkip) { doSkip() } else actions.togglePlay()
                     ui.overlay = true; ui.ping++; return true
                 }
                 else -> {}
@@ -931,7 +973,7 @@ fun PlayerScreen(vm: AppViewModel) {
                 ui.ping++; true
             }
             Key.DirectionCenter, Key.Enter -> {
-                if (showSkip) { player.seekTo(skipTarget); hud(S(R.string.a_53d04dc8)) }
+                if (showSkip) { doSkip() }
                 else actions.togglePlay()
                 true
             }
@@ -1106,9 +1148,9 @@ fun PlayerScreen(vm: AppViewModel) {
             Box(
                 Modifier.align(Alignment.BottomEnd).padding(horizontal = 24.dp, vertical = 150.dp)
                     .background(OverlayScrimStrong, RoundedCornerShape(12.dp))
-                    .clickable { player.seekTo(skipTarget); hud(S(R.string.a_53d04dc8)) }
+                    .clickable { doSkip() }
                     .padding(horizontal = 18.dp, vertical = 12.dp)
-            ) { Text(S(R.string.a_0b73fbca), color = Accent, fontSize = 15.sp) }
+            ) { Text(S(skipLabel), color = Accent, fontSize = 15.sp) }
         }
 
         GestureHud(feedback, Modifier.align(Alignment.Center))

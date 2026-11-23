@@ -137,6 +137,16 @@ class Store(private val ctx: Context) {
         get() = p.getBoolean("pl_autoNext", true)
         set(v) = p.edit().putBoolean("pl_autoNext", v).apply()
 
+    /** Jump over a detected intro / recap by itself (AniSkip / TheIntroDB windows). */
+    var autoSkip: Boolean
+        get() = p.getBoolean("pl_autoSkip", false)
+        set(v) = p.edit().putBoolean("pl_autoSkip", v).apply()
+
+    /** Jump over detected end credits by itself (starts the next episode right away). */
+    var autoSkipCredits: Boolean
+        get() = p.getBoolean("pl_autoSkipCredits", false)
+        set(v) = p.edit().putBoolean("pl_autoSkipCredits", v).apply()
+
     var loopByDefault: Boolean
         get() = p.getBoolean("pl_loop", false)
         set(v) = p.edit().putBoolean("pl_loop", v).apply()

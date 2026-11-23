@@ -297,6 +297,14 @@ fun PlayerSheet(
                                 store.autoNext = !store.autoNext; actions.changed()
                             }
                             }
+                            if (!live) {   // automatic skipping applies to movies and episodes alike
+                                SheetRow(S(R.string.auto_skip_intro), if (store.autoSkip) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)) {
+                                    store.autoSkip = !store.autoSkip; actions.changed()
+                                }
+                                SheetRow(S(R.string.auto_skip_credits), if (store.autoSkipCredits) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)) {
+                                    store.autoSkipCredits = !store.autoSkipCredits; actions.changed()
+                                }
+                            }
                             // Rarely used options stay folded so the menu is short; one row opens them.
                             var more by remember { mutableStateOf(false) }
                             SheetRow(S(R.string.player_more), if (more) "▲" else "▼") { more = !more }
