@@ -3,6 +3,7 @@ package com.nabd.tv
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -83,6 +84,24 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         WatchNext.urlFrom(intent)?.let { vm.resumeFromWatchNext(it) }
+    }
+
+    /**
+     * Some TV remotes send ESC (or DEL) instead of KEYCODE_BACK. Those keys never reach the Compose
+     * BackHandlers, so Back appeared dead — especially inside the player menus. Translate them to the
+     * normal Back dispatcher. Backspace/Delete are only translated in the player so text fields keep working.
+     */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_UP) {
+            val backLike = event.keyCode == KeyEvent.KEYCODE_ESCAPE ||
+                (vm.screen == Screen.Player &&
+                    (event.keyCode == KeyEvent.KEYCODE_DEL || event.keyCode == KeyEvent.KEYCODE_FORWARD_DEL))
+            if (backLike) {
+                onBackPressedDispatcher.onBackPressed()
+                return true
+            }
+        }
+        return super.dispatchKeyEvent(event)
     }
 }
 

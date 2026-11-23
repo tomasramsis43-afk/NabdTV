@@ -93,14 +93,21 @@ fun PlayerSheet(
     // Focus is placed explicitly (retrying until it sticks): on open → the active tab; when a choice list opens →
     // the selected option; when it closes → the row that opened it. Without this the D-pad had no focus after the
     // list was swapped and could not move between cells.
-    LaunchedEffect(choice) {
+    LaunchedEffect(choice, home) {
         if (firstRun) { firstRun = false; tabFocus.focusWhenReady() }
         else if (choice != null) choiceFocus.focusWhenReady()
         else if (lastRow != null) restoreFocus.focusWhenReady() else tabFocus.focusWhenReady()
     }
 
-    // One Back press closes the whole sheet (it used to need two or three: list → tab → sheet).
-    BackHandler { onClose() }
+    // Back steps back one level at a time: choice list → settings page → six tiles → close.
+    fun goBack() {
+        when {
+            choice != null -> choice = null
+            !home -> { choice = null; lastRow = null; home = true }
+            else -> onClose()
+        }
+    }
+    BackHandler { goBack() }
 
     fun openChoice(title: String, options: List<SheetOption>) {
         choice = SheetChoice(title, options)
@@ -201,7 +208,7 @@ fun PlayerSheet(
 
             Spacer(Modifier.height(14.dp))
             if (!home) {
-                PlayerButton("←  " + (if (tab == PlayerTab.Subtitles || tab == PlayerTab.Audio) S(R.string.tab_subs_audio) else tab.label), active = true, focusRequester = tabFocus, onClick = { home = true; choice = null })
+                PlayerButton("←  " + (if (tab == PlayerTab.Subtitles || tab == PlayerTab.Audio) S(R.string.tab_subs_audio) else tab.label), active = true, focusRequester = tabFocus, onClick = { home = true; choice = null; lastRow = null })
             }
             Spacer(Modifier.height(10.dp))
 
