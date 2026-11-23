@@ -87,7 +87,13 @@ fun PlayerScreen(vm: AppViewModel) {
 
     val seriesKey = if (vod && kindOf(ch) == Kind.Series) vm.detail?.url else null
     val introEnd = seriesKey?.let { store.introEnd(it) } ?: 0L
-    val showSkip = introEnd > 0 && ui.position < introEnd - 1_500L && vod
+    // Automatic opening window (AniSkip for anime, TheIntroDB for movies / other series). A manually saved intro end still wins.
+    var aniIntro by remember(ch.url) { mutableStateOf<AniIntro?>(null) }
+    val manualSkip = introEnd > 0 && ui.position < introEnd - 1_500L && vod
+    val autoSkip = !manualSkip && vod &&
+        aniIntro?.let { ui.position >= it.startMs - 2_000L && ui.position < it.endMs - 1_500L } == true
+    val showSkip = manualSkip || autoSkip
+    val skipTarget = if (manualSkip) introEnd else (aniIntro?.endMs ?: 0L)
     val rKey = "ratio2:" + (seriesKey ?: ch.url).hashCode()
 
     // Changing the decoder / buffer profile rebuilds the engine; playback position is carried over.
@@ -440,6 +446,22 @@ fun PlayerScreen(vm: AppViewModel) {
     LaunchedEffect(ch.url) {
         ui.zoom = 1f; ui.panX = 0f; ui.panY = 0f; ui.rotation = 0
         ui.abStart = -1L; ui.abEnd = -1L
+    }
+
+    // Automatic intro window. Anime episodes: AniSkip first; other series and movies: TheIntroDB (needs the TMDB key).
+    // Silent on any failure, and a manually saved intro end still takes priority.
+    LaunchedEffect(ch.url, seriesKey) {
+        aniIntro = null
+        if (!vod) return@LaunchedEffect
+        val http = vm.repo.http
+        if (seriesKey != null) {
+            val ep = vm.episodes.firstOrNull { it.url == ch.url } ?: return@LaunchedEffect
+            val name = vm.detail?.name ?: return@LaunchedEffect
+            aniIntro = AniSkip.intro(http, ctx, name, ep.season, ep.num)
+                ?: TheIntroDb.intro(http, ctx, store.tmdbKey, name, true, ep.season, ep.num)
+        } else if (kindOf(ch) == Kind.Movie) {
+            aniIntro = TheIntroDb.intro(http, ctx, store.tmdbKey, ch.name, false, null, null)
+        }
     }
 
     LaunchedEffect(rKey) {
@@ -875,7 +897,7 @@ fun PlayerScreen(vm: AppViewModel) {
                 Key.DirectionRight -> { scrub(1); ui.overlay = true; ui.ping++; return true }
                 Key.DirectionUp, Key.DirectionDown -> { ui.overlay = true; ui.ping++; return true }
                 Key.DirectionCenter, Key.Enter -> {
-                    if (showSkip) { player.seekTo(introEnd); hud(S(R.string.a_53d04dc8)) } else actions.togglePlay()
+                    if (showSkip) { player.seekTo(skipTarget); hud(S(R.string.a_53d04dc8)) } else actions.togglePlay()
                     ui.overlay = true; ui.ping++; return true
                 }
                 else -> {}
@@ -905,7 +927,7 @@ fun PlayerScreen(vm: AppViewModel) {
                 ui.ping++; true
             }
             Key.DirectionCenter, Key.Enter -> {
-                if (showSkip) { player.seekTo(introEnd); hud(S(R.string.a_53d04dc8)) }
+                if (showSkip) { player.seekTo(skipTarget); hud(S(R.string.a_53d04dc8)) }
                 else actions.togglePlay()
                 true
             }
@@ -1080,7 +1102,7 @@ fun PlayerScreen(vm: AppViewModel) {
             Box(
                 Modifier.align(Alignment.BottomEnd).padding(horizontal = 24.dp, vertical = 150.dp)
                     .background(OverlayScrimStrong, RoundedCornerShape(12.dp))
-                    .clickable { player.seekTo(introEnd); hud(S(R.string.a_53d04dc8)) }
+                    .clickable { player.seekTo(skipTarget); hud(S(R.string.a_53d04dc8)) }
                     .padding(horizontal = 18.dp, vertical = 12.dp)
             ) { Text(S(R.string.a_0b73fbca), color = Accent, fontSize = 15.sp) }
         }
