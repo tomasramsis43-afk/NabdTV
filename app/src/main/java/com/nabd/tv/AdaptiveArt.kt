@@ -8,6 +8,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
@@ -16,6 +20,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import kotlinx.coroutines.delay
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -24,7 +29,8 @@ import java.util.concurrent.ConcurrentHashMap
  * when it is missing.
  */
 @Immutable
-data class ArtPair(val poster: String?, val backdrop: String?) {
+data class ArtPair(val poster: String?, val backdrop: String?, val settled: Boolean = false) {
+    // [settled]: the better (TMDB) lookup for this title has finished - the pictures here are final, show them without waiting.
     /** Best picture for the orientation; the other one when it is missing. */
     fun pick(landscape: Boolean): String? = if (landscape) backdrop ?: poster else poster ?: backdrop
 
@@ -42,6 +48,7 @@ object ArtStore {
     private var prefs: android.content.SharedPreferences? = null
     private val ui = android.os.Handler(android.os.Looper.getMainLooper())
     private val saver = Runnable { save() }
+    private val sessionSettled = HashSet<String>()   // lookups that failed / found nothing: stop waiting now, but ask again next session
 
     /** Restores the pictures found in earlier sessions, so the very first frame already shows the right image (no re-loading / swapping). */
     fun init(ctx: android.content.Context) {
@@ -51,7 +58,8 @@ object ArtStore {
             val j = org.json.JSONObject(p.getString("m", "{}") ?: "{}")
             for (k in j.keys()) {
                 val e = j.getJSONObject(k)
-                map[k] = ArtPair(e.optString("p").ifBlank { null }, e.optString("b").ifBlank { null })
+                // Entries saved by older versions have no flag: they came from the lookup, so they count as settled (no one-time wait).
+                map[k] = ArtPair(e.optString("p").ifBlank { null }, e.optString("b").ifBlank { null }, if (e.has("r")) e.optInt("r") == 1 else true)
                 order.addLast(k)
             }
         }
@@ -63,7 +71,7 @@ object ArtStore {
         val p = prefs ?: return
         runCatching {
             val j = org.json.JSONObject()
-            for (k in order) map[k]?.let { j.put(k, org.json.JSONObject().put("p", it.poster ?: "").put("b", it.backdrop ?: "")) }
+            for (k in order) map[k]?.let { j.put(k, org.json.JSONObject().put("p", it.poster ?: "").put("b", it.backdrop ?: "").put("r", if (it.settled && k !in sessionSettled) 1 else 0)) }
             p.edit().putString("m", j.toString()).apply()
         }
     }
@@ -72,12 +80,12 @@ object ArtStore {
     fun get(ch: Channel): ArtPair = holder(ch.url).value ?: ArtPair(ch.logo, null)
 
     /** Merges new pictures into the pair (never replaces a known one with nothing). Call on the main thread. */
-    fun put(ch: Channel, poster: String? = null, backdrop: String? = null) {
+    fun put(ch: Channel, poster: String? = null, backdrop: String? = null, settle: Boolean = false) {
         val p = poster?.takeIf { it.isNotBlank() }
         val b = backdrop?.takeIf { it.isNotBlank() }
-        if (p == null && b == null) return
+        if (p == null && b == null && !settle) return
         val old = map[ch.url] ?: ArtPair(ch.logo, null)
-        val n = ArtPair(p ?: old.poster, b ?: old.backdrop)
+        val n = ArtPair(p ?: old.poster, b ?: old.backdrop, old.settled || settle)
         if (n != map[ch.url]) {
             if (ch.url !in map) {
                 order.addLast(ch.url)
@@ -89,13 +97,21 @@ object ArtStore {
         }
     }
 
+    /** Nothing better was found (or the lookup failed): the provider's picture is shown now, the lookup is retried in a later session. */
+    private fun settleForNow(ch: Channel) {
+        if (map[ch.url]?.settled == true) return
+        sessionSettled.add(ch.url)
+        put(ch, settle = true)
+    }
+
     /** Looks the missing picture up once (cache first, then TMDB), without ever touching the provider's network. */
     suspend fun resolve(vm: AppViewModel, ch: Channel) {
         val kind = kindOf(ch)
         if (kind == Kind.Live || !tried.add(ch.url)) return
-        val (p, b) = try { vm.artworkFor(ch, kind) } catch (e: Exception) { tried.remove(ch.url); return }
-        if (p == null && b == null) tried.remove(ch.url)   // offline / not found yet: allow a later retry
-        put(ch, p, b)
+        val (p, b) = try { vm.artworkFor(ch, kind) } catch (e: Exception) { tried.remove(ch.url); settleForNow(ch); return }
+        if (p == null && b == null) { tried.remove(ch.url); settleForNow(ch); return }   // offline / not found yet: allow a later retry
+        sessionSettled.remove(ch.url)
+        put(ch, p, b, settle = true)
     }
 }
 
@@ -117,14 +133,20 @@ fun AdaptiveArtImage(
     cropFallback: Boolean = false
 ) {
     val art = ArtStore.get(ch)
+    // The provider's thumbnail is NOT shown first and swapped for the TMDB picture a moment later: while the TMDB lookup
+    // is pending the frame stays neutral, then the final picture fades in once. If TMDB has nothing (or is slow / offline)
+    // the provider's picture is shown instead.
+    var gaveUp by remember(ch.url) { mutableStateOf(false) }
+    LaunchedEffect(ch.url) { delay(3000); gaveUp = true }
+    val waiting = vm.store.tmdbKey.isNotBlank() && !art.settled && !gaveUp
     LaunchedEffect(ch.url, landscape) {
         // Only look something up when the picture this orientation needs is missing.
         // With a TMDB key also swap provider thumbnails for the clean, sharper TMDB poster (found once, then remembered on disk).
         val sharper = vm.store.tmdbKey.isNotBlank()
         if ((landscape && art.backdrop == null) || art.poster == null || sharper) ArtStore.resolve(vm, ch)
     }
-    val url = art.pick(landscape)
-    val natural = art.natural(landscape)
+    val url = if (waiting) null else art.pick(landscape)
+    val natural = if (waiting) false else art.natural(landscape)
     Crossfade(targetState = url to natural, modifier = modifier, animationSpec = tween(350), label = "adaptiveArt") { (u, nat) ->
         when {
             u == null -> Box(Modifier.fillMaxSize().background(SurfHigh))
