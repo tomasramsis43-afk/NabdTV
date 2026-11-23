@@ -283,8 +283,8 @@ class Store(private val ctx: Context) {
 
     /* OpenSubtitles.com (online subtitle search): the user's own API key + account. */
     var osKey: String
-        get() = g.getString("osKey", "") ?: ""
-        set(v) = g.edit().putString("osKey", v.trim()).apply()
+        get() = Secret.dec(g.getString("osKey", "") ?: "")   // legacy plain values still read fine, and are re-saved encrypted on next edit
+        set(v) = g.edit().putString("osKey", Secret.enc(v.trim())).apply()
     var osUser: String
         get() = g.getString("osUser", "") ?: ""
         set(v) = g.edit().putString("osUser", v.trim()).apply()
@@ -296,8 +296,8 @@ class Store(private val ctx: Context) {
         get() = g.getBoolean("epgEnabled", true)
         set(v) = g.edit().putBoolean("epgEnabled", v).apply()
     var tmdbKey: String
-        get() = g.getString("tmdbKey", "") ?: ""
-        set(v) = g.edit().putString("tmdbKey", v.trim()).apply()
+        get() = Secret.dec(g.getString("tmdbKey", "") ?: "")
+        set(v) = g.edit().putString("tmdbKey", Secret.enc(v.trim())).apply()
     var filterWords: String
         get() = g.getString("filterWords", "") ?: ""
         set(v) = g.edit().putString("filterWords", v).apply()
