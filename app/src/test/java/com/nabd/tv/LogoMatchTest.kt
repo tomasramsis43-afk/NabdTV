@@ -23,6 +23,8 @@ class LogoMatchTest {
         assertEquals("Breaking Bad" to 2008, LogoMatch.clean("AR | Breaking Bad [2008] 4K"))
         assertEquals("Joker" to 2019, LogoMatch.clean("Joker - 2019"))
         assertEquals("Dark" to null, LogoMatch.clean("Dark"))
+        assertEquals("Inception" to 2010, LogoMatch.clean("Inception 2010 HD"))
+        assertEquals("Inception" to 2010, LogoMatch.clean("Inception (2010) FHD"))
     }
 
     @Test fun matchesExactTitleKindAndYear() {

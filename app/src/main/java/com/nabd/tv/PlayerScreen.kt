@@ -539,14 +539,16 @@ fun PlayerScreen(vm: AppViewModel) {
                     }
                     else -> {
                         vm.health.markFailure(url)
-                        if (live && vm.failover()) ui.status = S(R.string.a_fb546072)
-                        else {
+                        val showError = {
                             ui.error = S(R.string.a_ade6c5da)
                             if (code == 503 || code == 429) ui.error = S(R.string.a_8ebc053f)
                             ui.errorDetail = (code?.let { "HTTP $it" } ?: error.errorCodeName) +
                                 (error.cause?.message?.let { " · $it" } ?: "")
                             ui.status = ""
                         }
+                        if (live && vm.failover()) ui.status = S(R.string.a_fb546072)
+                        else if (!live && vm.tryVodFailover(showError)) ui.status = S(R.string.x_vod_failover)
+                        else showError()
                     }
                 }
             }

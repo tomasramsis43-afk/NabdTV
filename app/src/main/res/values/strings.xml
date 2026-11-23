@@ -707,4 +707,13 @@
     <string name="splash_failed_hint">Check your internet connection or the provider details in Settings.</string>
     <string name="splash_retry">Try again</string>
     <string name="splash_settings">Settings</string>
+
+    <string name="x_later_add">أشاهدها لاحقاً</string>
+    <string name="x_later_remove">إزالة من أشاهدها لاحقاً</string>
+    <string name="x_later_added">أُضيف إلى أشاهدها لاحقاً</string>
+    <string name="x_later_removed">أُزيل من أشاهدها لاحقاً</string>
+    <string name="x_shelf_later">أشاهدها لاحقاً</string>
+    <string name="x_ne_latest">الأحدث: %1$s</string>
+
+    <string name="x_vod_failover">جارٍ تجربة مصدر آخر لنفس العنوان…</string>
 </resources>

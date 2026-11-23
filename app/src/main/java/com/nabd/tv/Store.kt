@@ -309,6 +309,13 @@ class Store(private val ctx: Context) {
     private fun strSet(k: String): Set<String> = setCache.getOrPut(k) { p.getStringSet(k, emptySet())!!.toSet() }
     private fun putStrSet(k: String, v: Set<String>) { setCache[k] = v.toSet(); p.edit().putStringSet(k, v).apply() }
 
+    /** "Watch later": a set of "addedAtMillis|url" entries (sets are unordered); [VmLogic.parseWatchLater] gives newest first. */
+    val watchLater: List<String> get() = VmLogic.parseWatchLater(strSet("later"))
+    fun addWatchLater(url: String, now: Long = System.currentTimeMillis()) {
+        putStrSet("later", strSet("later").filterNot { it.substringAfter('|') == url }.toSet() + "$now|$url")
+    }
+    fun removeWatchLater(url: String) { putStrSet("later", strSet("later").filterNot { it.substringAfter('|') == url }.toSet()) }
+
     var favorites: Set<String>
         get() = strSet("fav")
         set(v) = putStrSet("fav", v)

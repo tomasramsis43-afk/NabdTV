@@ -48,12 +48,14 @@ object LogoMatch {
         s = s.replace(PREFIX, "")          // "AR | Title"
         YEAR_IN_BRACKETS.find(s)?.let { year = it.groupValues[1].toInt() }
         s = s.replace(BRACKETS, " ")
+        // Tags first: the year is only recognised at the END, so "Title 2010 HD" needs "HD" gone before the year is read.
+        s = s.replace(QUALITY, " ")
+        s = s.replace(DUB_TAGS, " ")
+        s = s.replace(SPACES, " ").trim()
         YEAR_AT_END.find(s)?.let {
             if (year == null) year = it.groupValues[1].toInt()
             s = s.removeRange(it.range)
         }
-        s = s.replace(QUALITY, " ")
-        s = s.replace(DUB_TAGS, " ")
         s = s.replace(SPACES, " ").trim(' ', '-', '\u2013', '|', ':')
         return s to year
     }
