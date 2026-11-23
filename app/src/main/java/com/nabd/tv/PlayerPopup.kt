@@ -42,6 +42,7 @@ private class PopItem(
  * Small menu that pops up right above the button that opened it (⋮ settings, CC subtitles, ☰ episodes):
  * a handful of rows instead of the full-height settings panel. "More…" opens the full panel for the rare options.
  */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun BoxScope.PlayerPopup(
     kind: PopupKind,
