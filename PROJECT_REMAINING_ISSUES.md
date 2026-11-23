@@ -4,7 +4,7 @@
 |---|---|---|
 | 1 | Startup freeze cause unconfirmed | Needs logcat from the failing device |
 | 2 | Release (R8) build never run | Needs a device run of the release APK |
-| 3 | Xtream credentials unencrypted in prefs | Wrapping them with the Keystore changes stored data and needs a migration; owner decision |
+| 3 | `Secret.enc` falls back to plain text on error; `Secret.dec` returns "" for an undecryptable value (shows as "no login saved") | Changing either alters sign-in behaviour; needs a device check. (Credentials themselves are already Keystore-encrypted.) |
 | 4 | Cleartext HTTP allowed | Owner decision, required by many IPTV providers |
 | 5 | Silent catch blocks | Add diagnostics note per block once a logging policy is chosen |
 | 6 | No ViewModel / UI tests | Needs a test harness (fake Repo, Compose test rule) |

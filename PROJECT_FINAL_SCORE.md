@@ -6,7 +6,7 @@ The changes in this cycle are small and unverified on a device, so the scores mo
 |---|---|---|---|
 | Stability | 68 | 70 | Thread-safe caches, stale-info guard, Back handling; the freeze is still open |
 | Performance | 72 | 73 | Background list preparation (unmeasured) |
-| Security | 76 | 76 | No change |
+| Security | 80 | 80 | Corrected after finding credentials were already encrypted |
 | Code quality | 70 | 70 | No structural change |
 | Test coverage | 55 | 56 | One new helper test file |
 | Architecture | 68 | 68 | No change |
