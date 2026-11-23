@@ -730,7 +730,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Episode last focused / started in the gallery, so returning from playback lands on the same card. */
     var epFocusUrl: String? = null
 
-    fun openDetail(c: Channel) = guard(c) {
+    /** Titles opened before the current one, so Back from a suggested title returns to the page you came from. */
+    private val detailStack = ArrayList<Channel>()
+
+    fun openDetail(c: Channel) = guard(c) { showDetail(c, push = true) }
+
+    private fun showDetail(c: Channel, push: Boolean) {
+        if (screen == Screen.Detail) {
+            if (push) detail?.takeIf { it.url != c.url }?.let {
+                detailStack.add(it)
+                if (detailStack.size > 20) detailStack.removeAt(0)
+            }
+        } else detailStack.clear()   // opened from Home / search / a list: a fresh trail
         val k = kindOf(c)
         detail = c; info = repo.cachedInfo(c, k); episodes = emptyList(); season = 1; error = null; epFocusUrl = null; castWorks = emptyList()
         back = Screen.Main; screen = Screen.Detail
@@ -790,7 +801,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun closeDetail() { restoreFocus = true; screen = Screen.Main }
+    fun closeDetail() {
+        val prev = if (detailStack.isEmpty()) null else detailStack.removeAt(detailStack.size - 1)
+        if (prev != null) { showDetail(prev, push = false); return }   // back to the title you came from
+        restoreFocus = true; screen = Screen.Main
+    }
     fun selectSeason(n: Int) { season = n; detail?.let { loadStills(it, n) } }
 
     private val stillsRequested = HashSet<String>()
