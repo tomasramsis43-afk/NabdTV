@@ -50,7 +50,7 @@ object CrashLog {
                 val f = file(ctx)
                 val keep = if (f.exists()) f.readText().takeLast(6000) else ""
                 val stamp = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date())
-                val trace = android.util.Log.getStackTraceString(e).take(3500)
+                val trace = Scrub.clean(android.util.Log.getStackTraceString(e)).take(3500)
                 f.writeText(keep + "\n=== $stamp [${t.name}] ===\n" + trace)
                 // Show the error on screen from a separate process (not when the crash happened inside that process).
                 if (!isCrashProcess()) {
@@ -87,7 +87,7 @@ object CrashReporter {
         Thread {
             runCatching {
                 val dsn = Store(app).sentryDsn
-                val text = CrashLog.read(app)
+                val text = Scrub.clean(CrashLog.read(app))
                 if (dsn.isBlank() || text.isBlank()) return@runCatching
                 val u = java.net.URI(dsn)
                 val key = u.userInfo?.substringBefore(':') ?: return@runCatching

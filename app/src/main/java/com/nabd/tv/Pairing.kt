@@ -18,6 +18,7 @@ import com.google.zxing.qrcode.QRCodeWriter
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.net.Inet4Address
+import java.net.InetAddress
 import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
@@ -36,7 +37,7 @@ class PairingServer(private val onReceived: (Map<String, String>) -> Unit) {
     fun start(): String? {
         stop()
         val ip = lanAddress() ?: return null
-        val ss = (8765..8775).firstNotNullOfOrNull { port -> runCatching { ServerSocket(port) }.getOrNull() } ?: return null
+        val ss = (8765..8775).firstNotNullOfOrNull { port -> runCatching { ServerSocket(port, 4, InetAddress.getByName(ip)) }.getOrNull() } ?: return null
         server = ss
         url = "http://$ip:${ss.localPort}/$token"
         Thread {
@@ -59,9 +60,10 @@ class PairingServer(private val onReceived: (Map<String, String>) -> Unit) {
             .firstOrNull { it.isSiteLocalAddress }?.hostAddress
     }.getOrNull()
 
-    private fun readLine(i: InputStream): String? {
+    private fun readLine(i: InputStream, deadline: Long): String? {
         val b = ByteArrayOutputStream()
         while (true) {
+            if (System.currentTimeMillis() > deadline) return null   // a slow client cannot hold the single-threaded server
             val c = i.read()
             if (c < 0) return if (b.size() == 0) null else b.toString("UTF-8")
             if (c == '\n'.code) return b.toString("UTF-8").trimEnd('\r')
@@ -72,13 +74,14 @@ class PairingServer(private val onReceived: (Map<String, String>) -> Unit) {
 
     private fun handle(s: Socket) {
         s.soTimeout = 5000
+        val deadline = System.currentTimeMillis() + 8000
         val input = s.getInputStream().buffered()
-        val first = readLine(input) ?: return
+        val first = readLine(input, deadline) ?: return
         val parts = first.split(' ')
         if (parts.size < 2) return
         var len = 0
         while (true) {
-            val h = readLine(input) ?: break
+            val h = readLine(input, deadline) ?: break
             if (h.isEmpty()) break
             if (h.startsWith("content-length:", ignoreCase = true)) len = h.substringAfter(':').trim().toIntOrNull() ?: 0
         }
@@ -86,7 +89,7 @@ class PairingServer(private val onReceived: (Map<String, String>) -> Unit) {
         val out = s.getOutputStream()
         fun send(code: String, body: String) {
             val bytes = body.toByteArray()
-            out.write("HTTP/1.1 $code\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${bytes.size}\r\nConnection: close\r\n\r\n".toByteArray())
+            out.write("HTTP/1.1 $code\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nContent-Length: ${bytes.size}\r\nConnection: close\r\n\r\n".toByteArray())
             out.write(bytes); out.flush()
         }
         if (path != "/$token") {
@@ -99,7 +102,10 @@ class PairingServer(private val onReceived: (Map<String, String>) -> Unit) {
             if (len <= 0 || len > 8192) { send("400 Bad Request", "400"); return }
             val buf = ByteArray(len)
             var n = 0
-            while (n < len) { val r = input.read(buf, n, len - n); if (r < 0) break; n += r }
+            while (n < len) {
+                if (System.currentTimeMillis() > deadline) return
+                val r = input.read(buf, n, len - n); if (r < 0) break; n += r
+            }
             val fields = String(buf, 0, n).split('&').mapNotNull {
                 val kv = it.split('=', limit = 2)
                 if (kv.size == 2) URLDecoder.decode(kv[0], "UTF-8") to URLDecoder.decode(kv[1], "UTF-8").trim() else null

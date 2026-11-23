@@ -368,20 +368,47 @@ class Store(private val ctx: Context) {
     var hideLocked: Boolean
         get() = p.getBoolean("hideLocked", false)
         set(v) = p.edit().putBoolean("hideLocked", v).apply()
-    val hasPin: Boolean get() = !g.getString("pinHash", "").isNullOrEmpty()
+    val hasPin: Boolean get() = !g.getString("pinHash2", "").isNullOrEmpty() || !g.getString("pinHash", "").isNullOrEmpty()
 
-    private fun hash(pin: String, salt: String): String =
+    /** Legacy format (single SHA-256 round); still accepted so existing PINs keep working, then upgraded. */
+    private fun legacyHash(pin: String, salt: String): String =
         MessageDigest.getInstance("SHA-256").digest((salt + pin).toByteArray()).joinToString("") { "%02x".format(it) }
 
+    // PBKDF2-HMAC-SHA256 needs API 26; older devices use HMAC-SHA1. The algorithm is stored with the hash.
+    private fun pbkdfAlgo() = if (android.os.Build.VERSION.SDK_INT >= 26) "PBKDF2WithHmacSHA256" else "PBKDF2WithHmacSHA1"
+
     fun setPin(pin: String) {
-        val salt = ByteArray(12).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
-        g.edit().putString("pinSalt", salt).putString("pinHash", hash(pin, salt)).apply()
+        val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
+        val algo = pbkdfAlgo()
+        // The digest is also wrapped with the Android Keystore key, so a copied prefs file alone cannot be brute-forced.
+        val h = Secret.enc(PinHash.hash(pin, salt, PinHash.ITERATIONS, algo))
+        g.edit().putString("pinSalt", salt).putString("pinHash2", h)
+            .putString("pinAlgo", algo).putInt("pinIter", PinHash.ITERATIONS).remove("pinHash").apply()
     }
-    fun clearPin() { g.edit().remove("pinSalt").remove("pinHash").apply() }
+    fun clearPin() {
+        g.edit().remove("pinSalt").remove("pinHash").remove("pinHash2").remove("pinAlgo").remove("pinIter").apply()
+    }
     fun checkPin(pin: String): Boolean {
         val salt = g.getString("pinSalt", "") ?: ""
+        val h2 = g.getString("pinHash2", "") ?: ""
+        if (h2.isNotEmpty()) {
+            val want = Secret.dec(h2)
+            if (want.isEmpty()) return false
+            val algo = g.getString("pinAlgo", null) ?: pbkdfAlgo()
+            val iter = g.getInt("pinIter", PinHash.ITERATIONS)
+            return runCatching { PinHash.same(PinHash.hash(pin, salt, iter, algo), want) }.getOrDefault(false)
+        }
         val h = g.getString("pinHash", "") ?: ""
-        return h.isNotEmpty() && hash(pin, salt) == h
+        val ok = h.isNotEmpty() && PinHash.same(legacyHash(pin, salt), h)
+        if (ok) setPin(pin)   // upgrade a legacy hash on the first successful entry
+        return ok
+    }
+
+    /** PIN-attempt lockout state, kept on disk so restarting the app does not reset it. */
+    val pinMisses: Int get() = g.getInt("pinMisses", 0)
+    val pinBlockedUntil: Long get() = g.getLong("pinBlockedUntil", 0L)
+    fun savePinThrottle(misses: Int, blockedUntil: Long) {
+        g.edit().putInt("pinMisses", misses).putLong("pinBlockedUntil", blockedUntil).apply()
     }
 
     /* ---------- daily watch limit (per profile) ---------- */
