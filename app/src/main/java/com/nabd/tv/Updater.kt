@@ -42,16 +42,18 @@ object Updater {
             val assets = o.optJSONArray("assets") ?: return@use null
             var url: String? = null
             var sha: String? = null
+            // The optimised (release) APK is preferred; the debug APK stays as the fallback when a release has no optimised build.
+            var fallbackUrl: String? = null
+            var fallbackSha: String? = null
+            fun digest(a: JSONObject) = a.optString("digest").removePrefix("sha256:").lowercase().takeIf { it.length == 64 && it.all { c -> c in '0'..'9' || c in 'a'..'f' } }   // GitHub reports "sha256:ab12…" for every asset
             for (i in 0 until assets.length()) {
                 val a = assets.getJSONObject(i)
-                // The optimised "release" APK is attached for manual testing only; in-app updates keep using the debug build until it is proven on devices.
-                if (a.optString("name").endsWith(".apk") && !a.optString("name").contains("release", ignoreCase = true)) {
-                    url = a.optString("browser_download_url")
-                    // GitHub reports e.g. "sha256:ab12…" for every uploaded asset.
-                    sha = a.optString("digest").removePrefix("sha256:").lowercase().takeIf { it.length == 64 && it.all { c -> c in '0'..'9' || c in 'a'..'f' } }
-                    break
-                }
+                val n = a.optString("name")
+                if (!n.endsWith(".apk")) continue
+                if (n.contains("release", ignoreCase = true)) { url = a.optString("browser_download_url"); sha = digest(a); break }
+                if (fallbackUrl == null) { fallbackUrl = a.optString("browser_download_url"); fallbackSha = digest(a) }
             }
+            if (url == null) { url = fallbackUrl; sha = fallbackSha }
             // Only ever download over HTTPS.
             if (url == null || !url.startsWith("https://") || build <= currentBuild(ctx)) null else Release(tag, build, url, o.optString("body"), sha)
         }
