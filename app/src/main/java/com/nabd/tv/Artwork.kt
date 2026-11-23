@@ -61,7 +61,7 @@ object Artwork {
         val (title, y) = LogoMatch.clean(rawTitle)
         if (title.isBlank()) return null
         val year = yearHint ?: y
-        val k = "$type${if (type == "poster") "2" else ""}:${kind.name}:${LogoMatch.norm(title)}:${year ?: 0}" + if (tmdbKey().isNotBlank()) ":t" else ""
+        val k = "$type${if (type == "poster") "3" else "2"}:${kind.name}:${LogoMatch.norm(title)}:${year ?: 0}" + if (tmdbKey().isNotBlank()) ":t" else ""
         mem[k]?.let { return it }
         return inflight.getOrPut(k) {
             scope.async { try { gate.withPermit { resolve(d, k, type, title, kind, year) } } finally { inflight.remove(k) } }
@@ -77,7 +77,7 @@ object Artwork {
         }
         return try {
             val art = (if (tmdbKey().isNotBlank()) tmdb(type, title, kind, year) else null)
-                ?: (if (type == "poster" && kind == Kind.Series) tvmaze(title, year) else null)
+                ?: (if (type == "poster" && kind == Kind.Series && tmdbKey().isBlank()) tvmaze(title, year) else null)   // with a TMDB key a missing textless poster is not replaced by a titled one
             synchronized(index) {
                 index.put(k, if (art == null) JSONObject().put("s", "none").put("t", System.currentTimeMillis())
                 else JSONObject().put("s", "ok").put("u", art.url).put("src", art.source).put("lic", art.license).put("t", System.currentTimeMillis()))
@@ -226,25 +226,23 @@ object Artwork {
         }
         hit ?: return null
         if (type == "poster") {
-            // Not just TMDB's default poster (often the same shot as the backdrop): pick the best-rated PORTRAIT poster in the
-            // title's language, then English, then textless.
+            // Textless posters only (no title printed on the picture): the best-rated PORTRAIT one without a language.
+            // When TMDB has none, nothing is returned here and the card keeps the picture it already has.
             val id0 = hit.optInt("id")
-            val lang = if (LogoMatch.hasArabic(title)) "ar" else "en"
             val posters = runCatching {
-                getObj("https://api.themoviedb.org/3/$t/$id0/images?api_key=${Uri.encode(key)}&include_image_language=$lang,en,null").optJSONArray("posters")
+                getObj("https://api.themoviedb.org/3/$t/$id0/images?api_key=${Uri.encode(key)}&include_image_language=null").optJSONArray("posters")
             }.getOrNull()
             var bestP: JSONObject? = null; var bestScore = Double.NEGATIVE_INFINITY
             if (posters != null) for (i in 0 until posters.length()) {
                 val b = posters.getJSONObject(i)
                 val w = b.optInt("width"); val h = b.optInt("height")
-                if (h <= 0 || w.toDouble() / h > 0.8 || w < 500) continue     // portrait only
-                val l = if (b.isNull("iso_639_1")) "" else b.optString("iso_639_1")
-                val rank = listOf(lang, "en", "").indexOf(l).takeIf { it >= 0 } ?: continue
-                val score = -rank * 100.0 + b.optDouble("vote_average", 0.0) * 5 + minOf(w, 2000) / 1000.0
+                if (h <= 0 || w.toDouble() / h > 0.8 || w < 400) continue     // portrait only
+                if (!b.isNull("iso_639_1") && b.optString("iso_639_1").isNotBlank()) continue   // has text in some language
+                val score = b.optDouble("vote_average", 0.0) * 5 + minOf(w, 2000) / 1000.0
                 if (score > bestScore) { bestScore = score; bestP = b }
             }
-            val p = bestP?.optString("file_path")?.takeIf { it.isNotBlank() } ?: hit.optString("poster_path")
-            return if (p.isBlank()) null else Art("https://image.tmdb.org/t/p/w780$p", "tmdb", TMDB_LICENSE)
+            val p = bestP?.optString("file_path")?.takeIf { it.isNotBlank() } ?: return null
+            return Art("https://image.tmdb.org/t/p/w780$p", "tmdb", TMDB_LICENSE)
         }
         // Backdrops: landscape only, neutral (no text) first, then by votes.
         val id = hit.optInt("id")
