@@ -27,6 +27,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -334,10 +336,6 @@ fun PlayerSheet(
                         PlayerTab.Subtitles -> {
                             SheetSection(S(R.string.a_4a47a85a))
                             SheetRow(S(R.string.a_dd37ba8a), if (ui.subOn) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)) { actions.setSubtitlesEnabled(!ui.subOn) }
-                            SheetRow(S(R.string.a_61151639), ui.extSub?.name ?: S(R.string.a_d5e96ebf)) { actions.loadSubtitle() }
-                            SheetRow(S(R.string.a_29531391), "OpenSubtitles", enabled = !live) { searchOnlineSubtitles() }
-                            SheetRow(S(R.string.a_04cd1f90), enabled = ui.extSub != null) { actions.removeSubtitle() }
-                            ui.extError?.let { SheetInfo(S(R.string.detail_error, it), danger = true) }
                             SheetRow(S(R.string.a_c04d9164), S(R.string.x_tracks_n, ui.textTracks.size)) {
                                 // The external file is dropped only when an embedded track is actually chosen, not when the list opens.
                                 val dropExternal = { if (ui.extSub != null) actions.removeSubtitle() }
@@ -348,6 +346,23 @@ fun PlayerSheet(
                                 if (items.size == 1) vm.say(S(R.string.a_4b48bb9d)) else openChoice(S(R.string.a_5acd5081), items)
                             }
 
+                            SheetRow(S(R.string.a_29531391), "OpenSubtitles", enabled = !live) { searchOnlineSubtitles() }
+                            SheetSection(S(R.string.a_beb4436d))
+                            SheetRow(S(R.string.a_ba704975), if (store.audioBoost) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)) { actions.toggleAudioBoost() }
+                            SheetRow(S(R.string.a_e9952d72), S(R.string.x_tracks_n, ui.audioTracks.size), detail = ui.audioTracks.firstOrNull()?.label.orEmpty()) {
+                                val items = listOf(SheetOption(S(R.string.a_4cdfdadb)) { actions.clearAudioOverride() }) +
+                                    ui.audioTracks.mapIndexed { i, t ->
+                                        SheetOption(t.label, t.selected) { actions.setAudioTrack(t) }
+                                    }
+                                if (items.size == 1) vm.say(S(R.string.a_b767d344)) else openChoice(S(R.string.a_e9952d72), items)
+                            }
+                            // Everything else is folded: one row opens it.
+                            var moreSub by remember { mutableStateOf(false) }
+                            SheetRow(S(R.string.player_more), if (moreSub) "▲" else "▼") { moreSub = !moreSub }
+                            if (moreSub) {
+                            SheetRow(S(R.string.a_61151639), ui.extSub?.name ?: S(R.string.a_d5e96ebf)) { actions.loadSubtitle() }
+                            SheetRow(S(R.string.a_04cd1f90), enabled = ui.extSub != null) { actions.removeSubtitle() }
+                            ui.extError?.let { SheetInfo(S(R.string.detail_error, it), danger = true) }
                             SheetRow(S(R.string.a_80dd0013), "${store.subDelayMs} ms", enabled = ui.extSub != null) {
                                 openChoice(S(R.string.a_80dd0013), listOf(-1000, -500, -250, -100, -50, 0, 50, 100, 250, 500, 1000).map { v ->
                                     SheetOption(
@@ -388,17 +403,8 @@ fun PlayerSheet(
                                     SheetOption(name, argb == store.subColor) { store.subColor = argb; actions.changed() }
                                 })
                             }
-                            SheetSection(S(R.string.a_beb4436d))
-                            SheetRow(S(R.string.a_ba704975), if (store.audioBoost) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)) { actions.toggleAudioBoost() }
-                            SheetRow(S(R.string.a_e9952d72), S(R.string.x_tracks_n, ui.audioTracks.size), detail = ui.audioTracks.firstOrNull()?.label.orEmpty()) {
-                                val items = listOf(SheetOption(S(R.string.a_4cdfdadb)) { actions.clearAudioOverride() }) +
-                                    ui.audioTracks.mapIndexed { i, t ->
-                                        SheetOption(t.label, t.selected) { actions.setAudioTrack(t) }
-                                    }
-                                if (items.size == 1) vm.say(S(R.string.a_b767d344)) else openChoice(S(R.string.a_e9952d72), items)
                             }
                         }
-
                         PlayerTab.Display -> {
                             SheetSection(S(R.string.a_80e8bb66))
                             SheetRow(S(R.string.a_06160737), ui.aspect.label) {
@@ -518,7 +524,7 @@ private fun SheetRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
+            .heightIn(min = 46.dp)
             .then(if (fr != null) Modifier.focusRequester(fr) else Modifier)
             .onFocusChanged { focused = it.isFocused }
             .clip(shape)
@@ -526,10 +532,10 @@ private fun SheetRow(
                 when {
                     selected -> AccentFill
                     focused -> Color(0xFF2A3355)
-                    else -> Color(0xAA171C2A)
+                    else -> Color.Transparent
                 }
             )
-            .border(if (focused) 2.dp else 1.dp, if (focused) Color.White else Color(0x33FFFFFF), shape)
+            .then(if (focused) Modifier.border(2.dp, Color.White, shape) else Modifier.drawBehind { drawLine(Color(0x1FFFFFFF), Offset(12.dp.toPx(), size.height), Offset(size.width - 12.dp.toPx(), size.height), 1.dp.toPx()) })
             .clickable(enabled = enabled) { if (rememberClick) rf?.onClicked(label); onClick() }
             .padding(horizontal = 14.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically
