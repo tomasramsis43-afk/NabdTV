@@ -12,6 +12,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.pm.ActivityInfo
 import androidx.activity.compose.BackHandler
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -181,7 +182,14 @@ fun PlayerSheet(
 
     Box(
         // pointerInput (not clickable): a clickable scrim is focusable and trapped the D-pad on a full-screen node.
-        Modifier.fillMaxSize().background(Color(0xB3000000)).pointerInput(Unit) { detectTapGestures { onClose() } },
+        Modifier.fillMaxSize().background(Color(0xB3000000)).pointerInput(Unit) { detectTapGestures { onClose() } }
+            .onPreviewKeyEvent { e ->
+                // Back steps out one level directly from the key (the focused row can no longer swallow it).
+                if (e.key == androidx.compose.ui.input.key.Key.Back) {
+                    if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) goBack()
+                    true
+                } else false
+            },
         contentAlignment = Alignment.CenterEnd
     ) {
         Column(

@@ -886,6 +886,15 @@ fun PlayerScreen(vm: AppViewModel) {
     /* ------------------------------------------------------------------ */
 
     fun handleRemoteKey(ev: KeyEvent): Boolean {
+        // Back with a popup menu open is handled right here (the key itself), not only through the activity's back dispatcher,
+        // so it closes the menu whichever element has the focus.
+        if (ev.key == Key.Back && popup != null) {
+            if (ev.type == KeyEventType.KeyDown) {
+                if (popupSub != null) popupSub = null else popup = null
+                runCatching { timelineFocus.requestFocus() }
+            }
+            return true
+        }
         if (ev.type != KeyEventType.KeyDown) return false
         if (ev.key == Key.Back) return false
         if (ui.sheet != null || ui.panel || ui.showJump || ui.resumeAt > 0 || ui.error != null || ui.ended || ui.nextEp != null) return false
