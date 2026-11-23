@@ -68,6 +68,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreen(vm: AppViewModel) {
@@ -179,6 +180,39 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
     SideEffect { vm.firstKey = shelves.firstOrNull()?.items?.firstOrNull()?.let { shelves.first().title + "|" + it.url + it.id } }
     val focus = vm.homeFocus ?: shelves.first().items.first()
     LaunchedEffect(focus.url) { delay(280); vm.loadHomeInfo(focus) }
+
+    // Poster auto-rotation. Touch: rotates whenever nobody has touched the screen for a while.
+    // TV: only while the poster still shows what the rotation chose, so it never disagrees with the card the remote is on.
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val featured = remember(shelves) {
+        shelves.flatMap { it.items.take(3) }.filter { kindOf(it) != Kind.Live }.distinctBy { it.url }.take(8)
+    }
+    val lastInput = remember { longArrayOf(System.currentTimeMillis()) }
+    val lastRotate = remember { longArrayOf(System.currentTimeMillis()) }
+    val autoUrl = remember { arrayOfNulls<String>(1) }      // the change we are about to see in `focus` came from the rotation
+    val lastAuto = remember { arrayOfNulls<String>(1) }     // the title the rotation put on screen last
+    LaunchedEffect(focus.url) { if (autoUrl[0] == focus.url) autoUrl[0] = null else lastInput[0] = System.currentTimeMillis() }
+    val reduceMotion = remember {
+        runCatching { android.provider.Settings.Global.getFloat(ctx.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }.getOrDefault(false)
+    }
+    LaunchedEffect(vm.heroRotate, featured, d.tv, reduceMotion) {
+        if (!vm.heroRotate || reduceMotion || featured.size < 2) return@LaunchedEffect
+        while (true) {
+            delay(1000)
+            val now = System.currentTimeMillis()
+            if (!AppState.foreground) continue
+            val held = vm.homeFocus
+            if (d.tv && held != null && held.url != lastAuto[0]) continue
+            if (!HeroRotation.due(now, lastInput[0], lastRotate[0])) continue
+            val cur = held ?: focus
+            val nxt = HeroRotation.next(featured, featured.firstOrNull { it.url == cur.url }) ?: continue
+            lastRotate[0] = now
+            autoUrl[0] = nxt.url; lastAuto[0] = nxt.url
+            vm.homeFocus = nxt
+            // Warm up the picture of the title after it, so the next switch does not show an empty frame.
+            HeroRotation.next(featured, nxt)?.let { up -> launch { ArtStore.resolve(vm, up) } }
+        }
+    }
 
     val heroArt = vm.homeInfo?.backdrop ?: focus.logo
     val palette = rememberArtworkPalette(heroArt)

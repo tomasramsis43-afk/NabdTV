@@ -126,6 +126,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Observable copy of the "hide names under posters" option, so every poster updates the moment it is switched. */
     var hidePosterTitles by mutableStateOf(store.hidePosterTitles); private set
     fun applyHidePosterTitles(v: Boolean) { hidePosterTitles = v; store.hidePosterTitles = v }
+    var heroRotate by mutableStateOf(store.heroRotate); private set
+    fun applyHeroRotate(v: Boolean) { heroRotate = v; store.heroRotate = v }
 
     /** The first screen has something real to show: cached lists loaded, or an error / the setup screen is needed. */
     fun startupReady(): Boolean = screen == Screen.Setup || error != null || (!loading && all.isNotEmpty() && !vodLoading)
