@@ -37,6 +37,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,6 +67,13 @@ fun DetailScreen(vm: AppViewModel) {
     val typeLabel = tr(if (isSeries) R.string.detail_type_series else R.string.detail_type_movie)
 
     val scroll = rememberScrollState()
+    val heroFocus = remember { FocusRequester() }
+    // A new title starts at the top; the neighbours' artwork and logos are fetched ahead so stepping to them shows no wait.
+    LaunchedEffect(c.url) {
+        scroll.scrollTo(0)
+        vm.neighbors().filterNotNull().forEach { n -> launch { runCatching { ArtStore.resolve(vm, n); Logos.get(n.name, kindOf(n), null) } } }
+    }
+    if (d.tv) LaunchedEffect(Unit) { runCatching { heroFocus.requestFocus() } }   // invisible focus holder: left / right work at once, Down goes to the buttons
     val blurStep by remember { derivedStateOf { (scroll.value / 70).coerceIn(0, 5) } }
     val logoFile = rememberTitleLogo(c.name, kindOf(c), null)   // year from the title only: a hint that arrives later would change the key and swap the logo
     val logoPal = rememberArtworkPalette(logoFile?.let { "file://" + it.absolutePath })
@@ -100,6 +110,19 @@ fun DetailScreen(vm: AppViewModel) {
             // Hero: only the artwork with the logo (or title) and the info chips. It fills the screen, so the buttons start below the fold.
             Column(
                 Modifier.fillMaxWidth().height((d.heightDp - 8).coerceAtLeast(240).dp).zIndex(1f)
+                    .pointerInput(c.url) {
+                        // Phone: a horizontal swipe on the artwork moves to the previous / next title.
+                        var dx = 0f
+                        detectHorizontalDragGestures(onDragStart = { dx = 0f }, onHorizontalDrag = { _, a -> dx += a }, onDragEnd = {
+                            if (kotlin.math.abs(dx) > 120f) vm.stepDetail(if (dx < 0) 1 else -1)
+                        })
+                    }
+                    .focusRequester(heroFocus).focusable()
+                    .onPreviewKeyEvent { e ->
+                        if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && (e.key == androidx.compose.ui.input.key.Key.DirectionLeft || e.key == androidx.compose.ui.input.key.Key.DirectionRight)) {
+                            vm.stepDetail(if (e.key == androidx.compose.ui.input.key.Key.DirectionRight) 1 else -1); true
+                        } else false
+                    }
                     .padding(horizontal = maxOf(edge.start, edge.end)),
                 verticalArrangement = Arrangement.Bottom, horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -131,7 +154,7 @@ fun DetailScreen(vm: AppViewModel) {
                         Modifier.onPreviewKeyEvent { e ->
                             // Up from the buttons: back to the artwork (nothing focused), so the next Down reveals the buttons again.
                             if (e.key == androidx.compose.ui.input.key.Key.DirectionUp && e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) {
-                                focusMgr.clearFocus(); scope.launch { scroll.animateScrollTo(0) }; true
+                                if (d.tv) runCatching { heroFocus.requestFocus() } else focusMgr.clearFocus(); scope.launch { scroll.animateScrollTo(0) }; true
                             } else false
                         },
                         horizontalArrangement = Arrangement.spacedBy(9.dp, Alignment.Start), verticalArrangement = Arrangement.spacedBy(8.dp)

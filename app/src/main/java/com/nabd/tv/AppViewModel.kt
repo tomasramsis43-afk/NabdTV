@@ -794,6 +794,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Titles opened before the current one, so Back from a suggested title returns to the page you came from. */
     private val detailStack = ArrayList<Channel>()
+    /** The list the open title came from (shelf, tab list, search...): left / right on the detail page moves along it. */
+    private var neighborList: List<Channel> = emptyList()
+    private fun detailable(c: Channel) = when (kindOf(c)) { Kind.Live -> false; Kind.Series -> c.url.startsWith("series:"); Kind.Movie -> true }
+    private fun contextFor(c: Channel): List<Channel> {
+        val cands = ArrayList<List<Channel>>()
+        cands.add(visible); shelves.forEach { cands.add(it.items) }; cands.add(recs); because?.second?.let { cands.add(it) }
+        return (cands.firstOrNull { l -> l.any { it.url == c.url } } ?: listOf(c)).filter { detailable(it) }
+    }
+    /** Titles next to the open one: index 0 = previous, 1 = next (null at the ends). */
+    fun neighbors(): List<Channel?> {
+        val cur = detail ?: return listOf(null, null)
+        val i = neighborList.indexOfFirst { it.url == cur.url }
+        if (i < 0) return listOf(null, null)
+        return listOf(neighborList.getOrNull(i - 1), neighborList.getOrNull(i + 1))
+    }
+    /** Moves to the previous (-1) / next (+1) title of the list it was opened from; stops at the ends. */
+    fun stepDetail(delta: Int): Boolean {
+        val t = neighbors().getOrNull(if (delta < 0) 0 else 1) ?: return false
+        showDetail(t, push = false)
+        return true
+    }
 
     fun openDetail(c: Channel) = guard(c) { showDetail(c, push = true) }
 
@@ -803,7 +824,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 detailStack.add(it)
                 if (detailStack.size > 20) detailStack.removeAt(0)
             }
-        } else detailStack.clear()   // opened from Home / search / a list: a fresh trail
+        } else { detailStack.clear(); neighborList = contextFor(c) }   // opened from Home / search / a list: a fresh trail
         val k = kindOf(c)
         detail = c; info = repo.cachedInfo(c, k); episodes = emptyList(); season = 1; error = null; epFocusUrl = null; castWorks = emptyList()
         back = Screen.Main; screen = Screen.Detail
