@@ -699,5 +699,5 @@
     <string name="x_hide_titles">Hide movie and series names under posters</string>
     <string name="player_season_ep">Season %1$d · Episode %2$d</string>
     <string name="player_more">More options</string>
-    <string name="tab_subs_audio">Audio & subtitles</string>
+    <string name="tab_subs_audio">Audio &amp; subtitles</string>
 </resources>
