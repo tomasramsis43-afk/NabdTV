@@ -44,7 +44,8 @@ object Updater {
             var sha: String? = null
             for (i in 0 until assets.length()) {
                 val a = assets.getJSONObject(i)
-                if (a.optString("name").endsWith(".apk")) {
+                // The optimised "release" APK is attached for manual testing only; in-app updates keep using the debug build until it is proven on devices.
+                if (a.optString("name").endsWith(".apk") && !a.optString("name").contains("release", ignoreCase = true)) {
                     url = a.optString("browser_download_url")
                     // GitHub reports e.g. "sha256:ab12…" for every uploaded asset.
                     sha = a.optString("digest").removePrefix("sha256:").lowercase().takeIf { it.length == 64 && it.all { c -> c in '0'..'9' || c in 'a'..'f' } }

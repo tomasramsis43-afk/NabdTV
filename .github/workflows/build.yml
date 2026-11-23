@@ -91,6 +91,19 @@ jobs:
             echo "::warning::Release build failed: $ERR"
           fi
           exit $rc
+      - name: Attach the optimised (release, R8) APK to the release - for manual testing, not picked by the in-app updater
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          F=$(ls app/build/outputs/apk/release/*.apk 2>/dev/null | head -1)
+          if [ -n "$F" ]; then
+            cp "$F" NabdTV-release.apk
+            gh release upload "v2.0.${{ github.run_number }}" NabdTV-release.apk
+          else
+            echo "::warning::no release APK was produced"
+          fi
       - name: Upload R8 mapping and release log
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
