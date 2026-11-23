@@ -119,7 +119,7 @@ fun SettingsScreen(vm: AppViewModel) {
                 onBack = { vm.closeSettings() }
             )
         } else {
-            PageView(vm, s, page!!, dash, onBack = { page = null }, upd = ::upd)
+            PageView(vm, s, page!!, dash, onBack = { page = null }, upd = ::upd, rev = tick)
         }
     }
 }
@@ -216,7 +216,9 @@ private fun PageView(
     page: SettingsPage,
     d: Device,
     onBack: () -> Unit,
-    upd: (() -> Unit) -> Unit
+    upd: (() -> Unit) -> Unit,
+    /** Changes after every edit. The Store is not observable and every other argument keeps its identity, so without this the page is skipped and keeps showing the old values. */
+    @Suppress("UNUSED_PARAMETER") rev: Int = 0
 ) {
     val tint = accentFor(page)
     Column(Modifier.fillMaxSize().padding(start = d.pad, end = d.pad, top = 6.dp)) {
