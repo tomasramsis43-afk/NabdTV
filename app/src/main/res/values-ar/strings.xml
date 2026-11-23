@@ -700,4 +700,11 @@
     <string name="player_season_ep">الموسم %1$d · الحلقة %2$d</string>
     <string name="player_more">خيارات إضافية</string>
     <string name="tab_subs_audio">الصوت</string>
+    <string name="splash_status_live">جاري تحميل القنوات</string>
+    <string name="splash_status_vod">جاري تحميل الأفلام والمسلسلات</string>
+    <string name="splash_status_ready">جاهز</string>
+    <string name="splash_failed_title">تعذّر الاتصال بالمزوّد</string>
+    <string name="splash_failed_hint">تأكد من الإنترنت أو من بيانات المزوّد في الإعدادات.</string>
+    <string name="splash_retry">إعادة المحاولة</string>
+    <string name="splash_settings">الإعدادات</string>
 </resources>

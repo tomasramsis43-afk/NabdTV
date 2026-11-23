@@ -700,4 +700,11 @@
     <string name="player_season_ep">Season %1$d · Episode %2$d</string>
     <string name="player_more">More options</string>
     <string name="tab_subs_audio">Audio</string>
+    <string name="splash_status_live">Loading channels</string>
+    <string name="splash_status_vod">Loading movies and series</string>
+    <string name="splash_status_ready">Ready</string>
+    <string name="splash_failed_title">Couldn\'t reach the provider</string>
+    <string name="splash_failed_hint">Check your internet connection or the provider details in Settings.</string>
+    <string name="splash_retry">Try again</string>
+    <string name="splash_settings">Settings</string>
 </resources>
