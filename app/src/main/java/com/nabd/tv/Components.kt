@@ -19,6 +19,13 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
@@ -147,6 +154,34 @@ fun KeepScreenOn() {
 }
 
 /**
+ * Remote-control (D-pad) click + long press for a card.
+ *
+ * Compose's combinedClickable only reports a long press for touch / mouse: holding OK on a TV remote never reached
+ * onLongClick, so the actions menu could not be opened. Android repeats KeyDown while OK is held (repeatCount > 0 = long press);
+ * here that fires [onLongClick] once and swallows the matching KeyUp so the release does not also count as a click.
+ * A short press still ends in [onClick] on KeyUp, as before. Does nothing when [onLongClick] is null (those cards keep the default behaviour).
+ * Touch stays with combinedClickable, which sits after this modifier on the same node.
+ */
+fun Modifier.remoteClick(onClick: () -> Unit, onLongClick: (() -> Unit)?): Modifier =
+    if (onLongClick == null) this else composed {
+        val fired = remember { booleanArrayOf(false) }
+        val click by rememberUpdatedState(onClick)
+        val longClick by rememberUpdatedState(onLongClick)
+        onPreviewKeyEvent { e ->
+            if (e.key != Key.DirectionCenter && e.key != Key.Enter && e.key != Key.NumPadEnter) return@onPreviewKeyEvent false
+            when (e.type) {
+                KeyEventType.KeyDown -> {
+                    if (e.nativeKeyEvent.repeatCount == 0) fired[0] = false
+                    else if (!fired[0]) { fired[0] = true; longClick() }
+                    true
+                }
+                KeyEventType.KeyUp -> { if (fired[0]) fired[0] = false else click(); true }
+                else -> false
+            }
+        }
+    }
+
+/**
  * Glass tile: translucent fill, white edge, clear accent ring + smooth zoom on focus.
  * Works with touch, D-pad and long-press. [onFocused] / [focusRequester] let screens remember and restore the focused item.
  */
@@ -172,6 +207,7 @@ fun Focusable(
             .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocused?.invoke() }
             .then(if (focused) Modifier.softShadow(shape, 14.dp) else Modifier)
             .glass(shape, focused = focused, selected = selected)
+            .remoteClick(onClick, onLongClick)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         content = content
     )
@@ -289,6 +325,7 @@ fun PosterCard(
                 }
                 .clip(shape)
                 .background(SurfHigh)
+                .remoteClick({ vm.open(ch) }, { vm.channelMenu(ch) })
                 .combinedClickable(onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) })
         ) {
             if (adaptive && kindOf(ch) != Kind.Live) {
