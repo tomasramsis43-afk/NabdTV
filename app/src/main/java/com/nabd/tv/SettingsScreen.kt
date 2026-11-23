@@ -511,6 +511,7 @@ private fun AccountPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
         Row2(S(R.string.a_e9f10589), if (s.tmdbKey.isBlank()) "—" else "••••") {
             vm.prompt = PromptRequest(S(R.string.a_32f8a730), s.tmdbKey, secret = true) { v -> upd { s.tmdbKey = v }; vm.refreshTmdbCharts(true) }
         }
+        Toggle(S(R.string.epg_toggle), s.epgEnabled) { upd { s.epgEnabled = it; if (it) vm.reloadEpg() } }
     }
     Group(S(R.string.a_d244a8a4)) {
         Row2("Client ID", if (s.traktId.isBlank()) "—" else "••••") {

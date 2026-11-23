@@ -719,4 +719,5 @@
     <string name="menu_remove_continue">حذف من متابعة المشاهدة</string>
     <string name="menu_remove_history">حذف من سجل المشاهدة</string>
     <string name="menu_removed">تم الحذف</string>
+    <string name="epg_toggle">تحميل دليل البرامج (EPG)</string>
 </resources>

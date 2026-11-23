@@ -38,6 +38,14 @@ data class ArtPair(val poster: String?, val backdrop: String?, val settled: Bool
     fun natural(landscape: Boolean): Boolean = if (landscape) backdrop != null else poster != null
 }
 
+/** TMDB serves the same picture in several widths; phone cards do not need the biggest (less data, decoding and heat). */
+fun cardSized(url: String?): String? = when {
+    url == null -> null
+    "/t/p/w1280/" in url -> url.replace("/t/p/w1280/", "/t/p/w780/")   // backdrops
+    "/t/p/w780/" in url -> url.replace("/t/p/w780/", "/t/p/w500/")     // posters
+    else -> url
+}
+
 object ArtStore {
     private val map = HashMap<String, ArtPair>()
     private val holders = HashMap<String, androidx.compose.runtime.MutableState<ArtPair?>>()   // one state per title: only that card recomposes
@@ -130,7 +138,9 @@ fun AdaptiveArtImage(
     modifier: Modifier = Modifier,
     alpha: Float = 1f,
     /** Cards: when only the other-orientation picture exists, fill the frame with it (sharp) instead of the blurred-fit look. */
-    cropFallback: Boolean = false
+    cropFallback: Boolean = false,
+    /** Phone cards: ask TMDB for the smaller picture sizes. Hero / detail leave this off and keep full quality. */
+    thumb: Boolean = false
 ) {
     val art = ArtStore.get(ch)
     // The provider's thumbnail is NOT shown first and swapped for the TMDB picture a moment later: while the TMDB lookup
@@ -145,8 +155,10 @@ fun AdaptiveArtImage(
         val sharper = vm.store.tmdbKey.isNotBlank()
         if ((landscape && art.backdrop == null) || art.poster == null || sharper) ArtStore.resolve(vm, ch)
     }
-    val url = if (waiting) null else art.pick(landscape)
+    val picked = if (waiting) null else art.pick(landscape)
     val natural = if (waiting) false else art.natural(landscape)
+    // A poster used as the fallback inside a wide frame keeps its full size (it is cropped and enlarged there).
+    val url = if (thumb && (!landscape || natural)) cardSized(picked) else picked
     Crossfade(targetState = url to natural, modifier = modifier, animationSpec = tween(350), label = "adaptiveArt") { (u, nat) ->
         when {
             u == null -> Box(Modifier.fillMaxSize().background(SurfHigh))

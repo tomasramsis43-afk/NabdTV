@@ -195,8 +195,53 @@ class Repo(private val ctx: Context, val store: Store) {
      * Downloads the XMLTV guide (refresh every 6h), auto-matches it to the channels and returns
      * programmes keyed by channel url. The window covers past days (for catch-up) and the next 36 hours.
      */
+    /** Identifies what the parsed EPG depends on: the file, the channel list and the manual matches. */
+    private fun epgSignature(f: File, channels: List<Channel>): String {
+        var h = 1125899906842597L
+        for (c in channels) { h = 31 * h + c.url.hashCode(); h = 31 * h + (c.tvgId?.hashCode() ?: 0); h = 31 * h + c.name.hashCode() }
+        return "${f.lastModified()}:${f.length()}:$h:${store.epgOverrides().hashCode()}"
+    }
+
+    private fun writeEpgStr(o: java.io.DataOutputStream, s: String) { val b = s.toByteArray(Charsets.UTF_8); o.writeInt(b.size); o.write(b) }
+    private fun readEpgStr(i: java.io.DataInputStream): String { val b = ByteArray(i.readInt()); i.readFully(b); return String(b, Charsets.UTF_8) }
+
+    private fun writeEpgCache(f: File, sig: String, out: Map<String, List<Prog>>) {
+        try {
+            val tmp = File(f.parentFile, f.name + ".tmp")
+            java.io.DataOutputStream(java.io.BufferedOutputStream(tmp.outputStream())).use { o ->
+                o.writeInt(0x4E504401); o.writeUTF(sig); o.writeLong(System.currentTimeMillis()); o.writeInt(out.size)
+                for ((u, l) in out) {
+                    writeEpgStr(o, u); o.writeInt(l.size)
+                    for (p in l) { o.writeLong(p.start); o.writeLong(p.stop); writeEpgStr(o, p.title); writeEpgStr(o, p.desc) }
+                }
+            }
+            if (!tmp.renameTo(f)) tmp.delete()
+        } catch (_: Exception) { f.delete() }
+    }
+
+    private fun readEpgCache(f: File, sig: String): Map<String, List<Prog>>? {
+        if (!f.exists()) return null
+        return try {
+            java.io.DataInputStream(java.io.BufferedInputStream(f.inputStream())).use { i ->
+                if (i.readInt() != 0x4E504401 || i.readUTF() != sig) return null
+                if (System.currentTimeMillis() - i.readLong() > 6 * 3600_000L) return null
+                val n = i.readInt()
+                val m = HashMap<String, List<Prog>>(n)
+                repeat(n) {
+                    val u = readEpgStr(i)
+                    val c = i.readInt()
+                    val l = ArrayList<Prog>(c)
+                    repeat(c) { l += Prog(i.readLong(), i.readLong(), readEpgStr(i), readEpgStr(i)) }
+                    m[u] = l
+                }
+                m
+            }
+        } catch (_: Exception) { null }
+    }
+
     suspend fun loadEpg(channels: List<Channel>, force: Boolean): Map<String, List<Prog>> =
         withContext(Dispatchers.IO) {
+            if (!store.epgEnabled) return@withContext emptyMap()
             try {
                 val f = File(ctx.filesDir, "epg.xml")
                 val stale = !f.exists() || System.currentTimeMillis() - f.lastModified() > 6 * 3600_000L
@@ -216,13 +261,22 @@ class Repo(private val ctx: Context, val store: Store) {
                     return if (b1 == 0x1f && b2 == 0x8b) GZIPInputStream(raw) else raw
                 }
 
+                // The XMLTV file is parsed twice (channel index, then programs) - heavy for a big provider file. The result
+                // is cached on disk and reused while the file, the channel list and the manual matches are unchanged
+                // (and the cache is under 6 h old, so the "now / next" window stays current).
+                val cacheFile = File(ctx.filesDir, "epg_cache.bin")
+                val sig = epgSignature(f, channels)
+                readEpgCache(cacheFile, sig)?.let { return@withContext it }
+
                 val index = open().use { EpgParser.readChannels(it) }
                 val matched = EpgMatcher.match(channels, index, store.epgOverrides())
-                if (matched.isEmpty()) return@withContext emptyMap()
-                val now = System.currentTimeMillis()
-                val byXml = open().use { EpgParser.parse(it, matched.values.toSet(), now - 3 * 86_400_000L, now + 36 * 3600_000L) }
                 val out = HashMap<String, List<Prog>>(matched.size)
-                for ((url, xml) in matched) byXml[xml]?.let { out[url] = it }
+                if (matched.isNotEmpty()) {
+                    val now = System.currentTimeMillis()
+                    val byXml = open().use { EpgParser.parse(it, matched.values.toSet(), now - 3 * 86_400_000L, now + 36 * 3600_000L) }
+                    for ((url, xml) in matched) byXml[xml]?.let { out[url] = it }
+                }
+                writeEpgCache(cacheFile, sig, out)
                 out
             } catch (e: Exception) { emptyMap() }
         }

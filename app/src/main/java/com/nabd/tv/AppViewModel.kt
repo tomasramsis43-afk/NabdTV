@@ -1308,6 +1308,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun clearMulti() { multi = emptyList() }
 
     /* ───────── manual EPG match ───────── */
+    /** Loads the guide now (after switching it on in Settings). */
+    fun reloadEpg() { viewModelScope.launch { epg = repo.loadEpg(all, false); bump() } }
+
     fun setEpgOverride(c: Channel, xmlId: String) {
         store.setEpgOverride(c.url, xmlId.ifBlank { null })
         viewModelScope.launch { epg = repo.loadEpg(all, false); bump() }

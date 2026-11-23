@@ -719,4 +719,5 @@
     <string name="menu_remove_continue">Remove from continue watching</string>
     <string name="menu_remove_history">Remove from watch history</string>
     <string name="menu_removed">Removed</string>
+    <string name="epg_toggle">Load TV guide (EPG)</string>
 </resources>

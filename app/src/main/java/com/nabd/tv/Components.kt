@@ -292,7 +292,7 @@ fun PosterCard(
                 .combinedClickable(onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) })
         ) {
             if (adaptive && kindOf(ch) != Kind.Live) {
-                AdaptiveArtImage(vm, ch, landscape = wide, modifier = Modifier.fillMaxSize(), cropFallback = true)
+                AdaptiveArtImage(vm, ch, landscape = wide, modifier = Modifier.fillMaxSize(), cropFallback = true, thumb = !d.tv)
             } else AsyncImage(
                 model = tmdbArt?.image ?: ch.logo, contentDescription = null,
                 contentScale = if (kindOf(ch) == Kind.Live) ContentScale.Fit else ContentScale.Crop,

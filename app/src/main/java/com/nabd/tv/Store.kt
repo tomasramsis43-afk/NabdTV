@@ -291,6 +291,10 @@ class Store(private val ctx: Context) {
     var osPass: String
         get() = Secret.dec(g.getString("osPass", "") ?: "")
         set(v) = g.edit().putString("osPass", Secret.enc(v.trim())).apply()
+    /** Download and parse the TV guide (EPG). Off = no guide data; saves battery / heat if you only watch movies and series. */
+    var epgEnabled: Boolean
+        get() = g.getBoolean("epgEnabled", true)
+        set(v) = g.edit().putBoolean("epgEnabled", v).apply()
     var tmdbKey: String
         get() = g.getString("tmdbKey", "") ?: ""
         set(v) = g.edit().putString("tmdbKey", v.trim()).apply()
