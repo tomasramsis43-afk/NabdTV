@@ -278,6 +278,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val newSeries = seriesList.filter { it.added > 0 }.sortedByDescending { it.added }.take(30).ifEmpty { seriesList.take(30) }
         if (newSeries.isNotEmpty()) out += Shelf(tx(R.string.shelf_new_series), newSeries)
         // Order: daily trending (movies, series) → new movies → new series → favourites → recently watched.
+        if (laterUrls.isNotEmpty()) {
+            val want = laterUrls.toHashSet(); val found = HashMap<String, Channel>()
+            movieList.forEach { if (it.url in want) found[it.url] = it }
+            seriesList.forEach { if (it.url in want) found[it.url] = it }
+            val laterItems = laterUrls.mapNotNull { found[it] }
+            if (laterItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_later), laterItems)
+        }
         if (favItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_fav), favItems)
         val doneItems = history.filter { it.kind != Kind.Live && it.finished && parental.visible(histChannel(it)) }.take(20).map { histChannel(it) }
         if (doneItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_recent), doneItems)
@@ -676,6 +683,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun say(m: String) { message = m }
 
     /* ───────── favourites / custom groups / hiding ───────── */
+    /** Movies and series saved for later (newest first). Observable so shelves and menus update at once. */
+    var laterUrls by mutableStateOf(store.watchLater); private set
+
+    fun toggleLater(c: Channel) {
+        if (c.url in laterUrls) { store.removeWatchLater(c.url); say(tx(R.string.x_later_removed)) }
+        else { store.addWatchLater(c.url); say(tx(R.string.x_later_added)) }
+        laterUrls = store.watchLater
+    }
+
+    /** Leaves the list once the title has been started (series) or finished (movie). */
+    private fun dropLater(url: String) {
+        if (url in laterUrls) { store.removeWatchLater(url); laterUrls = store.watchLater }
+    }
+
     fun toggleFav(c: Channel) {
         favs = if (c.url in favs) favs - c.url else favs + c.url
         store.favorites = favs
@@ -824,6 +845,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Remember the episode (image, number, title) and make it the series' current episode for Continue watching.
         store.saveEpMeta(e.url, EpMeta(s.url, s.name, e.season, e.num, e.title, VmLogic.episodeImage(e, episodes, s.logo)))
         store.setContCursor(s.url, e.url)
+        dropLater(s.url)
         if (detail?.url == s.url && episodes.isNotEmpty()) epListCache[s.url] = episodes
         bump()
         play(Channel(-1, "${s.name} · ${tx(R.string.ep_label, e.season, e.num)}", e.url, s.logo, s.group), PlayMode.Vod)
@@ -1081,7 +1103,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (kindOf(c) == Kind.Live || playMode == PlayMode.Catchup) return
         val wasFinished = store.historyOf(c.url)?.finished == true
         store.recordWatch(c, kindOf(c), pos, dur, false)
-        if (!wasFinished && store.historyOf(c.url)?.finished == true) { traktMarkWatched(c); advanceAfterFinish(c) }
+        if (!wasFinished && store.historyOf(c.url)?.finished == true) { traktMarkWatched(c); advanceAfterFinish(c); dropLater(c.url) }
         // The last save happens while the player is being torn down (after stop()), so Continue watching must refresh here.
         if (screen != Screen.Player) history = store.history()
         // Launcher/widget updates touch content providers: keep them off the main thread so leaving the player stays quick.
@@ -1214,6 +1236,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val k = kindOf(c)
         val items = ArrayList<Pair<String, () -> Unit>>()
         items += (if (c.url in favs) tx(R.string.menu_fav_remove) else tx(R.string.menu_fav_add)) to { toggleFav(c) }
+        if (k != Kind.Live) items += (if (c.url in laterUrls) tx(R.string.x_later_remove) else tx(R.string.x_later_add)) to { toggleLater(c) }
         if (k == Kind.Live) {
             items += tx(R.string.menu_multi, multi.size) to { toggleMulti(c) }
             items += tx(R.string.menu_add_group) to {

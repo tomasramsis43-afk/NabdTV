@@ -22,6 +22,18 @@ object VmLogic {
         return if (series.isEmpty()) null else Triple(series, season, num)
     }
 
+    /** "Watch later" is stored as a set of "addedAtMillis|url" entries; this rebuilds the list, newest first. Malformed entries are skipped. */
+    fun parseWatchLater(entries: Set<String>): List<String> = entries
+        .mapNotNull { e -> val i = e.indexOf('|'); if (i <= 0) null else e.substring(0, i).toLongOrNull()?.let { it to e.substring(i + 1) } }
+        .sortedByDescending { it.first }.map { it.second }
+
+    /** Series to watch for new episodes: favourites first, then series being watched, then Watch later; distinct and capped. */
+    fun followedSeries(favorites: Collection<String>, watched: Collection<String>, later: Collection<String>, cap: Int = 20): List<String> =
+        (favorites.filter { it.startsWith("series:") } + watched + later.filter { it.startsWith("series:") }).distinct().take(cap)
+
+    /** The most recent episode of a series (highest season, then number). */
+    fun newestEpisode(eps: List<Episode>): Episode? = eps.maxWithOrNull(compareBy({ it.season }, { it.num }))
+
     /**
      * The episode's OWN picture, or null. Providers often send the series cover as every episode's image; a picture
      * equal to the series poster, or shared by several episodes, is not an episode image and must not be used.
