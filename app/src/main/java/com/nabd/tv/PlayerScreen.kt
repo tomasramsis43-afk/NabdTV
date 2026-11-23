@@ -109,6 +109,9 @@ fun PlayerScreen(vm: AppViewModel) {
     val nextFocus = remember { FocusRequester() }
     val endFocus = remember { FocusRequester() }
 
+    var popup by remember { mutableStateOf<PopupKind?>(null) }
+    var popupSub by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(ui.overlay) { if (!ui.overlay) { popup = null; popupSub = null } }
     fun openSheet(tab: PlayerTab) {
         ui.sheet = tab
         ui.sheetRev++
@@ -1164,12 +1167,20 @@ fun PlayerScreen(vm: AppViewModel) {
                 onBack = { vm.stop() }, onToggle = { actions.togglePlay() },
                 onSeekBy = actions.seekBy, onSeekTo = actions.seekTo,
                 onPrev = { actions.prevEpisode() }, onNext = { actions.nextEpisode() },
-                onSubs = { openSheet(PlayerTab.Subtitles) },
-                onEpisodes = { openSheet(PlayerTab.Episodes) },
-                onSettings = { openSheet(PlayerTab.Playback) },
+                onSubs = { popupSub = null; popup = if (popup == PopupKind.Subs) null else PopupKind.Subs },
+                onEpisodes = { popupSub = null; popup = if (popup == PopupKind.Episodes) null else PopupKind.Episodes },
+                onSettings = { popupSub = null; popup = if (popup == PopupKind.Settings) null else PopupKind.Settings },
                 onPip = { actions.enterPip() }, onLock = { actions.toggleLock() },
                 onInteract = actions.interact
             )
+            popup?.let { k ->
+                PlayerPopup(
+                    kind = k, sub = popupSub, onSub = { popupSub = it }, onClose = { popup = null; popupSub = null },
+                    onMore = { tab -> popup = null; popupSub = null; openSheet(tab) },
+                    hasEpisodes = vm.episodes.any { it.url == chRef.value.url },
+                    ui = ui, store = store, vm = vm, actions = actions, ch = chRef.value
+                )
+            }
         }
 
         // Live TV: same icon-based controls as movies and series.

@@ -153,7 +153,7 @@ fun PlayerSheet(
     }
 
     fun audioChoice() = openChoice(
-        PlayerTab.Audio.label,
+        S(R.string.tab_subs_audio),
         listOf(SheetOption(S(R.string.a_4cdfdadb)) { actions.clearAudioOverride() }) +
             ui.audioTracks.map { t -> SheetOption(t.label, t.selected) { actions.setAudioTrack(t) } } +
             listOf(SheetOption(S(R.string.a_ba704975), store.audioBoost) { actions.toggleAudioBoost() })
@@ -234,7 +234,7 @@ fun PlayerSheet(
                 val items = buildList<Triple<String, String, Pair<String, () -> Unit>>> {
                     add(Triple("⏱", S(R.string.a_1bcf7e91), (if (ui.speed == 1f) "1x" else "${ui.speed}x") to { speedChoice() }))
                     add(Triple("CC", PlayerTab.Subtitles.label, subValue to { subtitleChoice() }))
-                    add(Triple("♪", PlayerTab.Audio.label, audioValue to { audioChoice() }))
+                    add(Triple("♪", S(R.string.tab_subs_audio), audioValue to { audioChoice() }))
                     add(Triple("▭", PlayerTab.Display.label, ui.aspect.label.substringBefore(' ') to { tab = PlayerTab.Display; home = false }))
                     if (hasEpisodes) add(Triple("☰", PlayerTab.Episodes.label, "" to { tab = PlayerTab.Episodes; home = false }))
                     add(Triple("⋯", S(R.string.player_more), "" to { tab = PlayerTab.Playback; home = false }))
