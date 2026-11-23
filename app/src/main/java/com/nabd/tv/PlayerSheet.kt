@@ -106,31 +106,6 @@ fun PlayerSheet(
         choice = SheetChoice(title, options)
     }
 
-    fun speedChoice() = openChoice(S(R.string.a_6bc0cff3), PLAYER_SPEEDS.map { v ->
-        SheetOption(if (v == 1f) S(R.string.a_ebca19a0) else "${v}x", v == ui.speed) { actions.setSpeed(v) }
-    })
-
-    fun subtitleChoice() {
-        val dropExternal = { if (ui.extSub != null) actions.removeSubtitle() }
-        openChoice(
-            PlayerTab.Subtitles.label,
-            listOf(SheetOption(S(R.string.a_43de6b2e), !ui.subOn) { actions.setSubtitlesEnabled(false) }) +
-                ui.textTracks.mapIndexed { i, t -> SheetOption(t.label, t.selected && ui.subOn) { dropExternal(); actions.selectSubtitle(i) } } +
-                listOf(
-                    SheetOption(S(R.string.a_61151639)) { actions.loadSubtitle() },
-                    SheetOption(S(R.string.a_29531391), enabled = !live) { searchOnlineSubtitles() },
-                    SheetOption(S(R.string.player_more)) { tab = PlayerTab.Subtitles; home = false }
-                )
-        )
-    }
-
-    fun audioChoice() = openChoice(
-        PlayerTab.Audio.label,
-        listOf(SheetOption(S(R.string.a_4cdfdadb)) { actions.clearAudioOverride() }) +
-            ui.audioTracks.map { t -> SheetOption(t.label, t.selected) { actions.setAudioTrack(t) } } +
-            listOf(SheetOption(S(R.string.a_ba704975), store.audioBoost) { actions.toggleAudioBoost() })
-    )
-
     /** Online subtitle search (OpenSubtitles): lists results, downloads the picked one and applies it. */
     fun searchOnlineSubtitles() {
         if (store.osKey.isBlank() || store.osUser.isBlank() || store.osPass.isBlank()) {
@@ -158,6 +133,31 @@ fun PlayerSheet(
             } catch (e: Exception) { vm.say(e.message ?: S(R.string.a_bf1b9e82)) }
         }
     }
+
+    fun speedChoice() = openChoice(S(R.string.a_6bc0cff3), PLAYER_SPEEDS.map { v ->
+        SheetOption(if (v == 1f) S(R.string.a_ebca19a0) else "${v}x", v == ui.speed) { actions.setSpeed(v) }
+    })
+
+    fun subtitleChoice() {
+        val dropExternal = { if (ui.extSub != null) actions.removeSubtitle() }
+        openChoice(
+            PlayerTab.Subtitles.label,
+            listOf(SheetOption(S(R.string.a_43de6b2e), !ui.subOn) { actions.setSubtitlesEnabled(false) }) +
+                ui.textTracks.mapIndexed { i, t -> SheetOption(t.label, t.selected && ui.subOn) { dropExternal(); actions.selectSubtitle(i) } } +
+                listOf(
+                    SheetOption(S(R.string.a_61151639)) { actions.loadSubtitle() },
+                    SheetOption(S(R.string.a_29531391), enabled = !live) { searchOnlineSubtitles() },
+                    SheetOption(S(R.string.player_more)) { tab = PlayerTab.Subtitles; home = false }
+                )
+        )
+    }
+
+    fun audioChoice() = openChoice(
+        PlayerTab.Audio.label,
+        listOf(SheetOption(S(R.string.a_4cdfdadb)) { actions.clearAudioOverride() }) +
+            ui.audioTracks.map { t -> SheetOption(t.label, t.selected) { actions.setAudioTrack(t) } } +
+            listOf(SheetOption(S(R.string.a_ba704975), store.audioBoost) { actions.toggleAudioBoost() })
+    )
 
     fun setOrientation(pref: OrientationPref) {
         store.playerOrientation = pref.name
