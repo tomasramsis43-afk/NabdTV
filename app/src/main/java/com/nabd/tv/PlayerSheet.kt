@@ -152,7 +152,7 @@ fun PlayerSheet(
             Modifier
                 .fillMaxHeight()
                 .fillMaxWidth(0.94f)
-                .widthIn(max = 560.dp)
+                .widthIn(max = 400.dp)
                 .background(Color(0xF0101420), RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp))
                 .border(1.dp, OverlayLine, RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp))
                 .pointerInput(Unit) { detectTapGestures { } }   // taps inside never reach the scrim
@@ -171,21 +171,20 @@ fun PlayerSheet(
             }
 
             Spacer(Modifier.height(14.dp))
-            Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(7.dp)
-            ) {
+            // Three or four plain tabs; audio sits with subtitles, and the rarely used ones live under "More options" in Playback.
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 val hasEpisodes = !live && vm.episodes.any { it.url == ch.url }
-                PlayerTab.entries.filter { (it != PlayerTab.Episodes || hasEpisodes) && (it != PlayerTab.Gestures || LocalDevice.current.touch) }.forEach { t ->
+                val shown = listOf(PlayerTab.Playback, PlayerTab.Episodes, PlayerTab.Subtitles, PlayerTab.Display)
+                    .filter { it != PlayerTab.Episodes || hasEpisodes }
+                // A hidden tab (Audio / Gestures / Info) still highlights its home tab when it is the open one.
+                val home = (when (tab) { PlayerTab.Audio -> PlayerTab.Subtitles; else -> tab }).let { if (it in shown) it else PlayerTab.Playback }
+                shown.forEach { t ->
                     PlayerButton(
-                        t.label,
-                        active = t == tab,
-                        focusRequester = if (t == tab) tabFocus else null,
-                        onClick = {
-                            tab = t
-                            ui.sheet = t
-                            choice = null
-                        }
+                        if (t == PlayerTab.Subtitles) S(R.string.tab_subs_audio) else t.label,
+                        modifier = Modifier.weight(1f),
+                        active = t == home,
+                        focusRequester = if (t == home) tabFocus else null,
+                        onClick = { tab = t; ui.sheet = t; choice = null }
                     )
                 }
             }
@@ -265,6 +264,8 @@ fun PlayerSheet(
                             var more by remember { mutableStateOf(false) }
                             SheetRow(S(R.string.player_more), if (more) "▲" else "▼") { more = !more }
                             if (more) {
+                                if (LocalDevice.current.touch) SheetRow(PlayerTab.Gestures.label) { tab = PlayerTab.Gestures; ui.sheet = PlayerTab.Gestures }
+                                SheetRow(PlayerTab.Info.label) { tab = PlayerTab.Info; ui.sheet = PlayerTab.Info }
                             SheetRow(S(R.string.a_608dc8b8), S(R.string.x_seconds, store.seekInterval)) {
                                 openChoice(S(R.string.a_6d0922bc), SEEK_INTERVALS.map { v ->
                                     SheetOption(S(R.string.x_seconds, v), v == store.seekInterval) {
@@ -386,6 +387,15 @@ fun PlayerSheet(
                                 openChoice(S(R.string.a_32a44b18), SUBTITLE_COLORS.map { (name, argb) ->
                                     SheetOption(name, argb == store.subColor) { store.subColor = argb; actions.changed() }
                                 })
+                            }
+                            SheetSection(S(R.string.a_beb4436d))
+                            SheetRow(S(R.string.a_ba704975), if (store.audioBoost) S(R.string.a_a41566d2) else S(R.string.a_bafc4458)) { actions.toggleAudioBoost() }
+                            SheetRow(S(R.string.a_e9952d72), S(R.string.x_tracks_n, ui.audioTracks.size), detail = ui.audioTracks.firstOrNull()?.label.orEmpty()) {
+                                val items = listOf(SheetOption(S(R.string.a_4cdfdadb)) { actions.clearAudioOverride() }) +
+                                    ui.audioTracks.mapIndexed { i, t ->
+                                        SheetOption(t.label, t.selected) { actions.setAudioTrack(t) }
+                                    }
+                                if (items.size == 1) vm.say(S(R.string.a_b767d344)) else openChoice(S(R.string.a_e9952d72), items)
                             }
                         }
 
