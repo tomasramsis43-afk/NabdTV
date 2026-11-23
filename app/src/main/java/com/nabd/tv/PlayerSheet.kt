@@ -80,6 +80,8 @@ fun PlayerSheet(
     if (settingsRev < -1) return   // keeps preference reads observable
 
     var tab by remember(ui.sheetRev) { mutableStateOf(ui.sheet ?: PlayerTab.Playback) }
+    // Home = six big tiles (speed / subtitles / audio / picture / episodes / more); a tile opens a short list or its own page.
+    var home by remember(ui.sheetRev) { mutableStateOf(ui.sheet == null || ui.sheet == PlayerTab.Playback) }
     var choice by remember { mutableStateOf<SheetChoice?>(null) }
     val scope = rememberCoroutineScope()
     val tabFocus = remember { FocusRequester() }
@@ -103,6 +105,31 @@ fun PlayerSheet(
     fun openChoice(title: String, options: List<SheetOption>) {
         choice = SheetChoice(title, options)
     }
+
+    fun speedChoice() = openChoice(S(R.string.a_6bc0cff3), PLAYER_SPEEDS.map { v ->
+        SheetOption(if (v == 1f) S(R.string.a_ebca19a0) else "${v}x", v == ui.speed) { actions.setSpeed(v) }
+    })
+
+    fun subtitleChoice() {
+        val dropExternal = { if (ui.extSub != null) actions.removeSubtitle() }
+        openChoice(
+            PlayerTab.Subtitles.label,
+            listOf(SheetOption(S(R.string.a_43de6b2e), !ui.subOn) { actions.setSubtitlesEnabled(false) }) +
+                ui.textTracks.mapIndexed { i, t -> SheetOption(t.label, t.selected && ui.subOn) { dropExternal(); actions.selectSubtitle(i) } } +
+                listOf(
+                    SheetOption(S(R.string.a_61151639)) { actions.loadSubtitle() },
+                    SheetOption(S(R.string.a_29531391), enabled = !live) { searchOnlineSubtitles() },
+                    SheetOption(S(R.string.player_more)) { tab = PlayerTab.Subtitles; home = false }
+                )
+        )
+    }
+
+    fun audioChoice() = openChoice(
+        PlayerTab.Audio.label,
+        listOf(SheetOption(S(R.string.a_4cdfdadb)) { actions.clearAudioOverride() }) +
+            ui.audioTracks.map { t -> SheetOption(t.label, t.selected) { actions.setAudioTrack(t) } } +
+            listOf(SheetOption(S(R.string.a_ba704975), store.audioBoost) { actions.toggleAudioBoost() })
+    )
 
     /** Online subtitle search (OpenSubtitles): lists results, downloads the picked one and applies it. */
     fun searchOnlineSubtitles() {
@@ -173,22 +200,8 @@ fun PlayerSheet(
             }
 
             Spacer(Modifier.height(14.dp))
-            // Three or four plain tabs; audio sits with subtitles, and the rarely used ones live under "More options" in Playback.
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                val hasEpisodes = !live && vm.episodes.any { it.url == ch.url }
-                val shown = listOf(PlayerTab.Playback, PlayerTab.Episodes, PlayerTab.Subtitles, PlayerTab.Display)
-                    .filter { it != PlayerTab.Episodes || hasEpisodes }
-                // A hidden tab (Audio / Gestures / Info) still highlights its home tab when it is the open one.
-                val home = (when (tab) { PlayerTab.Audio -> PlayerTab.Subtitles; else -> tab }).let { if (it in shown) it else PlayerTab.Playback }
-                shown.forEach { t ->
-                    PlayerButton(
-                        if (t == PlayerTab.Subtitles) S(R.string.tab_subs_audio) else t.label,
-                        modifier = Modifier.weight(1f),
-                        active = t == home,
-                        focusRequester = if (t == home) tabFocus else null,
-                        onClick = { tab = t; ui.sheet = t; choice = null }
-                    )
-                }
+            if (!home) {
+                PlayerButton("←  " + (if (tab == PlayerTab.Subtitles || tab == PlayerTab.Audio) S(R.string.tab_subs_audio) else tab.label), active = true, focusRequester = tabFocus, onClick = { home = true; choice = null })
             }
             Spacer(Modifier.height(10.dp))
 
@@ -212,6 +225,28 @@ fun PlayerSheet(
                             choice = null
                         }
                         Spacer(Modifier.height(5.dp))
+                    }
+                }
+            } else if (home) {
+                val hasEpisodes = !live && vm.episodes.any { it.url == ch.url }
+                val subValue = if (!ui.subOn) S(R.string.a_43de6b2e) else ui.textTracks.firstOrNull { it.selected }?.label ?: ui.extSub?.name ?: "—"
+                val audioValue = (ui.audioTracks.firstOrNull { it.selected } ?: ui.audioTracks.firstOrNull())?.label ?: "—"
+                val items = buildList<Triple<String, String, Pair<String, () -> Unit>>> {
+                    add(Triple("⏱", S(R.string.a_1bcf7e91), (if (ui.speed == 1f) "1x" else "${ui.speed}x") to { speedChoice() }))
+                    add(Triple("CC", PlayerTab.Subtitles.label, subValue to { subtitleChoice() }))
+                    add(Triple("♪", PlayerTab.Audio.label, audioValue to { audioChoice() }))
+                    add(Triple("▭", PlayerTab.Display.label, ui.aspect.label.substringBefore(' ') to { tab = PlayerTab.Display; home = false }))
+                    if (hasEpisodes) add(Triple("☰", PlayerTab.Episodes.label, "" to { tab = PlayerTab.Episodes; home = false }))
+                    add(Triple("⋯", S(R.string.player_more), "" to { tab = PlayerTab.Playback; home = false }))
+                }
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items.chunked(2).forEachIndexed { r, pair ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            pair.forEachIndexed { c, (ic, label, vl) ->
+                                SheetTile(ic, label, vl.first, Modifier.weight(1f), if (r == 0 && c == 0) tabFocus else null, vl.second)
+                            }
+                            if (pair.size == 1) Spacer(Modifier.weight(1f))
+                        }
                     }
                 }
             } else {
@@ -504,6 +539,28 @@ private fun SheetInfo(text: String, danger: Boolean = false) {
         text, fontSize = 12.sp, color = if (danger) Color(0xFFFF9A9A) else TextSecondary,
         modifier = Modifier.padding(vertical = 4.dp)
     )
+}
+
+@Composable
+private fun SheetTile(icon: String, label: String, value: String, modifier: Modifier, focusRequester: FocusRequester?, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier.heightIn(min = 96.dp)
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .onFocusChanged { focused = it.isFocused }
+            .clip(shape)
+            .background(if (focused) Color(0xFF2A3355) else Color(0x12FFFFFF))
+            .then(if (focused) Modifier.border(2.dp, Color.White, shape) else Modifier)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
+    ) {
+        Text(icon, fontSize = 24.sp, color = Color.White)
+        Spacer(Modifier.height(6.dp))
+        Text(label, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+        if (value.isNotBlank()) Text(value, fontSize = 12.sp, color = Accent, maxLines = 1)
+    }
 }
 
 @Composable
