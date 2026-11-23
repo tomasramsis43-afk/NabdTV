@@ -165,6 +165,7 @@ fun BoxScope.PlayerPopup(
     }
 }
 
+@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
 @Composable
 private fun PopRow(label: String, value: String, selected: Boolean, enabled: Boolean, focus: FocusRequester?, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
