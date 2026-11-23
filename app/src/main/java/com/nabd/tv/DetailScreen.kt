@@ -82,11 +82,16 @@ fun DetailScreen(vm: AppViewModel) {
 
     // 0 at the top of the page -> 1 once the hero has mostly scrolled away: the hero logo fades out while the same logo fades in beside the buttons.
     val heroPx = with(androidx.compose.ui.platform.LocalDensity.current) { ((d.heightDp - 8).coerceAtLeast(240)).dp.toPx() }
+    val logoH = if (narrow) 48.dp else if (d.tv) 72.dp else 60.dp
+    // One logo: it travels from the middle of the artwork to the empty slot beside the buttons while the page scrolls, then rides with the page.
+    var heroC by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    var slotC by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    fun centre(c: androidx.compose.ui.layout.LayoutCoordinates) = c.positionInRoot() + androidx.compose.ui.geometry.Offset(c.size.width / 2f, c.size.height / 2f)
     fun logoProgress(): Float = (scroll.value / (heroPx * 0.45f)).coerceIn(0f, 1f)
     val titleLogo: @Composable () -> Unit = {
         TitleLogo(
             c.name, kindOf(c), null,
-            height = if (narrow) 48.dp else if (d.tv) 72.dp else 60.dp,
+            height = logoH,
             alignment = Alignment.Center
         ) {
             Text(
@@ -145,7 +150,11 @@ fun DetailScreen(vm: AppViewModel) {
             ) {
                 // The logo / title never disappears: it rides up with the scroll and stays pinned at the top until the end of the page.
                 // The logo / title scrolls away with the page (it is no longer pinned).
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.graphicsLayer { alpha = 1f - logoProgress() }) { titleLogo() }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.onGloballyPositioned { heroC = centre(it) }
+                        .graphicsLayer { val pr = logoProgress(); translationX = (slotC.x - heroC.x) * pr; translationY = (slotC.y - heroC.y) * pr }
+                ) { titleLogo() }
                 Spacer(Modifier.height(if (d.tv) 150.dp else 110.dp))   // lifts the logo / title a little higher on the artwork
             }
             Spacer(Modifier.height(14.dp))
@@ -156,7 +165,7 @@ fun DetailScreen(vm: AppViewModel) {
             CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = maxOf(edge.start, edge.end)), verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-                    if (narrow) Box(Modifier.fillMaxWidth().padding(bottom = 10.dp).graphicsLayer { alpha = logoProgress() }, contentAlignment = Alignment.Center) { titleLogo() }
+                    if (narrow) Box(Modifier.fillMaxWidth().padding(bottom = 10.dp).height(logoH).onGloballyPositioned { slotC = centre(it) })
                     FlowRow(
                         Modifier.onPreviewKeyEvent { e ->
                             // Up from the buttons: back to the artwork (nothing focused), so the next Down reveals the buttons again.
@@ -214,8 +223,8 @@ fun DetailScreen(vm: AppViewModel) {
                         )
                     }
                 }
-                // Wide screens: the title / logo comes down with the page and stands on the right, beside the buttons and the synopsis.
-                if (!narrow) Box(Modifier.width(if (d.tv) 300.dp else 240.dp).padding(start = 16.dp).graphicsLayer { alpha = logoProgress() }, contentAlignment = Alignment.TopCenter) { titleLogo() }
+                // Wide screens: empty slot on the right, beside the buttons and the synopsis; the logo travels here as the page scrolls.
+                if (!narrow) Box(Modifier.width(if (d.tv) 300.dp else 240.dp).padding(start = 16.dp).height(logoH).onGloballyPositioned { slotC = centre(it) })
                 }
             }
             Spacer(Modifier.height(10.dp))
