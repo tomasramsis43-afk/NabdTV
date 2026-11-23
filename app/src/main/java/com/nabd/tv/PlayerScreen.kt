@@ -663,6 +663,18 @@ fun PlayerScreen(vm: AppViewModel) {
         onDispose { runCatching { player.playWhenReady = false; player.release() } }   // silence at once, even if release waits on the network
     }
 
+    // The connection came back while playback is stopped by an error: try once more by itself instead of waiting for the viewer to press Retry.
+    val netCtx = androidx.compose.ui.platform.LocalContext.current
+    DisposableEffect(player) {
+        val cm = netCtx.getSystemService(android.net.ConnectivityManager::class.java)
+        val main = android.os.Handler(android.os.Looper.getMainLooper())
+        val cb = object : android.net.ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) { main.post { if (ui.error != null) actions.retry() } }
+        }
+        runCatching { cm?.registerDefaultNetworkCallback(cb) }
+        onDispose { runCatching { cm?.unregisterNetworkCallback(cb) } }
+    }
+
     LaunchedEffect(ch.url, player) {
         retries = 0; altUsed = false
         ui.error = null; ui.errorDetail = ""; ui.nextEp = null; ui.ended = false
