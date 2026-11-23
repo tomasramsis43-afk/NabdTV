@@ -315,16 +315,51 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         poster to backdrop
     }
 
+    private val recsFile get() = java.io.File(ctx.filesDir, "home_recs_${store.currentProfile.id}.json")
+
+    /**
+     * Home recommendations. The last result is kept on the device and shown at once on the next launch while the fresh
+     * one is computed in the background. Only plain values are read off the main thread (raw lists + a snapshot of
+     * history / favourites), never derived Compose state.
+     */
     private fun refreshRecs() {
+        val a = all; val m = movies; val sr = series
+        val h = history; val f = favs
         viewModelScope.launch {
-            val h = history
-            val f = favs
-            val pool = liveList + movieList + seriesList
+            val file = recsFile
+            if (recs.isEmpty() && because == null) {
+                val restored = withContext(Dispatchers.Default) { runCatching { readRecsSnapshot(file, a + m + sr) }.getOrNull() }
+                if (restored != null && recs.isEmpty() && because == null) { recs = restored.first; because = restored.second }
+            }
             val (r, b) = withContext(Dispatchers.Default) {
+                val pool = (a + m + sr).filter { parental.visible(it) }
                 Recommender.recommend(pool, h, f, 24) to Recommender.becauseYouWatched(pool, h, 20)
             }
             recs = r; because = b
+            withContext(Dispatchers.IO) { runCatching { writeRecsSnapshot(file, r, b) } }
         }
+    }
+
+    private fun writeRecsSnapshot(file: java.io.File, r: List<Channel>, b: Pair<String, List<Channel>>?) {
+        val o = org.json.JSONObject()
+        o.put("recs", org.json.JSONArray(r.map { it.url }))
+        if (b != null) { o.put("becauseTitle", b.first); o.put("because", org.json.JSONArray(b.second.map { it.url })) }
+        file.writeText(o.toString())
+    }
+
+    private fun readRecsSnapshot(file: java.io.File, pool: List<Channel>): Pair<List<Channel>, Pair<String, List<Channel>>?>? {
+        if (!file.exists() || pool.isEmpty()) return null
+        val o = org.json.JSONObject(file.readText())
+        val byUrl = HashMap<String, Channel>(pool.size * 2)
+        for (c in pool) byUrl[c.url] = c
+        fun urls(key: String): List<Channel> {
+            val arr = o.optJSONArray(key) ?: return emptyList()
+            return (0 until arr.length()).mapNotNull { byUrl[arr.optString(it)] }.filter { parental.visible(it) }
+        }
+        val r = urls("recs")
+        val bl = urls("because")
+        val bt = o.optString("becauseTitle")
+        return r to (if (bl.isNotEmpty() && bt.isNotBlank()) bt to bl else null)
     }
 
     /* ───────── guide ───────── */
@@ -369,7 +404,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * background (after startup has settled) and swap the new data in; offline or on a server error the cache simply stays.
      */
     private fun refreshInBackgroundIfStale() {
-        if (!store.autoRefresh || repo.playlistUrl.isBlank()) return
+        if (!store.autoRefresh || (repo.playlistUrl.isBlank() && !hasXtream)) return
         viewModelScope.launch {
             kotlinx.coroutines.delay(90_000L)
             if (System.currentTimeMillis() - store.lastSyncAt < 12 * 3_600_000L) return@launch
@@ -1249,7 +1284,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         play(histChannel(h))
     }
 
-    fun clearHistory() { store.clearHistory(); WatchNext.clearAll(ctx); history = emptyList(); recs = emptyList(); because = null; bump() }
+    fun clearHistory() { store.clearHistory(); WatchNext.clearAll(ctx); history = emptyList(); recs = emptyList(); because = null; runCatching { recsFile.delete() }; bump() }
 
     /* ───────── recording / reminders ───────── */
     fun record(c: Channel, p: Prog) {
