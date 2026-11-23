@@ -79,7 +79,7 @@ object AutoUpdate {
 /** Polls the repo every ~15 minutes while the device is online. */
 class UpdateWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
     override suspend fun doWork(): Result {
-        runCatching { AutoUpdate.run(applicationContext, OkHttpClient()) }
+        runCatching { AutoUpdate.run(applicationContext, Net.client(15, 60)) }
         return Result.success()
     }
 

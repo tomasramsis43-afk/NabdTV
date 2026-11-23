@@ -23,8 +23,7 @@ object TmdbCharts {
         val topSeries: List<Entry>
     )
 
-    private val http = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build()
+    private val http = Net.client(10, 15)
 
     private fun getObj(url: String): JSONObject =
         http.newCall(Request.Builder().url(url).header("User-Agent", "NabdTV").build()).execute().use { r ->

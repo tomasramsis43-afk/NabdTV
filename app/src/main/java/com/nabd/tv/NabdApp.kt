@@ -107,7 +107,7 @@ object CrashReporter {
                     .header("X-Sentry-Auth", "Sentry sentry_version=7, sentry_client=nabdtv/1.0, sentry_key=$key")
                     .post(body.toString().toRequestBody("application/json".toMediaType()))
                     .build()
-                okhttp3.OkHttpClient().newCall(req).execute().use { r -> if (r.isSuccessful) CrashLog.clear(app) }
+                Net.client(10, 15).newCall(req).execute().use { r -> if (r.isSuccessful) CrashLog.clear(app) }
             }
         }.start()
     }

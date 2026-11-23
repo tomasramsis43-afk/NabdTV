@@ -165,9 +165,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
 /** Foreground service that copies the live stream (raw TS or HLS segments) into a local file. */
 class RecordService : Service() {
-    private val http = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS)
-        .followRedirects(true).followSslRedirects(true).build()
+    private val http = Net.client(15, 30)
     private val active = java.util.concurrent.atomic.AtomicInteger(0)
     private val notifId = 4242
 

@@ -40,7 +40,7 @@ object Logos {
     /** Optional TMDB key entered by the user in Settings. Blank = TMDB is never contacted. */
     @Volatile var tmdbKey: () -> String = { "" }
     private var dir: File? = null
-    private val http = OkHttpClient.Builder().connectTimeout(12, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build()
+    private val http = Net.client(12, 15)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val gate = Semaphore(2)
     private val inflight = ConcurrentHashMap<String, Deferred<File?>>()

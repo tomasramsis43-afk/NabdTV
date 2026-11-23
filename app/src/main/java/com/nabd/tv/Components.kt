@@ -217,7 +217,7 @@ fun LiveCard(vm: AppViewModel, ch: Channel, modifier: Modifier = Modifier) {
     Focusable(
         onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) },
         onFocused = { vm.lastFocusKey = key }, focusRequester = fr,
-        modifier = modifier.fillMaxWidth(), zoom = 1.04f,
+        modifier = modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = ch.name }, zoom = 1.04f,
         shape = RoundedCornerShape(Radius.poster)
     ) {
         Column(Modifier.fillMaxWidth().padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -289,6 +289,7 @@ fun PosterCard(
                 }
                 .clip(shape)
                 .background(SurfHigh)
+                .semantics(mergeDescendants = true) { contentDescription = ch.name }   // screen readers announce the title
                 .combinedClickable(onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) })
         ) {
             if (adaptive && kindOf(ch) != Kind.Live) {

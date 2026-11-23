@@ -12,8 +12,7 @@ import java.util.concurrent.TimeUnit
  * one of the provider's simultaneous-stream slots the way opening a real stream would.
  */
 object Prefetch {
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(4, TimeUnit.SECONDS).readTimeout(4, TimeUnit.SECONDS).build()
+    private val client = Net.client(4, 4)
 
     fun isHls(url: String) = url.substringBefore('?').endsWith(".m3u8", ignoreCase = true)
 

@@ -39,7 +39,7 @@ object Artwork {
 
     @Volatile var tmdbKey: () -> String = { "" }
     private var dir: File? = null
-    private val http = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(12, TimeUnit.SECONDS).build()
+    private val http = Net.client(10, 12, redirects = true)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val gate = Semaphore(3)
     private val inflight = ConcurrentHashMap<String, Deferred<Art?>>()

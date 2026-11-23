@@ -47,11 +47,7 @@ class Repo(private val ctx: Context, val store: Store) {
         val extra = seen.filter { it !in known }
         if (extra.isNotEmpty()) saveOrder(kind, known + extra)
     }
-    val http: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(90, TimeUnit.SECONDS)
-        .followRedirects(true).followSslRedirects(true)
-        .build()
+    val http: OkHttpClient = Net.client(15, 90)
 
     init {
         prefs.getString("ua", null)?.let { httpUa = it }
