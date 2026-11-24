@@ -124,6 +124,13 @@ internal fun BoxScope.PlayerControlLayers(
         }
     }
 
+    // Movies / series: slim remaining-time bar while the controls are hidden.
+    if (vod && !ui.overlay && !vm.inPip && ui.sheet == null && ui.error == null && ui.resumeAt <= 0L &&
+        !ui.showJump && ui.nextEp == null && !ui.ended && ui.duration > 0L
+    ) {
+        VodMiniBar(ui.position, ui.duration, dev.tv)
+    }
+
     // Live TV: same icon-based controls as movies and series.
     if (live && ui.overlay && !ui.locked && !vm.inPip && ui.sheet == null && ui.error == null && ui.resumeAt <= 0L) {
         val (now, next) = vm.nowNext(chRef.value)
@@ -224,6 +231,29 @@ internal fun BoxScope.PlayerControlLayers(
                 PlayerButton(S(R.string.a_c01ec84a)) { openSheet(PlayerTab.Playback) }
                 PlayerButton("📊") { ui.stats = !ui.stats }
             }
+        }
+    }
+}
+
+/** Thin progress line with the remaining time, shown at the bottom when the full controls are hidden. */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun BoxScope.VodMiniBar(position: Long, duration: Long, tv: Boolean) {
+    val pct = (position.toFloat() / duration).coerceIn(0f, 1f)
+    Column(
+        Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+            .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0x99000000))))
+            .padding(horizontal = if (tv) 48.dp else 12.dp)
+            .padding(top = 14.dp, bottom = if (tv) 14.dp else 8.dp)
+    ) {
+        Text(
+            "-" + fmtTime(duration - position),
+            fontSize = if (tv) 13.sp else 11.sp, color = Color(0xCCFFFFFF), maxLines = 1,
+            modifier = Modifier.align(Alignment.End)
+        )
+        Spacer(Modifier.height(4.dp))
+        Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color(0x33FFFFFF))) {
+            Box(Modifier.fillMaxHeight().fillMaxWidth(pct).background(Accent))
         }
     }
 }
