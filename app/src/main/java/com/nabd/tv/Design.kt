@@ -56,7 +56,6 @@ val Accent2: Color get() = if (Ui.dark) Color(0xFFE5B567) else Color(0xFF9A6B12)
 val OnAccent: Color get() = Color.White
 
 val Bg: Color get() = if (Ui.dark) Color(0xFF08090D) else Color(0xFFF5F6FA)
-val BgElevated: Color get() = if (Ui.dark) Color(0xFF0C0E13) else Color(0xFFFFFFFF)
 val Surf: Color get() = if (Ui.dark) Color(0xFF14161D) else Color.White
 val SurfHigh: Color get() = if (Ui.dark) Color(0xFF1B1E27) else Color(0xFFEDEFF5)
 val Ink: Color get() = if (Ui.dark) Color(0xFFF3F5FA) else Color(0xFF14161D)
@@ -77,7 +76,6 @@ val Ok: Color get() = if (Ui.dark) Color(0xFF4BD6A2) else Color(0xFF12855D)
 val Warn: Color get() = if (Ui.dark) Color(0xFFFFC65C) else Color(0xFF9A6B12)
 
 val GlassFill: Color get() = if (Ui.dark) Color(0x0DFFFFFF) else Color(0xCCFFFFFF)
-val GlassFocus: Color get() = if (Ui.dark) Color(0x1AFFFFFF) else Color(0xFFFFFFFF)
 val GlassBorder: Color get() = if (Ui.dark) Color(0x1FFFFFFF) else Color(0xFFE3E6EF)
 val Hairline: Color get() = if (Ui.dark) Color(0x14FFFFFF) else Color(0xFFE6E8F0)
 val Navy: Color get() = if (Ui.dark) Color(0xFF101218) else Color(0xFF22252F)
@@ -93,17 +91,6 @@ object Radius {
     val poster = 12.dp
     val hero = 26.dp
 }
-
-object Space {
-    val xs = 4.dp
-    val s = 8.dp
-    val m = 12.dp
-    val l = 16.dp
-    val xl = 24.dp
-    val xxl = 32.dp
-}
-
-val SerifFont: FontFamily = FontFamily.Serif
 
 /* ── surfaces ─────────────────────────────────────────────────────────────── */
 

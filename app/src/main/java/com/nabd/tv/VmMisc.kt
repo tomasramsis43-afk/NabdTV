@@ -27,19 +27,6 @@ fun AppViewModel.tickWatch(sec: Int) {
     }
 }
 
-/** "What should I watch?" — a few picks that fit the time of day and the user's taste. */
-fun AppViewModel.tonight() {
-    val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-    val pool = when {
-        hour in 5..11 -> liveList.filter { Classifier.genre(it) == Genre.News }.ifEmpty { liveList }
-        hour in 18..23 || hour < 2 -> (movieList + seriesList).ifEmpty { liveList }
-        else -> liveList
-    }
-    val picks = (recs.shuffled().take(3) + pool.shuffled().take(5)).distinctBy { it.url }.take(6)
-    if (picks.isEmpty()) { say(tx(R.string.no_suggestions)); return }
-    menu = MenuRequest(tx(R.string.what_to_watch), picks.map { c -> (if (kindOf(c) == Kind.Live) "📺 " else "🎬 ") + c.name to { open(c) } })
-}
-
 fun AppViewModel.checkUpdate(manual: Boolean) {
     viewModelScope.launch {
         try {

@@ -70,14 +70,3 @@ fun TitleLogo(
         } else fallback()
     }
 }
-
-/** Logo drawn at the bottom of a poster; draws nothing at all when there is no verified logo. */
-@Composable
-fun PosterLogo(title: String, kind: Kind, height: Dp, modifier: Modifier = Modifier) {
-    val f = rememberTitleLogo(title, kind, null)
-    var failed by remember(f) { mutableStateOf(false) }
-    if (f != null && !failed) AsyncImage(
-        model = f, contentDescription = null, contentScale = ContentScale.Fit, alignment = Alignment.BottomCenter,
-        onError = { failed = true }, modifier = modifier.height(height)
-    )
-}

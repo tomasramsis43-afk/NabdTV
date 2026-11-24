@@ -48,20 +48,6 @@ internal fun AppViewModel.legacyMeta(h: HistoryEntry): EpMeta? {
     return EpMeta(s.url, s.name, season, num, "", null)
 }
 
-/** Landscape image for a card that has none yet: a movie's backdrop, or the episode's still (TVmaze / TMDB). */
-suspend fun AppViewModel.continueImage(it: ContinueItem): String? {
-    if (imageCache.containsKey(it.key + it.episodeUrl)) return imageCache[it.key + it.episodeUrl]
-    val img = try {
-        if (it.seriesUrl == null) repo.vodInfo(it.play, Kind.Movie)?.backdrop
-        else repo.episodeStills(it.title, it.season)[it.num]?.also { still ->
-            val m = store.epMeta(it.episodeUrl) ?: EpMeta(it.seriesUrl, it.title, it.season, it.num, it.subtitle, null)
-            store.saveEpMeta(it.episodeUrl, m.copy(image = still)); bump()
-        }
-    } catch (_: Exception) { null }
-    if (img != null) imageCache[it.key + it.episodeUrl] = img
-    return img
-}
-
 fun AppViewModel.playContinue(it: ContinueItem) {
     val sUrl = it.seriesUrl
     if (sUrl == null) { play(it.play); return }

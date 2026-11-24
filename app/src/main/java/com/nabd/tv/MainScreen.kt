@@ -411,7 +411,6 @@ private fun HomeHero(
     modifier: Modifier = Modifier
 ) {
     val kind = kindOf(c)
-    val primaryLabel = when (kind) { Kind.Series -> tr(R.string.detail_episodes); Kind.Movie -> tr(R.string.play); Kind.Live -> tr(R.string.watch) }
     val art = info?.backdrop ?: c.logo
 
     val edge = edgePad(d)
@@ -446,28 +445,6 @@ private fun HomeHero(
                 Text(c.name, style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.65f), Offset(0f, 3f), 14f)), fontSize = if (d.tv) 26.sp else if (d.widthDp >= 600) 22.sp else 18.sp, lineHeight = if (d.tv) 32.sp else if (d.widthDp >= 600) 28.sp else 23.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
-    }
-}
-
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun HeroFav(vm: AppViewModel, c: Channel, palette: ArtworkPalette, d: Device) {
-    var focused by remember { mutableStateOf(false) }
-    val fav = c.url in vm.favs
-    val sc by animateFloatAsState(if (focused) 1.08f else 1f, tween(140), label = "favScale")
-    val size = if (d.tv) 52.dp else 46.dp
-    val iconSize = if (d.tv) 24.dp else 20.dp
-    Box(
-        Modifier.size(size).scale(sc)
-            .onFocusChanged { focused = it.isFocused }
-            .clip(CircleShape)
-            .background(if (fav) Accent2.copy(alpha = 0.26f) else Color(0x55000000))
-            .border(if (focused) 2.dp else 1.5.dp, if (focused) Color.White else if (fav) Accent2.copy(alpha = 0.85f) else Color(0xCCFFFFFF), CircleShape)
-            .then(if (focused) Modifier.softShadow(CircleShape, 12.dp, if (fav) Accent2 else Color.White) else Modifier)
-            .clickable { vm.toggleFav(c) },
-        contentAlignment = Alignment.Center
-    ) {
-        NIcon(Ic.Star, if (fav) Accent2 else Color.White, iconSize)
     }
 }
 

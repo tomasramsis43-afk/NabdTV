@@ -52,8 +52,6 @@ class Repo(private val ctx: Context, val store: Store) {
     /** The guide files are per provider too, so switching never shows (or re-parses) another provider's guide. */
     internal fun epgXml() = File(ctx.filesDir, "epg_${slotId()}.xml")
     internal fun epgParsed() = File(ctx.filesDir, "epg_cache_${slotId()}.bin")
-    /** Forgets the active provider's guide files. */
-    fun dropEpgCache() { epgXml().delete(); epgParsed().delete() }
 
     /* Category order is the provider's own order and stays fixed across refreshes (new categories go to the end). */
     private val orderCache = HashMap<String, List<String>>()

@@ -446,9 +446,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /* ───────── health ───────── */
     var healthStatus by mutableStateOf<String?>(null); internal set
 
-    /** (healthy, total) among the links that have actually been tested. */
-    val healthSummary by derivedStateOf { rev; store.healthStats() }
-
     /* ───────── multi-view ───────── */
     var multi by mutableStateOf<List<Channel>>(emptyList()); internal set
 

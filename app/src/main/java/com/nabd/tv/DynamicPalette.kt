@@ -169,15 +169,6 @@ fun rememberArtworkPalette(url: String?): ArtworkPalette {
     return ArtworkPalette(primary, secondary, accent)
 }
 
-/** Tints a colour token for text drawn on top of artwork (keeps AA contrast on dark scrims). */
-fun readableOnArt(color: Color): Color {
-    val hsl = FloatArray(3)
-    android.graphics.Color.colorToHSV(color.toArgb(), hsl)
-    hsl[2] = hsl[2].coerceIn(0.82f, 0.97f)
-    hsl[1] = hsl[1].coerceIn(0f, 0.55f)
-    return Color(android.graphics.Color.HSVToColor(hsl))
-}
-
 /**
  * Deepens an artwork colour so it can be used as a filled button background:
  * at most 46% brightness keeps the white label above 4.5:1 contrast for every hue.

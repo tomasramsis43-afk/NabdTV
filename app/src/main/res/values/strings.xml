@@ -32,10 +32,8 @@
     <string name="common_loading">جارٍ التحميل...</string>
     <string name="health_status">فحص الروابط: %1$s</string>
     <string name="home_empty">لا يوجد محتوى بعد. حدّد هذا القسم أو أضف مزوّد البث.</string>
-    <string name="type_live">بث مباشر</string>
     <string name="play">تشغيل</string>
     <string name="watch">مشاهدة</string>
-    <string name="catchup_chip">إعادة</string>
     <string name="details">التفاصيل</string>
     <string name="no_results">لا توجد نتائج</string>
     <string name="multi_view_btn">▦ مشاهدة متعددة (%1$d)</string>
@@ -61,8 +59,6 @@
     <string name="kids">أطفال</string>
     <string name="pip_unsupported">الجهاز لا يدعم النافذة العائمة</string>
     <string name="shelf_continue">استكمال المشاهدة</string>
-    <string name="shelf_top_movies">الأفلام الأعلى تقييماً</string>
-    <string name="shelf_top_series">المسلسلات الأعلى تقييماً</string>
     <string name="shelf_new_movies">أحدث الأفلام</string>
     <string name="shelf_new_series">أحدث المسلسلات</string>
     <string name="group_all">الكل</string>
@@ -657,7 +653,6 @@
     <string name="x_next_ep">الحلقة التالية: %1$d</string>
 
     <string name="x_shelf_fav">المفضلة</string>
-    <string name="x_shelf_recommended">مقترح لك</string>
     <string name="x_shelf_recent">شاهدتها مؤخراً</string>
     <string name="vm_err_host">تعذّر الوصول للسيرفر (الاسم غير صحيح أو لا يوجد إنترنت)</string>
     <string name="vm_err_timeout">انتهت مهلة الاتصال بالسيرفر</string>
@@ -694,7 +689,6 @@
     <string name="x_cont_no_prev">هذه أول حلقة</string>
     <string name="group_continue">▶ متابعة المشاهدة</string>
 
-    <string name="splash_loading">جارٍ تحميل بياناتك</string>
 
     <string name="x_hide_titles">إخفاء أسماء الأفلام والمسلسلات تحت البوستر</string>
     <string name="x_hero_rotate">تغيير بوستر الصفحة الرئيسية تلقائياً عند عدم اللمس</string>

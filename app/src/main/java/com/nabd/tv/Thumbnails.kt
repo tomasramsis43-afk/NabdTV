@@ -46,8 +46,6 @@ class ThumbnailLoader private constructor(
     private var failed = false
     private val cache = object : LruCache<Long, Bitmap>(16) {}
 
-    val supported: Boolean get() = !failed
-
     private fun ensure(): MediaMetadataRetriever? {
         retriever?.let { return it }
         if (failed) return null

@@ -339,17 +339,6 @@ fun ExoPlayer.setSubtitlesEnabled(enabled: Boolean) {
     }
 }
 
-/** (groupIndex, trackIndex) of the active track of [type], if any. */
-fun ExoPlayer.selectedTrack(type: Int): Pair<Int, Int>? {
-    var gi = -1
-    for (group in currentTracks.groups) {
-        gi++
-        if (group.type != type) continue
-        for (i in 0 until group.length) if (group.isTrackSelected(i)) return gi to i
-    }
-    return null
-}
-
 /* ------------------------------------------------------------------ */
 /* Diagnostics                                                         */
 /* ------------------------------------------------------------------ */
@@ -384,9 +373,3 @@ fun playbackStats(p: ExoPlayer): String {
         if (Build.VERSION.SDK_INT >= 29) append(S(R.string.x_st_live, if (p.isCurrentMediaItemLive) S(R.string.x_live_word) else "VOD", AudioDelayBus.ms))
     }
 }
-
-/** True when the device has a decoder for [mime] (used to explain passthrough / codec support honestly). */
-fun deviceSupportsMime(mime: String): Boolean = runCatching {
-    val list = android.media.MediaCodecList(android.media.MediaCodecList.REGULAR_CODECS)
-    list.codecInfos.any { info -> !info.isEncoder && info.supportedTypes.any { it.equals(mime, true) } }
-}.getOrDefault(false)

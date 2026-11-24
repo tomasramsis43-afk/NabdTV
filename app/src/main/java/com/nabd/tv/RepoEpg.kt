@@ -110,15 +110,3 @@ suspend fun Repo.loadEpg(channels: List<Channel>, force: Boolean): Map<String, L
         } catch (e: Exception) { emptyMap() }
     }
 
-/** Channel ids found in the cached guide (for the manual EPG match screen). */
-suspend fun Repo.guideChannelNames(): List<String> = withContext(Dispatchers.IO) {
-    try {
-        val f = epgXml()
-        if (!f.exists()) return@withContext emptyList()
-        val raw = f.inputStream().buffered()
-        raw.mark(2); val b1 = raw.read(); val b2 = raw.read(); raw.reset()
-        val src = if (b1 == 0x1f && b2 == 0x8b) GZIPInputStream(raw) else raw
-        src.use { EpgParser.readChannels(it).ids.values.sorted() }
-    } catch (e: Exception) { emptyList() }
-}
-

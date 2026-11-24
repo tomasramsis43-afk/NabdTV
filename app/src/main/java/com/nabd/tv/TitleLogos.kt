@@ -177,22 +177,6 @@ object Logos {
         } catch (_: Exception) { null }
     }
 
-    /** Adds a manual logo (PNG/JPG/WebP bytes) for a title; used by future UI or tooling. */
-    fun addManual(title: String, bytes: ByteArray): Boolean {
-        val d = dir ?: return false
-        if (!decodes(bytes)) return false
-        File(File(d, "manual"), "${LogoMatch.norm(title)}.png").writeBytes(bytes)
-        mem.clear(); return true
-    }
-
-    /** Forget everything cached (Settings > Storage can call this). Manual logos are kept. */
-    fun clearCache() {
-        val d = dir ?: return
-        d.listFiles()?.filter { it.isFile }?.forEach { it.delete() }
-        synchronized(index) { index.keys().asSequence().toList().forEach { index.remove(it) } }
-        mem.clear()
-    }
-
     private fun decodes(b: ByteArray): Boolean {
         val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(b, 0, b.size, o)

@@ -35,9 +35,6 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 
-/** Index of the "smart" aspect mode in the player's ratio list. */
-const val SMART_RATIO = 3
-
 fun Context.findActivity(): Activity? {
     var c: Context = this
     while (c is ContextWrapper) { if (c is Activity) return c; c = c.baseContext }
@@ -74,34 +71,6 @@ fun rewindLive(vm: AppViewModel, player: ExoPlayer, url: String, sec: Int) {
     } else vm.say(S(R.string.a_32fe8f74))
 }
 
-/** Live diagnostics for the stats overlay. */
-fun statsText(p: ExoPlayer): String {
-    val f = p.videoFormat
-    val kbps = (f?.bitrate ?: -1).takeIf { it > 0 }?.div(1000) ?: 0
-    val fps = f?.frameRate?.takeIf { it > 0f }?.toInt() ?: 0
-    val dropped = runCatching { p.videoDecoderCounters?.droppedBufferCount ?: 0 }.getOrDefault(0)
-    return "${f?.width ?: 0}×${f?.height ?: 0} · ${f?.codecs ?: "-"} · $kbps kbps · $fps fps\n" +
-        S(R.string.x_stats_buffer_dropped, p.totalBufferedDuration / 1000, dropped)
-}
-
-/**
- * Touch gestures:
- *  double-tap left/right = seek ∓10 s (VOD) · vertical drag on the left edge = brightness,
- *  right edge = volume · vertical drag in the middle = zap channels (live) · horizontal swipe = scrub (VOD) ·
- *  tap = info · long-press = menu.
- */
-fun Modifier.playerGestures(
-    key: Any?,
-    live: Boolean,
-    onTap: () -> Unit,
-    onLongPress: () -> Unit,
-    onSeek: (Int) -> Unit,
-    onZap: (Int) -> Unit,
-    onSide: (left: Boolean, delta: Float) -> Unit,
-    onHDragStart: () -> Unit = {},
-    onHDrag: (fraction: Float) -> Unit = {},   // fraction of the screen width dragged since the start (negative = back)
-    onHDragEnd: () -> Unit = {}
-): Modifier = this
     .pointerInput(key) {
         detectTapGestures(
             onTap = { onTap() },
@@ -134,20 +103,6 @@ fun Modifier.playerGestures(
             if (!live) { acc += d / size.width; onHDrag(acc) }
         }
     }
-
-/** Two-finger pinch to zoom (1×–4×) and pan; single-finger gestures are left untouched. */
-fun Modifier.pinchZoom(onPinch: (Float, Offset) -> Unit): Modifier = pointerInput(Unit) {
-    awaitEachGesture {
-        awaitFirstDown(requireUnconsumed = false)
-        do {
-            val ev = awaitPointerEvent()
-            if (ev.changes.size >= 2) {
-                onPinch(ev.calculateZoom(), ev.calculatePan())
-                ev.changes.forEach { it.consume() }
-            }
-        } while (ev.changes.any { it.pressed })
-    }
-}
 
 /** Channel list that slides over the video, so you can switch channels without leaving the stream. */
 @Composable

@@ -32,10 +32,8 @@
     <string name="common_loading">Loading…</string>
     <string name="health_status">Link check: %1$s</string>
     <string name="home_empty">No content yet. Select this section or add a provider.</string>
-    <string name="type_live">Live TV</string>
     <string name="play">Play</string>
     <string name="watch">Watch</string>
-    <string name="catchup_chip">Replay</string>
     <string name="details">Details</string>
     <string name="no_results">No results</string>
     <string name="multi_view_btn">▦ Multi-view (%1$d)</string>
@@ -61,8 +59,6 @@
     <string name="kids">Kids</string>
     <string name="pip_unsupported">This device does not support picture-in-picture</string>
     <string name="shelf_continue">Continue watching</string>
-    <string name="shelf_top_movies">Top rated movies</string>
-    <string name="shelf_top_series">Top rated series</string>
     <string name="shelf_new_movies">Latest movies</string>
     <string name="shelf_new_series">Latest series</string>
     <string name="group_all">All</string>
@@ -657,7 +653,6 @@
     <string name="x_next_ep">Next episode: %1$d</string>
 
     <string name="x_shelf_fav">My favorites</string>
-    <string name="x_shelf_recommended">Recommended for you</string>
     <string name="x_shelf_recent">Recently watched</string>
     <string name="vm_err_host">Could not reach the server (wrong name or no internet)</string>
     <string name="vm_err_timeout">The server connection timed out</string>
@@ -694,7 +689,6 @@
     <string name="x_cont_no_prev">This is the first episode</string>
     <string name="group_continue">▶ Continue watching</string>
 
-    <string name="splash_loading">Loading your content</string>
 
     <string name="x_hide_titles">Hide movie and series names under posters</string>
     <string name="x_hero_rotate">Rotate the home poster automatically when idle</string>

@@ -32,11 +32,6 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 
-fun tabIcon(t: Tab): Ic = when (t) {
-    Tab.Home -> Ic.Home; Tab.Live -> Ic.Live; Tab.Movies -> Ic.Movies
-    Tab.Series -> Ic.Series; Tab.Guide -> Ic.Guide; Tab.Recordings -> Ic.Rec
-}
-
 fun visibleTabs(vm: AppViewModel): List<Tab> = Tab.entries.filter { (it != Tab.Movies && it != Tab.Series) || vm.hasXtream }
 
 /**

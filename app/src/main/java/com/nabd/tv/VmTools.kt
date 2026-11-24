@@ -64,8 +64,6 @@ fun AppViewModel.openMulti() {
 
 fun AppViewModel.closeMulti() { restoreFocus = true; screen = Screen.Main }
 
-fun AppViewModel.clearMulti() { multi = emptyList() }
-
 /* ───────── manual EPG match ───────── */
 /** Loads the guide now (after switching it on in Settings). */
 fun AppViewModel.reloadEpg() { viewModelScope.launch { epg = repo.loadEpg(all, false); bump() } }

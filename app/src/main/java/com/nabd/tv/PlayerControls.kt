@@ -71,7 +71,6 @@ class PlayerUiState {
     var locked by mutableStateOf(false)
     var lockHint by mutableStateOf(false)
     var overlay by mutableStateOf(true)
-    var focusMode by mutableStateOf(false)
     var ping by mutableIntStateOf(0)
 
     var sheet by mutableStateOf<PlayerTab?>(null)
@@ -115,7 +114,6 @@ class PlayerUiState {
     var surfaceW by mutableIntStateOf(0)
     var surfaceH by mutableIntStateOf(0)
 
-    var mediaUrl by mutableStateOf("")
     var seekInterval by mutableIntStateOf(10)
 }
 

@@ -52,7 +52,6 @@ data class Device(val form: FormFactor, val widthDp: Int, val heightDp: Int) {
 
     /** Width of a poster in the horizontal home shelves. */
     val shelfPoster: Dp get() = if (tv) 104.dp else if (widthDp >= 600) 98.dp else 90.dp
-    val shelfLive: Dp get() = if (tv) 140.dp else 124.dp
 
     val sideList: Dp get() = if (tv) 220.dp else 190.dp
     val control: Dp get() = if (tv) 44.dp else 46.dp
