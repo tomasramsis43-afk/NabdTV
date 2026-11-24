@@ -451,6 +451,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 warmLists()
                 screen = Screen.Main
                 preloadVod()
+                pendingRestore?.let { pendingRestore = null; it() }
                 pendingResume?.let { pendingResume = null; playResume(it) }
                 launch {
                     epg = repo.loadEpg(all, force)
@@ -1331,6 +1332,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var pendingResume: String? = null
 
     /** Called when the user taps a "Watch Next" tile; waits for the channel list when the app is still starting. */
+    /** The system killed the process while the app was in the background: put the viewer back on the same tab / title once the lists are loaded. */
+    private var pendingRestore: (() -> Unit)? = null
+    fun restoreAfterKill(tabName: String?, detailFields: Array<String>?) {
+        if (all.isNotEmpty()) return   // the ViewModel survived (rotation etc.): nothing was lost
+        pendingRestore = {
+            runCatching { tabName?.let { tab = Tab.valueOf(it) } }
+            if (detailFields != null && detailFields.size >= 4 && detailFields[1].isNotBlank())
+                open(Channel(0, detailFields[0], detailFields[1], detailFields[2].ifBlank { null }, detailFields[3]))
+        }
+    }
+
     fun resumeFromWatchNext(url: String) {
         if (all.isEmpty()) { pendingResume = url; return }
         playResume(url)

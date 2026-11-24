@@ -34,7 +34,7 @@ object Secret {
         return try {
             val c = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, key()) }
             PREFIX + Base64.encodeToString(c.iv + c.doFinal(plain.toByteArray()), Base64.NO_WRAP)
-        } catch (e: Exception) { plain }
+        } catch (e: Exception) { Diag.note("Secret.enc (stored unencrypted)", e); plain }
     }
 
     /** Plain (legacy) values pass through unchanged; an undecryptable value yields "". */
@@ -44,6 +44,6 @@ object Secret {
             val raw = Base64.decode(s.removePrefix(PREFIX), Base64.NO_WRAP)
             val c = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, raw, 0, 12)) }
             String(c.doFinal(raw, 12, raw.size - 12))
-        } catch (e: Exception) { "" }
+        } catch (e: Exception) { Diag.note("Secret.dec (value unreadable)", e); "" }
     }
 }

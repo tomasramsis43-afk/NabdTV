@@ -78,6 +78,13 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= 33) runCatching { notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS) }
         setContent { AppTheme { App(vm) } }
         if (savedInstanceState == null) WatchNext.urlFrom(intent)?.let { vm.resumeFromWatchNext(it) }
+        else vm.restoreAfterKill(savedInstanceState.getString("rs_tab"), savedInstanceState.getStringArray("rs_detail"))
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString("rs_tab", vm.tab.name)
+        vm.detail?.let { outState.putStringArray("rs_detail", arrayOf(it.name, it.url, it.logo.orEmpty(), it.group)) }
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
