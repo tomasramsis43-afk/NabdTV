@@ -1,15 +1,15 @@
-# Remaining issues (after the second cycle)
+# Remaining issues (after the third round)
 
 | # | Issue | Why it is open |
 |---|---|---|
-| 1 | Startup freeze cause unconfirmed; the optimised release build reported much faster by the owner, so the debug build was a likely contributor | Needs logcat if it still happens on release |
-| 2 | `Secret.enc` falls back to plain text on error; `Secret.dec` returns "" for an undecryptable value | Changing either alters sign-in behaviour; needs a device check |
-| 3 | After the system kills the app, it restarts at Home (lists come from the local cache, Continue watching resumes the video) | No saved screen state; judged acceptable for this app, not changed |
-| 4 | Watch history is one JSON string rewritten on each save (capped at 400 entries) | Small cost at this size; no change needed until the cap grows |
-| 5 | (done) per-provider cache: switching shows the other provider's cached lists; not verified on a device | Migration of the old single cache runs once on first launch |
-| 6 | Large files (`AppViewModel`, `PlayerScreen`, `Repo`) | Splitting is a pure refactor with regression risk and no device to verify; deliberately not done |
-| 7 | No ViewModel / UI / instrumented tests; EPG parser untestable on the JVM (uses `android.util.Xml`) | Needs a test harness |
-| 8 | Image descriptions on purely decorative images | Left empty on purpose: the title text next to them is announced |
-| 9 | Cleartext HTTP allowed, `Secret.kt` untouched | Owner decision |
-| 10 | Dependency vulnerability scan, dead-code scan | Not run |
-| 11 | Nothing in either cycle was run on a device | No device available here |
+| 1 | Startup freeze cause unconfirmed. The owner reports the optimised release build is much faster than debug (debug was the build users installed), so the debug build was a likely contributor | Needs logcat if it still happens on the release build |
+| 2 | `Secret.enc` still falls back to plain text on error, and `Secret.dec` still returns "" for an unreadable value | Both failures are now noted in `Diag` and the crash log; changing the behaviour itself alters sign-in and needs a device check |
+| 3 | `AppViewModel` (about 1,470 lines), `PlayerScreen` (about 1,500 lines, one composable) and `Repo` (about 830 lines, one class) are each a single large unit | Splitting them means introducing state-holder classes, not moving code, and there is no device here to catch regressions. Not done on purpose |
+| 4 | Watch history is one JSON string rewritten on each save (capped at 400 entries) | Small cost at this size |
+| 5 | A provider's cache is shown at once on switching, but the guide (EPG) of the new provider is re-downloaded | The guide is one shared file; a per-provider guide file is a small follow-up |
+| 6 | No ViewModel / UI / instrumented tests; the EPG parser cannot run on the JVM (`android.util.Xml`) | Needs a test harness |
+| 7 | Cleartext HTTP allowed, `Secret.kt` encryption scheme untouched | Owner decision |
+| 8 | Dependency vulnerability scan and dead-code scan | Not run |
+| 9 | Nothing in any round was run on a device | No device available here |
+
+Done since the last version of this file: restore of the tab and open title after the system kills the app; per-provider cache with a one-time migration of the old cache; `Secret` failures noted in `Diag`.
