@@ -3,6 +3,7 @@ package com.nabd.tv
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import java.util.Locale
+import kotlinx.coroutines.sync.withPermit
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,6 +16,7 @@ object TmdbRatings {
     private val map = ConcurrentHashMap<String, String>()
     private val holders = HashMap<String, MutableState<String?>>()
     private val tried = ConcurrentHashMap.newKeySet<String>()
+    private val gate = kotlinx.coroutines.sync.Semaphore(3)   // at most 3 rating lookups at once
     private var prefs: android.content.SharedPreferences? = null
 
     fun init(ctx: android.content.Context) {
@@ -31,9 +33,11 @@ object TmdbRatings {
     /** Looks the rating up once per title. Call on the main thread (e.g. LaunchedEffect); the network part runs on IO. */
     suspend fun resolve(ch: Channel) {
         val kind = kindOf(ch)
-        if (kind == Kind.Live || map.containsKey(ch.url) || !tried.add(ch.url)) return
+        if (kind == Kind.Live || map.containsKey(ch.url) || ch.url in tried) return
+        kotlinx.coroutines.delay(300)   // fast scrolling: cards that leave within this time never start a request
+        if (!tried.add(ch.url)) return
         val v = try {
-            withContext(Dispatchers.IO) { Artwork.hit(ch.name, kind, null)?.optDouble("vote_average", 0.0) ?: 0.0 }
+            gate.withPermit { withContext(Dispatchers.IO) { Artwork.hit(ch.name, kind, null)?.optDouble("vote_average", 0.0) ?: 0.0 } }
         } catch (e: Exception) { tried.remove(ch.url); return }
         if (v <= 0.0) return
         val s = String.format(Locale.US, "%.1f", v)

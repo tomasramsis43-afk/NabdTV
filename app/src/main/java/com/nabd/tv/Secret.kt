@@ -38,12 +38,17 @@ object Secret {
     }
 
     /** Plain (legacy) values pass through unchanged; an undecryptable value yields "". */
+    // Keystore decryption is slow (milliseconds, more on TV boxes) and the TMDB key is read by every poster card on every
+    // recomposition while scrolling. Successful results are kept in memory, keyed by the encrypted value (so a changed key misses).
+    private val decCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
     fun dec(s: String): String {
         if (!isEncrypted(s)) return s
+        decCache[s]?.let { return it }
         return try {
             val raw = Base64.decode(s.removePrefix(PREFIX), Base64.NO_WRAP)
             val c = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, raw, 0, 12)) }
-            String(c.doFinal(raw, 12, raw.size - 12))
+            String(c.doFinal(raw, 12, raw.size - 12)).also { decCache[s] = it }
         } catch (e: Exception) { Diag.note("Secret.dec (value unreadable)", e); "" }
     }
 }
