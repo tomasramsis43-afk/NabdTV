@@ -31,3 +31,4 @@ All items compiled and passed CI (unit tests, `assembleDebug`, compatibility lin
 | Process death | After the system kills the app, it returns to the same tab and open title once the lists are loaded | `MainActivity.kt`, `AppViewModel.kt` |
 | Providers | Per-provider cache (rows kept as `live@<id>` etc.), one-time migration of the old cache and category-order files, search limited to the active provider, switching shows cached lists at once | `Repo.kt`, `Db.kt`, `AppViewModel.kt` |
 | Diagnostics | `Secret` encryption / decryption failures are noted | `Secret.kt` |
+| Structure | `AppViewModel` split into seven extension files; `PlayerScreen` overlay layers moved into `PlayerEndLayers.kt`, `PlayerStatusLayers.kt`, `PlayerControlLayers.kt` (behaviour unchanged, CI green, not run on a device) | `AppViewModel.kt`, `Vm*.kt`, `PlayerScreen.kt` |
