@@ -82,13 +82,15 @@ fun Channel.toEntity(kind: String) = ItemEntity(
 )
 
 /** Smart search: accent/hamza-insensitive, every word must match the name or the category. */
-suspend fun ItemDao.search(query: String, limit: Int = 300): List<ChannelRow> {
+/** [slot] limits the search to one provider's cached lists (rows are kept as "live@<id>", "movie@<id>"...). */
+suspend fun ItemDao.search(query: String, limit: Int = 300, slot: String? = null): List<ChannelRow> {
     var tokens = Classifier.normalize(query).split(' ').filter { it.isNotEmpty() }
     if (tokens.isEmpty()) tokens = query.lowercase().split(' ').filter { it.isNotBlank() }
     if (tokens.isEmpty()) return emptyList()
-    val where = tokens.joinToString(" AND ") { "(norm LIKE ? OR normGrp LIKE ?)" }
+    var where = tokens.joinToString(" AND ") { "(norm LIKE ? OR normGrp LIKE ?)" }
     val bind = ArrayList<Any>()
     tokens.forEach { bind.add("%$it%"); bind.add("%$it%") }
+    if (slot != null) { where = "($where) AND kind LIKE ?"; bind.add("%@$slot") }
     bind.add("${tokens.first()}%")
     // Names that START with the first word rank first, then by position in the list.
     val sql = "SELECT idx AS id, name, url, logo, grp AS `group`, tvgId, archiveDays, catchupSource, number, rating, added FROM items " +

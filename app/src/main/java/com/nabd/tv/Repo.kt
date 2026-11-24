@@ -3,6 +3,7 @@ package com.nabd.tv
 import android.content.Context
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -24,19 +25,41 @@ class Repo(private val ctx: Context, val store: Store) {
     private val cacheFile get() = File(ctx.filesDir, "playlist2.m3u")
     val dao: ItemDao by lazy { AppDb.get(ctx).items() }
 
+    /**
+     * The local cache holds one set of lists PER provider: rows are kept under "live@<source id>" etc., so switching between saved
+     * providers shows the other one's lists at once instead of downloading them again.
+     */
+    @Volatile private var slotKey: String? = null
+    fun slotId(): String = slotKey ?: (currentSourceId() ?: "none").also { slotKey = it }
+    private fun slot(kind: String) = "$kind@${slotId()}"
+
+    private val slotLock = kotlinx.coroutines.sync.Mutex()
+    /** One-time move of the pre-upgrade rows (plain "live" / "movie" / "series") to the slot of the provider that was in use. */
+    private suspend fun migrateSlots() = slotLock.withLock {
+        if (prefs.getBoolean("slots1", false)) return@withLock
+        for (k in listOf("live", "movie", "series")) {
+            val rows = dao.channels(k)
+            if (rows.isNotEmpty()) { dao.replace(slot(k), rows.map { it.toChannel().toEntity(slot(k)) }); dao.clear(k) }
+        }
+        prefs.edit().putBoolean("slots1", true).apply()
+    }
+
     private suspend fun store(list: List<Channel>, kind: String) {
         noteGroups(kind, list.map { it.group }.distinct())
-        dao.replace(kind, list.map { it.toEntity(kind) })
+        dao.replace(slot(kind), list.map { it.toEntity(slot(kind)) })
     }
+
+    /** A different provider is about to be used with its own cached lists: the guide file on disk belongs to the previous one. */
+    fun dropEpgCache() { File(ctx.filesDir, "epg.xml").delete(); File(ctx.filesDir, "epg_cache.bin").delete() }
 
     /* Category order is the provider's own order and stays fixed across refreshes (new categories go to the end). */
     private val orderCache = HashMap<String, List<String>>()
-    private fun orderFile(kind: String) = File(ctx.filesDir, "gorder_$kind.txt")
-    @Synchronized fun groupOrder(kind: String): List<String> = orderCache.getOrPut(kind) {
+    private fun orderFile(kind: String) = File(ctx.filesDir, "gorder_${kind}_${slotId()}.txt")
+    @Synchronized fun groupOrder(kind: String): List<String> = orderCache.getOrPut("$kind|${slotId()}") {
         runCatching { orderFile(kind).takeIf { it.exists() }?.readLines()?.filter { it.isNotEmpty() } }.getOrNull() ?: emptyList()
     }
     @Synchronized private fun saveOrder(kind: String, names: List<String>) {
-        orderCache[kind] = names
+        orderCache["$kind|${slotId()}"] = names
         runCatching { orderFile(kind).writeText(names.joinToString("\n")) }
     }
     /** Provider categories in the provider's order (authoritative). */
@@ -50,6 +73,15 @@ class Repo(private val ctx: Context, val store: Store) {
     val http: OkHttpClient = Net.client(15, 90)
 
     init {
+        if (!prefs.getBoolean("slots1o", false)) {
+            runCatching {
+                for (k in listOf("live", "movie", "series")) {
+                    val old = File(ctx.filesDir, "gorder_$k.txt")
+                    if (old.exists()) old.copyTo(File(ctx.filesDir, "gorder_${k}_${slotId()}.txt"), overwrite = false)
+                }
+            }
+            prefs.edit().putBoolean("slots1o", true).apply()
+        }
         prefs.getString("ua", null)?.let { httpUa = it }
         // One-time upgrade: re-save legacy plain-text login details in encrypted form.
         for (k in listOf("url", "epg", "xt")) {
@@ -60,7 +92,7 @@ class Repo(private val ctx: Context, val store: Store) {
 
     var playlistUrl: String
         get() = Secret.dec(prefs.getString("url", "") ?: "")
-        set(v) = prefs.edit().putString("url", Secret.enc(v)).apply()
+        set(v) { slotKey = null; prefs.edit().putString("url", Secret.enc(v)).apply() }
 
     var epgUrl: String
         get() = Secret.dec(prefs.getString("epg", "") ?: "")
@@ -72,7 +104,7 @@ class Repo(private val ctx: Context, val store: Store) {
 
     var xtream: String
         get() = Secret.dec(prefs.getString("xt", "") ?: "")
-        set(v) = prefs.edit().putString("xt", Secret.enc(v)).apply()
+        set(v) { slotKey = null; prefs.edit().putString("xt", Secret.enc(v)).apply() }
 
     var liveExt: String
         get() = prefs.getString("liveExt", "ts") ?: "ts"
@@ -195,10 +227,12 @@ class Repo(private val ctx: Context, val store: Store) {
 
     /** Uses the local cache for instant startup; force = re-download. */
     suspend fun load(force: Boolean): List<Channel> = withContext(Dispatchers.IO) {
+        migrateSlots()
         if (!force) {
-            val rows = dao.channels("live")
+            val rows = dao.channels(slot("live"))
             if (rows.isNotEmpty()) return@withContext rows.map { it.toChannel() }
-            if (cacheFile.exists()) {   // first run after upgrading from the file cache
+            // The single-file cache belongs to whichever provider was used before the per-provider cache: never offer it to another one.
+            if (cacheFile.exists() && savedSources().size <= 1) {   // first run after upgrading from the file cache
                 val l = M3uParser.parse(cacheFile.readText())
                 if (l.isNotEmpty()) { store(l, "live"); return@withContext l }
             }
@@ -386,13 +420,14 @@ class Repo(private val ctx: Context, val store: Store) {
     }
 
     suspend fun clearVod() = withContext(Dispatchers.IO) {
-        dao.clear("movie"); dao.clear("series")
+        migrateSlots(); dao.clear(slot("movie")); dao.clear(slot("series"))
         File(ctx.filesDir, "movies.m3u").delete(); File(ctx.filesDir, "series.m3u").delete()
     }
 
     suspend fun loadMovies(force: Boolean): List<Channel> = withContext(Dispatchers.IO) {
         val (b, u, p) = xt() ?: return@withContext emptyList()
-        if (!force) dao.channels("movie").takeIf { it.isNotEmpty() }?.let { r -> return@withContext r.map { it.toChannel() } }
+        migrateSlots()
+        if (!force) dao.channels(slot("movie")).takeIf { it.isNotEmpty() }?.let { r -> return@withContext r.map { it.toChannel() } }
         val names = categories("get_vod_categories")
         if (names.isNotEmpty()) setGroupOrder("movie", names.values)
         val t = buildM3u(JSONArray(api("get_vod_streams")), names, listOf("cover", "stream_icon")) { s ->
@@ -406,7 +441,8 @@ class Repo(private val ctx: Context, val store: Store) {
 
     suspend fun loadSeries(force: Boolean): List<Channel> = withContext(Dispatchers.IO) {
         if (xt() == null) return@withContext emptyList()
-        if (!force) dao.channels("series").takeIf { it.isNotEmpty() }?.let { r -> return@withContext r.map { it.toChannel() } }
+        migrateSlots()
+        if (!force) dao.channels(slot("series")).takeIf { it.isNotEmpty() }?.let { r -> return@withContext r.map { it.toChannel() } }
         val names = categories("get_series_categories")
         if (names.isNotEmpty()) setGroupOrder("series", names.values)
         val t = buildM3u(JSONArray(api("get_series")), names, listOf("cover", "stream_icon")) { s ->

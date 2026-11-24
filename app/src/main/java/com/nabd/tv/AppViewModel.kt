@@ -238,7 +238,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         searchJob = viewModelScope.launch {
             kotlinx.coroutines.delay(250)   // debounce typing
             val h = store.hiddenChannels
-            val rows = withContext(Dispatchers.IO) { repo.dao.search(q) }
+            val rows = withContext(Dispatchers.IO) { repo.dao.search(q, slot = repo.slotId()) }
             searchResults = rows.map { it.toChannel() }.filter { ok(it, kindOf(it) == Kind.Live, h) }
             val now = System.currentTimeMillis()
             val epgNow = epg
@@ -541,19 +541,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private fun resetVod() {
+    private fun resetVod(dropCache: Boolean = true) {
         movies = emptyList(); series = emptyList(); tab = Tab.Home
-        clearJob = viewModelScope.launch { repo.clearVod() }
+        if (dropCache) clearJob = viewModelScope.launch { repo.clearVod() }
     }
 
-    fun setUrl(url: String) {
+    /** [cached] = switching to a saved provider: its own cached lists are shown at once (and refreshed later in the background). */
+    fun setUrl(url: String, cached: Boolean = false) {
         repo.epgManual = false; repo.xtream = ""; repo.playlistUrl = url.trim()
         repo.rememberSource("m3u", url.trim())
-        resetVod(); load(true)
+        if (cached) repo.dropEpgCache()
+        resetVod(!cached); load(!cached)
     }
 
     /** Xtream Codes login → standard M3U + XMLTV endpoints. */
-    fun setXtream(host: String, user: String, pass: String) {
+    fun setXtream(host: String, user: String, pass: String, cached: Boolean = false) {
         var b = host.trim().trimEnd('/')
         if (!b.startsWith("http")) b = "http://$b"
         val q = "username=${Uri.encode(user.trim())}&password=${Uri.encode(pass.trim())}"
@@ -562,16 +564,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         repo.epgUrl = "$b/xmltv.php?$q"
         repo.playlistUrl = "$b/get.php?$q&type=m3u_plus&output=ts"
         repo.rememberSource("xtream", b, user.trim(), pass.trim())
-        resetVod(); load(true)
+        if (cached) repo.dropEpgCache()
+        resetVod(!cached); load(!cached)
     }
 
     fun savedSources(): List<SavedSource> { repo.ensureCurrentSaved(); return repo.savedSources() }
     fun currentSourceId(): String? = repo.currentSourceId()
     fun forgetSource(s: SavedSource) { repo.forgetSource(s.id) }
-    /** Switches to a saved provider: its lists are downloaded again (the cache holds one provider at a time). */
+    /** Switches to a saved provider: its cached lists show at once; a provider never opened before is downloaded. */
     fun switchSource(s: SavedSource) {
         if (s.id == repo.currentSourceId()) return
-        if (s.kind == "xtream") setXtream(s.address, s.user, s.pass) else setUrl(s.address)
+        if (s.kind == "xtream") setXtream(s.address, s.user, s.pass, cached = true) else setUrl(s.address, cached = true)
     }
 
     fun openSetup() { back = Screen.Main; screen = Screen.Setup }
