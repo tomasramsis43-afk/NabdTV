@@ -13,7 +13,7 @@ import androidx.tvprovider.media.tv.WatchNextProgram
  * without a TV provider (phones, boxes with a stripped launcher) it silently does nothing.
  */
 object WatchNext {
-    private const val SCHEME = "nabdtv"
+    private const val SCHEME = "jolo"
     private val lastSync = HashMap<String, Long>()
 
     private fun intentFor(ctx: Context, url: String): Intent =

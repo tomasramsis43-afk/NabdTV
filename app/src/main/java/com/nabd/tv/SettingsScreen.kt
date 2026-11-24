@@ -776,5 +776,8 @@ private fun AboutPage(vm: AppViewModel, upd: (() -> Unit) -> Unit) {
     }
     Group(S(R.string.a_7d63544b)) {
         Note(S(R.string.a_1afc009b))
+        Note(S(R.string.x_about_disclaimer))
+        Note(S(R.string.x_about_privacy))
+        Note(S(R.string.x_about_tmdb))
     }
 }

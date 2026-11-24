@@ -134,7 +134,7 @@ fun SplashScreen(vm: AppViewModel) {
                     drawArc(SplashMark, -90f, 360f * prog.coerceAtLeast(0.02f), false, tl, sz, style = Stroke(w, cap = StrokeCap.Round))
                 }
                 Image(
-                    painterResource(R.drawable.ic_launcher), contentDescription = null,
+                    painterResource(R.drawable.logo_mark), contentDescription = null,
                     modifier = Modifier.size(logo).clip(RoundedCornerShape(24.dp))
                         .graphicsLayer { val sc = 0.6f + 0.4f * enter.value; scaleX = sc; scaleY = sc; alpha = enter.value }
                 )

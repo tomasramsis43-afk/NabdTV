@@ -120,13 +120,11 @@ private fun BrandMark(d: Device, compact: Boolean, onArt: Boolean) {
                 .background(Brush.linearGradient(listOf(Accent, Accent2))),
             contentAlignment = Alignment.Center
         ) {
-            Text("N", color = Color(0xFF0A0B10), fontWeight = FontWeight.Black, fontSize = if (d.tv) 19.sp else 17.sp)
+            Text("j", color = Color(0xFF0A0B10), fontWeight = FontWeight.Black, fontSize = if (d.tv) 19.sp else 17.sp)
         }
         if (!compact || d.tv) {
             Row(verticalAlignment = Alignment.Bottom) {
-                Text("Nabd", fontSize = if (d.tv) 20.sp else 18.sp, fontWeight = FontWeight.Bold, color = if (onArt) Color.White else Ink)
-                Text("TV", fontSize = if (d.tv) 12.sp else 11.sp, fontWeight = FontWeight.Bold, color = Accent,
-                    modifier = Modifier.padding(start = 3.dp, bottom = 3.dp))
+                Text("jolo", fontSize = if (d.tv) 20.sp else 18.sp, fontWeight = FontWeight.Bold, color = if (onArt) Color.White else Ink)
             }
         }
     }

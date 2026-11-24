@@ -168,8 +168,19 @@ class RecordService : Service() {
     private val http = Net.client(15, 30)
     private val active = java.util.concurrent.atomic.AtomicInteger(0)
     private val notifId = 4242
+    @Volatile private var timedOut = false
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    /**
+     * Android 15 limits dataSync foreground services to about 6 hours per day and calls this when the limit is hit.
+     * The service must stop itself right away or the system crashes the app; the recording keeps what was saved so far.
+     */
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        timedOut = true
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val id = intent?.getStringExtra("id")
@@ -177,7 +188,7 @@ class RecordService : Service() {
         Recorder.ensureChannel(this)
         val n: Notification = NotificationCompat.Builder(this, Recorder.CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_media_play)
-            .setContentTitle("Nabd TV").setContentText(S(R.string.a_1501fee6)).setOngoing(true).build()
+            .setContentTitle(S(R.string.app_name)).setContentText(S(R.string.a_1501fee6)).setOngoing(true).build()
         try {
             if (Build.VERSION.SDK_INT >= 29) startForeground(notifId, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
             else startForeground(notifId, n)
@@ -232,7 +243,7 @@ class RecordService : Service() {
                         if (n < 0) break
                         o.write(buf, 0, n)
                         val now = System.currentTimeMillis()
-                        if (now - lastCheck > 3000) { lastCheck = now; if (cancelled(store, rec.id)) break }
+                        if (now - lastCheck > 3000) { lastCheck = now; if (timedOut || cancelled(store, rec.id)) break }
                     }
                 }
             }
@@ -252,7 +263,7 @@ class RecordService : Service() {
         val seen = LinkedHashSet<String>()
         var failures = 0
         FileOutputStream(out, true).use { o ->
-            while (System.currentTimeMillis() < rec.stop && !cancelled(store, rec.id)) {
+            while (System.currentTimeMillis() < rec.stop && !timedOut && !cancelled(store, rec.id)) {
                 val lines = try { get(playlist).lines() } catch (e: Exception) {
                     if (++failures > 5) throw e
                     Thread.sleep(2000); continue

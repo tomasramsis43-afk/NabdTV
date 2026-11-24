@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Nabd TV</string>
+    <string name="app_name">jolo</string>
 
     <!-- Detail screen (movies and series) — default language is Arabic -->
     <string name="detail_back">رجوع</string>
@@ -237,14 +237,14 @@
     <string name="a_007e9376">حلقات جديدة</string>
     <string name="a_8d8f4720">حلقة جديدة متاحة الآن</string>
     <string name="a_fb56732c">التحديثات</string>
-    <string name="a_a2b12612">اسمح لـ Nabd TV بالتثبيت من الإعدادات لتفعيل التحديث التلقائي</string>
+    <string name="a_a2b12612">اسمح لـ jolo بالتثبيت من الإعدادات لتفعيل التحديث التلقائي</string>
     <string name="a_96ad1eb5">تحديث جاهز للتثبيت</string>
     <string name="a_20ff208f">اضغط للتأكيد</string>
     <string name="a_522e8c2f">تعذّر التحديث</string>
     <string name="a_2d8b14ae">حاول مرة أخرى من الإعدادات</string>
-    <string name="a_690bdaaa">تم تحديث Nabd TV</string>
+    <string name="a_690bdaaa">تم تحديث jolo</string>
     <string name="a_4f740e77">تعذّر الوصول لصفحة الإصدارات (الريبو خاص أو لا توجد إصدارات)</string>
-    <string name="a_589c88a1">Nabd TV · قيد التشغيل</string>
+    <string name="a_589c88a1">jolo · قيد التشغيل</string>
     <string name="a_65278c12">التسجيل والتذكير</string>
     <string name="a_1501fee6">جارٍ التسجيل...</string>
     <string name="a_567fd777">سماوي</string>
@@ -512,7 +512,7 @@
     <string name="a_0196884e">مشاركة</string>
     <string name="a_3e85e97c">عرض السطور الأخيرة</string>
     <string name="a_a5967ab8">مسح السجل</string>
-    <string name="a_7d63544b">عن Nabd TV</string>
+    <string name="a_7d63544b">عن jolo</string>
     <string name="a_1afc009b">مشغّل IPTV يعمل بالكامل على الجهاز: قنوات مباشرة، أفلام، مسلسلات، دليل برامج، تسجيل، وملفات شخصية. لا يمر أي محتوى عبر سيرفر وسيط.</string>
     <string name="a_8edfd265">زمن استجابة منخفض</string>
     <string name="a_1433812e">بدء سريع وتنقّل فوري — مناسب للشبكات الثابتة</string>
@@ -739,4 +739,7 @@
     <string name="next_ep_today">تنزل اليوم</string>
     <string name="next_ep_tomorrow">تنزل غداً</string>
     <string name="next_ep_out_now">نزلت الآن</string>
+    <string name="x_about_disclaimer">jolo مشغّل وسائط فقط؛ لا يوفّر ولا يستضيف ولا يبيع أي قنوات أو أفلام أو مسلسلات. المحتوى يأتي من المزوّد الذي تضيفه أنت، وأنت المسؤول عن امتلاك حق مشاهدته.</string>
+    <string name="x_about_privacy">بياناتك (بيانات الدخول والمفضلة وسجل المشاهدة) تُحفظ على جهازك فقط، وبيانات الدخول مشفّرة. لا يوجد سيرفر لـ jolo. التطبيق يتصل مباشرةً بمزوّدك وبخدمات الأفلام (TMDB وTVmaze وAniList وغيرها) وTrakt وOpenSubtitles عند تفعيلها. تقارير الأعطال لا تُرسل إلا إذا أدخلت عنوان Sentry بنفسك. التفاصيل الكاملة في PRIVACY.md على صفحة المشروع في GitHub.</string>
+    <string name="x_about_tmdb">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
 </resources>

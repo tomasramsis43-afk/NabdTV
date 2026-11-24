@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  IPTV providers and M3U/EPG links are very often plain http://, so cleartext stays allowed by default.
+  Every service the app itself talks to is https-only, so those can never be downgraded or read on the network.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">themoviedb.org</domain>
+        <domain includeSubdomains="true">tmdb.org</domain>
+        <domain includeSubdomains="true">tvmaze.com</domain>
+        <domain includeSubdomains="true">anilist.co</domain>
+        <domain includeSubdomains="true">trakt.tv</domain>
+        <domain includeSubdomains="true">theintrodb.org</domain>
+        <domain includeSubdomains="true">aniskip.com</domain>
+        <domain includeSubdomains="true">opensubtitles.com</domain>
+        <domain includeSubdomains="true">api.github.com</domain>
+        <domain includeSubdomains="true">wikidata.org</domain>
+        <domain includeSubdomains="true">wikimedia.org</domain>
+    </domain-config>
+</network-security-config>

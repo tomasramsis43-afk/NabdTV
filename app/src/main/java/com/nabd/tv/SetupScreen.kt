@@ -140,7 +140,7 @@ fun SetupScreen(vm: AppViewModel) {
                 contentAlignment = Alignment.Center
             ) { NIcon(Ic.Play, Color(0xFF0A0B10), 30.dp) }
             Spacer(Modifier.height(14.dp))
-            AccentTitle("Nabd", "TV", size = 34.sp)
+            AccentTitle("jolo", "", size = 34.sp)
             Spacer(Modifier.height(4.dp))
             Text(
                 if (vm.all.isNotEmpty()) S(R.string.a_f3b7cf9e) else S(R.string.a_99cf2726),

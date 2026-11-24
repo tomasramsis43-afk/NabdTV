@@ -76,7 +76,7 @@ object AutoUpdate {
     }
 }
 
-/** Polls the repo every ~15 minutes while the device is online. */
+/** Polls the repo every ~6 hours while the device is online (GitHub's unauthenticated API allows 60 requests per hour per IP). */
 class UpdateWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
     override suspend fun doWork(): Result {
         runCatching { AutoUpdate.run(applicationContext, Net.client(15, 60)) }
@@ -91,10 +91,10 @@ class UpdateWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) 
         }
 
         fun schedule(ctx: Context) {
-            val req = PeriodicWorkRequestBuilder<UpdateWorker>(15, TimeUnit.MINUTES)
+            val req = PeriodicWorkRequestBuilder<UpdateWorker>(6, TimeUnit.HOURS)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .build()
-            WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("nabd-update", ExistingPeriodicWorkPolicy.KEEP, req)
+            WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("nabd-update", ExistingPeriodicWorkPolicy.UPDATE, req)
         }
     }
 }

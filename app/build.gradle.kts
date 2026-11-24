@@ -9,7 +9,7 @@ android {
     namespace = "com.nabd.tv"
     compileSdk = 35
     defaultConfig {
-        applicationId = "com.nabd.tv"
+        applicationId = "com.jolo.tv"   // namespace stays com.nabd.tv (source packages); only the installed app id changes
         minSdk = 24
         targetSdk = 35
         // CI run number keeps versionCode increasing, so each build installs over the previous one.
@@ -29,7 +29,7 @@ android {
             create("nabd") {
                 storeFile = ksFile
                 storePassword = ksPass
-                keyAlias = "nabd"
+                keyAlias = System.getenv("KEYSTORE_ALIAS")?.takeIf { it.isNotBlank() } ?: "jolo"
                 keyPassword = ksPass
             }
         }

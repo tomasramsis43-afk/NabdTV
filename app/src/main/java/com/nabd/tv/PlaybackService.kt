@@ -37,7 +37,7 @@ class PlaybackService : Service() {
             return START_NOT_STICKY
         }
         ensureChannel(this)
-        val title = intent?.getStringExtra("title") ?: "Nabd TV"
+        val title = intent?.getStringExtra("title") ?: S(R.string.app_name)
         val open = PendingIntent.getActivity(
             this, 0,
             Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT),

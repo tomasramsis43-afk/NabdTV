@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Nabd TV</string>
+    <string name="app_name">jolo</string>
 
     <!-- Detail screen (movies and series) -->
     <string name="detail_back">Back</string>
@@ -237,14 +237,14 @@
     <string name="a_007e9376">New episodes</string>
     <string name="a_8d8f4720">A new episode is available now</string>
     <string name="a_fb56732c">Updates</string>
-    <string name="a_a2b12612">Allow Nabd TV to install from Settings to enable automatic updates</string>
+    <string name="a_a2b12612">Allow jolo to install from Settings to enable automatic updates</string>
     <string name="a_96ad1eb5">Update ready to install</string>
     <string name="a_20ff208f">Tap to confirm</string>
     <string name="a_522e8c2f">Update failed</string>
     <string name="a_2d8b14ae">Try again from Settings</string>
-    <string name="a_690bdaaa">Nabd TV was updated</string>
+    <string name="a_690bdaaa">jolo was updated</string>
     <string name="a_4f740e77">Could not reach the releases page (private repo or no releases)</string>
-    <string name="a_589c88a1">Nabd TV · running</string>
+    <string name="a_589c88a1">jolo · running</string>
     <string name="a_65278c12">Recording and reminders</string>
     <string name="a_1501fee6">Recording...</string>
     <string name="a_567fd777">Cyan</string>
@@ -512,7 +512,7 @@
     <string name="a_0196884e">Share</string>
     <string name="a_3e85e97c">Show the last lines</string>
     <string name="a_a5967ab8">Clear the log</string>
-    <string name="a_7d63544b">About Nabd TV</string>
+    <string name="a_7d63544b">About jolo</string>
     <string name="a_1afc009b">An IPTV player that runs entirely on your device: live channels, movies, series, programme guide, recording and profiles. No content passes through an intermediary server.</string>
     <string name="a_8edfd265">Low latency</string>
     <string name="a_1433812e">Fast start and instant zapping — good for stable networks</string>
@@ -739,4 +739,7 @@
     <string name="next_ep_today">Airs today</string>
     <string name="next_ep_tomorrow">Airs tomorrow</string>
     <string name="next_ep_out_now">Out now</string>
+    <string name="x_about_disclaimer">jolo is a media player only. It does not provide, host or sell any channels, movies or series. All content comes from the provider you add yourself, and you are responsible for having the right to watch it.</string>
+    <string name="x_about_privacy">Your data (login details, favourites, watch history) stays on your device only, and login details are encrypted. There is no jolo server. The app talks directly to your provider, to metadata services (TMDB, TVmaze, AniList and others), and to Trakt and OpenSubtitles when you turn them on. Crash reports are sent only if you enter a Sentry address yourself. Full details are in PRIVACY.md on the project GitHub page.</string>
+    <string name="x_about_tmdb">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
 </resources>

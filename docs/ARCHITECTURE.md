@@ -1,4 +1,4 @@
-# معمارية Nabd TV v2
+# معمارية jolo
 
 تطبيق IPTV أصلي (Native) لأندرويد TV والموبايل، مبني على Kotlin + Jetpack Compose + Media3.
 القرار التقني: الإبقاء على نفس المنصة الحالية في الريبو (بدل الانتقال إلى React/Flutter)، لأن Media3/ExoPlayer يعطي أفضل تسريع عتادي (MediaCodec) وأسرع تبديل قنوات على أجهزة التلفاز، والتطبيق كله Client-side بدون سيرفر وسيط.

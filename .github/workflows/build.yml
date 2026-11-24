@@ -36,7 +36,8 @@ jobs:
             echo "::error::$ERR"
           fi
           exit $rc
-      - name: Build
+      - name: Build (debug, preview branches only)
+        if: github.ref != 'refs/heads/main'
         run: |
           set +e
           gradle assembleDebug --no-daemon > build.log 2>&1
@@ -49,35 +50,62 @@ jobs:
           exit $rc
         env:
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
-      - name: Publish APK as GitHub Release
+      - name: Require the signing secrets (main = official release)
+        if: github.ref == 'refs/heads/main'
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$KEYSTORE_PASS" ]; then
+            echo "::error::KEYSTORE_B64 / KEYSTORE_PASS are missing. An official release must be signed with the release key (see docs/RELEASE.md)."
+            exit 1
+          fi
+      - name: Build the signed release APK (R8) - blocks the release if it fails
+        if: github.ref == 'refs/heads/main'
+        run: |
+          set +e
+          gradle assembleRelease --no-daemon > release-main.log 2>&1
+          rc=$?
+          if [ $rc -ne 0 ]; then
+            ERR=$(grep -E "^e: |What went wrong|error:|Missing class|R8" -A3 release-main.log | head -40)
+            ERR="${ERR//$'\n'/%0A}"
+            echo "::error::Release build failed: $ERR"
+          fi
+          exit $rc
+        env:
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+          KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+      - name: Publish the release APK as the GitHub Release
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk NabdTV-debug.apk
-          gh release create "v2.0.${{ github.run_number }}" NabdTV-debug.apk --title "NabdTV v2.0.${{ github.run_number }}" --notes "Debug APK"
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          cp "$APK" jolo-release.apk
+          gh release create "v2.0.${{ github.run_number }}" jolo-release.apk --title "jolo v2.0.${{ github.run_number }}" --notes "Signed release build"
       - name: Publish preview APK as pre-release (i18n branch only; never touches main or "latest")
         if: github.ref == 'refs/heads/i18n/strings-extraction'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk NabdTV-debug.apk
-          gh release create "preview-i18n-${{ github.run_number }}" NabdTV-debug.apk --prerelease --target "${{ github.sha }}" --title "NabdTV preview (i18n + episode cards) #${{ github.run_number }}" --notes "Preview build from branch i18n/strings-extraction. Not the stable release."
+          cp app/build/outputs/apk/debug/app-debug.apk jolo-debug.apk
+          gh release create "preview-i18n-${{ github.run_number }}" jolo-debug.apk --prerelease --target "${{ github.sha }}" --title "jolo preview (i18n + episode cards) #${{ github.run_number }}" --notes "Preview build from branch i18n/strings-extraction. Not the stable release."
       - name: Publish preview APK as pre-release (title-logos branch only)
         if: github.ref == 'refs/heads/feature/title-logos'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk NabdTV-debug.apk
-          gh release create "preview-logos-${{ github.run_number }}" NabdTV-debug.apk --prerelease --target "${{ github.sha }}" --title "NabdTV preview: official title logos #${{ github.run_number }}" --notes "Preview from branch feature/title-logos. Not the stable release."
+          cp app/build/outputs/apk/debug/app-debug.apk jolo-debug.apk
+          gh release create "preview-logos-${{ github.run_number }}" jolo-debug.apk --prerelease --target "${{ github.sha }}" --title "jolo preview: official title logos #${{ github.run_number }}" --notes "Preview from branch feature/title-logos. Not the stable release."
       - name: Publish preview APK as pre-release (continue-watching branch only)
         if: github.ref == 'refs/heads/continue-watching'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk NabdTV-debug.apk
-          gh release create "preview-continue-${{ github.run_number }}" NabdTV-debug.apk --prerelease --target "${{ github.sha }}" --title "NabdTV preview: Continue watching #${{ github.run_number }}" --notes "Preview from branch continue-watching. Not the stable release."
-      - name: Verify release build (R8 / shrink) - does not block the debug release
+          cp app/build/outputs/apk/debug/app-debug.apk jolo-debug.apk
+          gh release create "preview-continue-${{ github.run_number }}" jolo-debug.apk --prerelease --target "${{ github.sha }}" --title "jolo preview: Continue watching #${{ github.run_number }}" --notes "Preview from branch continue-watching. Not the stable release."
+      - name: Verify release build (R8 / shrink) on preview branches - informational
+        if: github.ref != 'refs/heads/main'
         continue-on-error: true
         env:
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
@@ -91,19 +119,6 @@ jobs:
             echo "::warning::Release build failed: $ERR"
           fi
           exit $rc
-      - name: Attach the optimised (release, R8) APK to the release - for manual testing, not picked by the in-app updater
-        if: github.ref == 'refs/heads/main'
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          F=$(ls app/build/outputs/apk/release/*.apk 2>/dev/null | head -1)
-          if [ -n "$F" ]; then
-            cp "$F" NabdTV-release.apk
-            gh release upload "v2.0.${{ github.run_number }}" NabdTV-release.apk
-          else
-            echo "::warning::no release APK was produced"
-          fi
       - name: Upload R8 mapping and release log
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -112,5 +127,6 @@ jobs:
           if-no-files-found: ignore
           path: |
             release.log
+            release-main.log
             app/build/outputs/mapping/release/mapping.txt
             app/build/outputs/mapping/release/missing_rules.txt

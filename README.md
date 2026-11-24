@@ -1,11 +1,11 @@
-# Nabd TV v2 (Android TV / Phone IPTV player)
+# jolo (Android TV / Phone IPTV player)
 
 Kotlin + Jetpack Compose + Media3. Everything runs on the device; no middle server.
 Architecture: `docs/ARCHITECTURE.md`.
 
 ## Run
 1. Open in Android Studio (JDK 17) → Sync → run on Android TV / phone.
-2. Or push to GitHub → Actions → "Build APK" → download from Releases.
+2. Or push to GitHub → Actions → "Build APK" → download `jolo-release.apk` from Releases (see `docs/RELEASE.md` for the signing key).
 3. First launch: Xtream Codes login or M3U URL.
 
 ## Features
@@ -22,3 +22,7 @@ Architecture: `docs/ARCHITECTURE.md`.
 ## Remote
 OK = info / pause | Up/Down or CH+/CH- = zap | Right = favourite (live) / +10s | Menu or Info = player options | digits = channel number.
 Long-press OK on a channel/category = actions menu.
+
+## Legal
+jolo is a player only and ships with no content. See `PRIVACY.md`.
+This product uses the TMDB API but is not endorsed or certified by TMDB.

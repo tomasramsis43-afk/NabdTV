@@ -116,13 +116,13 @@ class PairingServer(private val onReceived: (Map<String, String>) -> Unit) {
     }
 
     private fun page(title: String, body: String) = """<!doctype html><html dir="${if (Lang.rtl) "rtl" else "ltr"}" lang="${Lang.code}"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Nabd TV</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>jolo</title>
 <style>body{font-family:system-ui,sans-serif;background:#07090d;color:#fff;margin:0;padding:24px}
 h1{color:#00e5a0}input,select{width:100%;box-sizing:border-box;padding:14px;margin:6px 0 14px;border-radius:10px;border:1px solid #333;background:#121821;color:#fff;font-size:16px}
 button{width:100%;padding:15px;border:0;border-radius:10px;background:#00e5a0;color:#000;font-size:17px;font-weight:700}</style></head>
 <body><h1>$title</h1>$body</body></html>"""
 
-    private fun form() = page("Nabd TV", """<form method="post">
+    private fun form() = page("jolo", """<form method="post">
 <label>${S(R.string.x_pair_type)}</label><select name="t" onchange="x(this.value)"><option value="xtream">Xtream Codes</option><option value="m3u">${S(R.string.x_pair_m3u)}</option></select>
 <div id="xt"><label>${S(R.string.x_pair_server)}</label><input name="host" placeholder="http://server:port" autocapitalize="none">
 <label>${S(R.string.x_pair_user)}</label><input name="user" autocapitalize="none"><label>${S(R.string.x_pair_pass)}</label><input name="pass" type="password" autocapitalize="none"></div>

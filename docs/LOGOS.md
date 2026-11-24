@@ -1,6 +1,6 @@
 # Official title logos
 
-NabdTV shows transparent title logos on the movie/series detail screen, the Home hero and poster cards.
+jolo shows transparent title logos on the movie/series detail screen, the Home hero and poster cards.
 **No account, no API key, no paid service.** When no verified logo exists the plain title is shown (existing style).
 
 ## Source that works
