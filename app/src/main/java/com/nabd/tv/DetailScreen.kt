@@ -200,6 +200,7 @@ fun DetailScreen(vm: AppViewModel) {
                         info?.genre?.takeIf { it.isNotBlank() }?.split(',', '،', '/')?.map { it.trim() }
                             ?.filter { it.isNotEmpty() }?.take(if (narrow) 1 else 2)?.forEach { MetaChip(it) }
                     }
+                    if (isSeries) vm.nextAir?.let { n -> Spacer(Modifier.height(8.dp)); NextAirChips(n) }
                     if (info != null && info.plot.isNotBlank() && !(isSeries && shortScreen)) {
                         Spacer(Modifier.height(10.dp))
                         val boxShape = RoundedCornerShape(14.dp)

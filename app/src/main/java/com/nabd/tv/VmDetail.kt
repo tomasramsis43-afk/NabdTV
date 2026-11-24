@@ -47,7 +47,7 @@ internal fun AppViewModel.showDetail(c: Channel, push: Boolean) {
         }
     } else { detailStack.clear(); neighborList = contextFor(c) }   // opened from Home / search / a list: a fresh trail
     val k = kindOf(c)
-    detail = c; info = repo.cachedInfo(c, k); episodes = emptyList(); season = 1; error = null; epFocusUrl = null; castWorks = emptyList()
+    detail = c; info = repo.cachedInfo(c, k); episodes = emptyList(); season = 1; error = null; epFocusUrl = null; castWorks = emptyList(); nextAir = null
     back = Screen.Main; screen = Screen.Detail
     viewModelScope.launch {
         val i = repo.vodInfo(c, k)
@@ -56,6 +56,10 @@ internal fun AppViewModel.showDetail(c: Channel, push: Boolean) {
         if (i != null) loadCastWorks(c, i)
     }
     if (k == Kind.Series) {
+        viewModelScope.launch {
+            val n = NextAiring.find(repo.http, store.tmdbKey, c.name)
+            if (detail?.url == c.url) nextAir = n   // another title was opened meanwhile: drop this answer
+        }
         epLoading = true
         viewModelScope.launch {
             try {

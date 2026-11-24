@@ -370,6 +370,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var season by mutableStateOf(1); internal set
     /** Other titles from the library featuring the lead actors of the open title (needs TMDB). */
     var castWorks by mutableStateOf<List<Channel>>(emptyList()); internal set
+    /** Next episode of the open series (air date / time), null when unknown or the series has ended. */
+    var nextAir by mutableStateOf<NextAir?>(null); internal set
     /** Episode last focused / started in the gallery, so returning from playback lands on the same card. */
     var epFocusUrl: String? = null
 

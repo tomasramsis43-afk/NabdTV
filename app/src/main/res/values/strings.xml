@@ -731,4 +731,12 @@
     <string name="sources_switch">التبديل إلى هذا المصدر</string>
     <string name="sources_delete">حذف من القائمة</string>
     <string name="sources_active">الحالي</string>
+    <string name="next_ep_label_ep">الحلقة %1$d القادمة</string>
+    <string name="next_ep_label_se">الحلقة %1$d القادمة · الموسم %2$d</string>
+    <string name="next_ep_in_days">بعد %1$d يوم</string>
+    <string name="next_ep_in_days_hours">بعد %1$d يوم و%2$d ساعة</string>
+    <string name="next_ep_in_hms">بعد %1$02d:%2$02d:%3$02d</string>
+    <string name="next_ep_today">تنزل اليوم</string>
+    <string name="next_ep_tomorrow">تنزل غداً</string>
+    <string name="next_ep_out_now">نزلت الآن</string>
 </resources>

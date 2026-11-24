@@ -168,11 +168,11 @@ object AniSkip {
     private fun seasonMatches(title: String, n: Int): Boolean =
         Regex("\\b(season $n|$n(st|nd|rd|th) season)\\b").containsMatchIn(title) || title.endsWith(" $n")
 
-    private fun cleanName(raw: String): String = OpenSubtitles.cleanQuery(raw)
+    internal fun cleanName(raw: String): String = OpenSubtitles.cleanQuery(raw)
         .replace(Regex("(?i)\\b(season|s)\\s*\\d+\\b"), " ")
         .replace(Regex("\\s+"), " ").trim()
 
-    private fun norm(s: String): String =
+    internal fun norm(s: String): String =
         s.lowercase().replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim()
 
     private fun similar(query: String, candidates: List<String>): Boolean {

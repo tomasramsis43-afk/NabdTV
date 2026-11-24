@@ -731,4 +731,12 @@
     <string name="sources_switch">Switch to this source</string>
     <string name="sources_delete">Remove from the list</string>
     <string name="sources_active">Current</string>
+    <string name="next_ep_label_ep">Next: episode %1$d</string>
+    <string name="next_ep_label_se">Next: S%2$d · E%1$d</string>
+    <string name="next_ep_in_days">in %1$d days</string>
+    <string name="next_ep_in_days_hours">in %1$dd %2$dh</string>
+    <string name="next_ep_in_hms">in %1$02d:%2$02d:%3$02d</string>
+    <string name="next_ep_today">Airs today</string>
+    <string name="next_ep_tomorrow">Airs tomorrow</string>
+    <string name="next_ep_out_now">Out now</string>
 </resources>
