@@ -511,6 +511,18 @@ private fun AccountPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
         Row2(S(R.string.a_a750061f)) { vm.refreshAccount() }
         Row2(S(R.string.a_b20500e6)) { vm.openSetup() }
     }
+    val sources = vm.savedSources()
+    if (sources.size > 1) Group(S(R.string.sources_title)) {
+        val cur = vm.currentSourceId()
+        sources.forEach { src ->
+            Row2(src.name, if (src.id == cur) S(R.string.sources_active) else "") {
+                vm.menu = MenuRequest(src.name, listOf(
+                    S(R.string.sources_switch) to { upd { vm.switchSource(src) } },
+                    S(R.string.sources_delete) to { upd { vm.forgetSource(src) } }
+                ))
+            }
+        }
+    }
     Group(S(R.string.a_37b75114)) {
         Row2(S(R.string.prov_check)) { vm.providerCheck() }
         Row2(S(R.string.a_e9f10589), if (s.tmdbKey.isBlank()) "—" else "••••") {

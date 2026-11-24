@@ -727,4 +727,8 @@
     <string name="skipped_credits">⏭ تم تخطي الخاتمة</string>
     <string name="auto_skip_intro">تخطي المقدمة والملخص تلقائياً</string>
     <string name="auto_skip_credits">تخطي الخاتمة تلقائياً</string>
+    <string name="sources_title">المصادر المحفوظة</string>
+    <string name="sources_switch">التبديل إلى هذا المصدر</string>
+    <string name="sources_delete">حذف من القائمة</string>
+    <string name="sources_active">الحالي</string>
 </resources>

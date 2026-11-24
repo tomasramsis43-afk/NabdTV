@@ -727,4 +727,8 @@
     <string name="skipped_credits">⏭ Credits skipped</string>
     <string name="auto_skip_intro">Auto-skip intro and recap</string>
     <string name="auto_skip_credits">Auto-skip credits</string>
+    <string name="sources_title">Saved sources</string>
+    <string name="sources_switch">Switch to this source</string>
+    <string name="sources_delete">Remove from the list</string>
+    <string name="sources_active">Current</string>
 </resources>

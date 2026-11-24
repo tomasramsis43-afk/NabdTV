@@ -80,6 +80,49 @@ class Repo(private val ctx: Context, val store: Store) {
 
     val hasXtream: Boolean get() = xt() != null
 
+    /* ───────── saved sources (switch between providers without typing the login again) ───────── */
+    private fun sourceId(kind: String, a: String, user: String) = Integer.toHexString((kind + "|" + a + "|" + user).hashCode())
+
+    fun savedSources(): List<SavedSource> {
+        val raw = Secret.dec(prefs.getString("sources", "") ?: "")
+        if (raw.isBlank()) return emptyList()
+        return runCatching {
+            val a = org.json.JSONArray(raw)
+            (0 until a.length()).map { i ->
+                val o = a.getJSONObject(i)
+                SavedSource(o.getString("id"), o.getString("name"), o.getString("kind"), o.getString("a"), o.optString("user"), o.optString("pass"))
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    private fun writeSources(list: List<SavedSource>) {
+        val a = org.json.JSONArray()
+        list.forEach { a.put(org.json.JSONObject().put("id", it.id).put("name", it.name).put("kind", it.kind).put("a", it.address).put("user", it.user).put("pass", it.pass)) }
+        prefs.edit().putString("sources", Secret.enc(a.toString())).apply()
+    }
+
+    /** Adds (or refreshes) a source in the saved list. [address] is the Xtream host or the playlist URL. */
+    fun rememberSource(kind: String, address: String, user: String = "", pass: String = "") {
+        if (address.isBlank()) return
+        val host = runCatching { java.net.URI(address).host }.getOrNull()?.takeIf { it.isNotBlank() } ?: address.take(40)
+        val src = SavedSource(sourceId(kind, address, user), if (kind == "xtream" && user.isNotBlank()) "$host · $user" else host, kind, address, user, pass)
+        writeSources(listOf(src) + savedSources().filter { it.id != src.id })
+    }
+
+    fun forgetSource(id: String) = writeSources(savedSources().filter { it.id != id })
+
+    /** The login currently in use as a saved source (older installs never saved theirs). */
+    fun currentSourceId(): String? {
+        xt()?.let { (h, u, _) -> return sourceId("xtream", h, u) }
+        return playlistUrl.takeIf { it.isNotBlank() }?.let { sourceId("m3u", it, "") }
+    }
+
+    fun ensureCurrentSaved() {
+        val id = currentSourceId() ?: return
+        if (savedSources().any { it.id == id }) return
+        xt()?.let { (h, u, p) -> rememberSource("xtream", h, u, p) } ?: rememberSource("m3u", playlistUrl)
+    }
+
     private fun xt(): Triple<String, String, String>? {
         val p = xtream.split("\n")
         return if (p.size == 3) Triple(p[0], p[1], p[2]) else null

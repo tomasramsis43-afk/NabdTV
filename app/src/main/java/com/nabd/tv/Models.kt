@@ -29,6 +29,9 @@ data class Channel(
     val hasCatchup: Boolean get() = archiveDays > 0 || !catchupSource.isNullOrBlank()
 }
 
+/** A provider login kept so the viewer can switch between providers. kind = "xtream" (address = host) or "m3u" (address = playlist URL). */
+data class SavedSource(val id: String, val name: String, val kind: String, val address: String, val user: String = "", val pass: String = "")
+
 data class Prog(val start: Long, val stop: Long, val title: String, val desc: String = "")
 
 data class Episode(val season: Int, val num: Int, val title: String, val url: String, val plot: String = "", val image: String? = null)

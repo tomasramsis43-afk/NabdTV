@@ -547,6 +547,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setUrl(url: String) {
         repo.epgManual = false; repo.xtream = ""; repo.playlistUrl = url.trim()
+        repo.rememberSource("m3u", url.trim())
         resetVod(); load(true)
     }
 
@@ -559,7 +560,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         repo.xtream = "$b\n${user.trim()}\n${pass.trim()}"
         repo.epgUrl = "$b/xmltv.php?$q"
         repo.playlistUrl = "$b/get.php?$q&type=m3u_plus&output=ts"
+        repo.rememberSource("xtream", b, user.trim(), pass.trim())
         resetVod(); load(true)
+    }
+
+    fun savedSources(): List<SavedSource> { repo.ensureCurrentSaved(); return repo.savedSources() }
+    fun currentSourceId(): String? = repo.currentSourceId()
+    fun forgetSource(s: SavedSource) { repo.forgetSource(s.id) }
+    /** Switches to a saved provider: its lists are downloaded again (the cache holds one provider at a time). */
+    fun switchSource(s: SavedSource) {
+        if (s.id == repo.currentSourceId()) return
+        if (s.kind == "xtream") setXtream(s.address, s.user, s.pass) else setUrl(s.address)
     }
 
     fun openSetup() { back = Screen.Main; screen = Screen.Setup }
