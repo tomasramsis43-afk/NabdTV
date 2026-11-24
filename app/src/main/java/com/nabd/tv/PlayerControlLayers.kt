@@ -235,24 +235,15 @@ internal fun BoxScope.PlayerControlLayers(
     }
 }
 
-/** Thin progress line with elapsed and remaining time, shown at the bottom when the full controls are hidden. */
-@OptIn(ExperimentalTvMaterial3Api::class)
+/** Thin progress line (no numbers) shown at the bottom when the full controls are hidden: filled = watched, empty = remaining. */
 @Composable
 private fun BoxScope.VodMiniBar(position: Long, duration: Long, tv: Boolean) {
     val pct = (position.toFloat() / duration).coerceIn(0f, 1f)
-    Column(
+    Box(
         Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0x99000000))))
-            .padding(horizontal = if (tv) 48.dp else 12.dp)
-            .padding(top = 14.dp, bottom = if (tv) 14.dp else 8.dp)
+            .padding(horizontal = if (tv) 48.dp else 12.dp, vertical = if (tv) 14.dp else 8.dp)
+            .height(4.dp).clip(RoundedCornerShape(2.dp)).background(Color(0x55FFFFFF))
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(fmtTime(position), fontSize = if (tv) 13.sp else 11.sp, color = Color(0xCCFFFFFF), maxLines = 1)
-            Text("-" + fmtTime(duration - position), fontSize = if (tv) 13.sp else 11.sp, color = Color(0xCCFFFFFF), maxLines = 1)
-        }
-        Spacer(Modifier.height(4.dp))
-        Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color(0x33FFFFFF))) {
-            Box(Modifier.fillMaxHeight().fillMaxWidth(pct).background(Accent))
-        }
+        Box(Modifier.fillMaxHeight().fillMaxWidth(pct).background(Accent))
     }
 }
