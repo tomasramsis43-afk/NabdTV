@@ -414,8 +414,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val zapEnabled: Boolean get() = playMode == PlayMode.Live && zapList.isNotEmpty()
 
     /* ---------- Continue watching (movies + series episodes) ---------- */
-    internal val epListCache = HashMap<String, List<Episode>>()
-    internal val imageCache = HashMap<String, String?>()
+    /** Episode lists already fetched, newest used last; capped so a long session cannot keep every series in memory. Safe to call from any thread. */
+    internal val epListCache: MutableMap<String, List<Episode>> = java.util.Collections.synchronizedMap(
+        object : LinkedHashMap<String, List<Episode>>(32, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Episode>>?) = size > 60
+        }
+    )
 
     /** Newest first: unfinished movies, and one card per series showing its current episode with that episode's own image. */
     /** Series of the library by normalised name; only names that identify ONE series are usable. */
