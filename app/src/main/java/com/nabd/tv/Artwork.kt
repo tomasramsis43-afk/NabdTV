@@ -178,6 +178,47 @@ object Artwork {
             }
         }
     }
+    private val rmem = ConcurrentHashMap<String, Set<String>>()
+    private const val RECS_TTL = 14L * 24 * 3600 * 1000
+
+    /** Normalised titles TMDB recommends for the verified match of this title; empty without a key, a match, or on failure. */
+    suspend fun recommended(rawTitle: String, kind: Kind, yearHint: Int?): Set<String> {
+        val d = dir ?: return emptySet()
+        if (kind == Kind.Live || tmdbKey().isBlank()) return emptySet()
+        val (title, y) = LogoMatch.clean(rawTitle)
+        if (title.isBlank()) return emptySet()
+        val year = yearHint ?: y
+        val k = "recs:${kind.name}:${LogoMatch.norm(title)}:${year ?: 0}"
+        rmem[k]?.let { return it }
+        return kotlinx.coroutines.withContext(Dispatchers.IO) {
+            gate.withPermit {
+                ensureLoaded(d)
+                synchronized(index) { index.optJSONObject(k) }?.let { e ->
+                    if (System.currentTimeMillis() - e.optLong("time") < RECS_TTL) {
+                        val a = e.optJSONArray("t") ?: JSONArray()
+                        return@withPermit (0 until a.length()).map { a.getString(it) }.toSet().also { rmem[k] = it }
+                    }
+                }
+                try {
+                    val key = tmdbKey()
+                    val t = if (kind == Kind.Series) "tv" else "movie"
+                    val out = LinkedHashSet<String>()
+                    val hit = tmdbMatch(key, title, kind, year)
+                    if (hit != null) {
+                        val lang = if (LogoMatch.hasArabic(title)) "ar" else "en"
+                        val arr = getObj("https://api.themoviedb.org/3/$t/${hit.optInt("id")}/recommendations?api_key=${Uri.encode(key)}&language=$lang").optJSONArray("results")
+                        if (arr != null) for (i in 0 until minOf(arr.length(), 20)) {
+                            val r = arr.getJSONObject(i)
+                            for (n in listOf("title", "name", "original_title", "original_name")) r.optString(n).takeIf { it.isNotBlank() }?.let { out += LogoMatch.norm(it) }
+                        }
+                        out.remove("")
+                    }
+                    synchronized(index) { index.put(k, JSONObject().put("t", JSONArray(out.toList())).put("time", System.currentTimeMillis())) }
+                    save(d); rmem[k] = out; out
+                } catch (_: Exception) { emptySet<String>() }
+            }
+        }
+    }
     private val NO_EXTRAS = Extras(emptyList(), "")
     private val xmem = ConcurrentHashMap<String, Extras>()
 

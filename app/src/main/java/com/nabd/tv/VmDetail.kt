@@ -47,7 +47,7 @@ internal fun AppViewModel.showDetail(c: Channel, push: Boolean) {
         }
     } else { detailStack.clear(); neighborList = contextFor(c) }   // opened from Home / search / a list: a fresh trail
     val k = kindOf(c)
-    detail = c; info = repo.cachedInfo(c, k); episodes = emptyList(); season = 1; error = null; epFocusUrl = null; castWorks = emptyList(); nextAir = null
+    detail = c; info = repo.cachedInfo(c, k); episodes = emptyList(); season = 1; error = null; epFocusUrl = null; castWorks = emptyList(); similarWorks = emptyList(); nextAir = null
     back = Screen.Main; screen = Screen.Detail
     viewModelScope.launch {
         val i = repo.vodInfo(c, k)
@@ -55,6 +55,7 @@ internal fun AppViewModel.showDetail(c: Channel, push: Boolean) {
         info = i
         if (i != null) loadCastWorks(c, i)
     }
+    if (k != Kind.Live) viewModelScope.launch { loadSimilar(c, k) }
     if (k == Kind.Series) {
         viewModelScope.launch {
             val n = NextAiring.find(repo.http, store.tmdbKey, c.name)
@@ -86,6 +87,20 @@ internal suspend fun AppViewModel.loadCastWorks(c: Channel, i: VodInfo) {
         }.distinctBy { LogoMatch.norm(LogoMatch.clean(it.name).first) }.take(20)
     }
     if (detail?.url == c.url) castWorks = found
+}
+
+/** Library titles that TMDB recommends for [c] (exact normalised title match against the playlist). Nothing without a TMDB key. */
+internal suspend fun AppViewModel.loadSimilar(c: Channel, k: Kind) {
+    if (store.tmdbKey.isBlank()) return
+    val titles = Artwork.recommended(c.name, k, null)
+    if (titles.isEmpty()) return
+    val found = withContext(Dispatchers.Default) {
+        val self = LogoMatch.norm(LogoMatch.clean(c.name).first)
+        (movieList + seriesList).filter { x ->
+            x.url != c.url && LogoMatch.norm(LogoMatch.clean(x.name).first).let { it != self && it in titles }
+        }.distinctBy { LogoMatch.norm(LogoMatch.clean(it.name).first) }.take(20)
+    }
+    if (detail?.url == c.url) similarWorks = found
 }
 
 /** Shows which artwork/metadata fields the provider really sends for one movie and one series (no credentials are shown). */

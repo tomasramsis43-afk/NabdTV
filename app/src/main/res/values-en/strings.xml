@@ -677,6 +677,7 @@
     <string name="detail_cast_title">Cast</string>
     <string name="detail_no_viewer">No app available to open the video on this device</string>
     <string name="detail_cast_works">More with the cast</string>
+    <string name="detail_similar">You may also like</string>
     <string name="prov_check">Check provider data</string>
     <string name="prov_check_title">Provider data</string>
     <string name="prov_none">%1$s: nothing to check</string>

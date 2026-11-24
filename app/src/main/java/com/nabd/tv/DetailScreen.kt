@@ -243,6 +243,7 @@ fun DetailScreen(vm: AppViewModel) {
             }
             CastRow(info, edge)
             WorksRow(vm, edge)
+            WorksRow(vm, edge, vm.similarWorks, R.string.detail_similar, "sim|")
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -279,14 +280,16 @@ private fun CastRow(info: VodInfo?, edge: EdgePad) {
 
 /** Library titles that feature the same lead actors. */
 @Composable
-private fun WorksRow(vm: AppViewModel, edge: EdgePad) {
-    val works = vm.castWorks
+private fun WorksRow(
+    vm: AppViewModel, edge: EdgePad,
+    works: List<Channel> = vm.castWorks, titleRes: Int = R.string.detail_cast_works, keyPrefix: String = "cw|"
+) {
     if (works.isEmpty()) return
     val d = LocalDevice.current
     Spacer(Modifier.height(16.dp))
-    Text(tr(R.string.detail_cast_works), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.padding(start = edge.start, end = edge.end, bottom = 8.dp))
+    Text(tr(titleRes), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.padding(start = edge.start, end = edge.end, bottom = 8.dp))
     LazyRow(contentPadding = PaddingValues(start = edge.start, end = edge.end), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(works.size, key = { works[it].url + works[it].id }) { i -> PosterCard(vm, works[i], Modifier.width(if (!d.portrait) 200.dp else 112.dp), focusKey = "cw|" + works[i].url, adaptive = true) }
+        items(works.size, key = { works[it].url + works[it].id }) { i -> PosterCard(vm, works[i], Modifier.width(if (!d.portrait) 200.dp else 112.dp), focusKey = keyPrefix + works[i].url, adaptive = true) }
     }
 }
 
