@@ -612,10 +612,4 @@ class Repo(private val ctx: Context, val store: Store) {
         return tmdb + tvmazeStills(title, season)
     }
 
-            } else if (ts.state != Health.Dead && hls.state == Health.Dead) liveExt = "ts"
-            if (ts.state == Health.Dead && hls.state == Health.Dead)
-                sb.append(S(R.string.a_eb16298d))
-        }
-        sb.toString()
-    }
 }

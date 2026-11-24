@@ -91,3 +91,9 @@ suspend fun Repo.diagnose(): String = withContext(Dispatchers.IO) {
         if (hls.state != Health.Dead && ts.state == Health.Dead) {
             liveExt = "m3u8"; cacheFile.delete()
             sb.append(S(R.string.a_a1845b79))
+        } else if (ts.state != Health.Dead && hls.state == Health.Dead) liveExt = "ts"
+        if (ts.state == Health.Dead && hls.state == Health.Dead)
+            sb.append(S(R.string.a_eb16298d))
+    }
+    sb.toString()
+}
