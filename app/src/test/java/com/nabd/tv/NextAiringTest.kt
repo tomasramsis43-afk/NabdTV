@@ -56,4 +56,16 @@ class NextAiringTest {
 
     private fun assertNotNullFor(body: String, base: String, now: Long) =
         assertTrue(NextAiring.parseAniList(body, base, now) != null)
+
+    @Test fun whenIsShownInTheGivenTimeZone() {
+        val at = NextAiring.midnightOf("2026-12-05", utc)!! + (18 * 60 + 30) * 60_000L   // 18:30 UTC, a Saturday
+        val exact = NextAir(5, null, at, true, "anilist")
+        assertEquals("Sat 5 Dec · 18:30", NextAiring.formatWhen(exact, java.util.Locale.ENGLISH, true, utc))
+        assertEquals("Sat 5 Dec · 6:30 PM", NextAiring.formatWhen(exact, java.util.Locale.ENGLISH, false, utc))
+        // same instant for a viewer in Riyadh (UTC+3): 21:30 the same day
+        assertEquals("Sat 5 Dec · 21:30", NextAiring.formatWhen(exact, java.util.Locale.ENGLISH, true, TimeZone.getTimeZone("Asia/Riyadh")))
+        // a date-only (TMDB) answer never gets an invented time
+        val dateOnly = NextAir(4, 2, NextAiring.midnightOf("2026-12-05", utc)!!, false, "tmdb")
+        assertEquals("Sat 5 Dec", NextAiring.formatWhen(dateOnly, java.util.Locale.ENGLISH, true, utc))
+    }
 }

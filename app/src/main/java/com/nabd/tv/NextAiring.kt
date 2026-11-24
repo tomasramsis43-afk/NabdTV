@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -140,6 +141,17 @@ object NextAiring {
         }.getOrNull()
     }
 
+    /**
+     * "Sat 5 Dec · 18:30" in the device's own time zone (so it follows the user's location). Date-only air dates (TMDB) have no
+     * time of day, so they show the date alone: inventing a time would be wrong.
+     */
+    internal fun formatWhen(n: NextAir, locale: Locale, is24h: Boolean, tz: TimeZone = TimeZone.getDefault()): String {
+        val day = SimpleDateFormat("EEE d MMM", locale).apply { timeZone = tz }.format(n.atMs)
+        if (!n.exact) return day
+        val time = SimpleDateFormat(if (is24h) "HH:mm" else "h:mm a", locale).apply { timeZone = tz }.format(n.atMs)
+        return "$day · $time"
+    }
+
     /** Whole calendar days from today (in [tz]) to the day that starts at [targetMidnightMs]; 0 = today, 1 = tomorrow. */
     internal fun dayDiff(targetMidnightMs: Long, nowMs: Long, tz: TimeZone = TimeZone.getDefault()): Int {
         val today = Calendar.getInstance(tz).apply {
@@ -177,8 +189,15 @@ fun NextAirChips(n: NextAir) {
             else -> tr(R.string.next_ep_in_days, days)
         }
     }
+    val ctx = LocalContext.current
+    val code = Lang.code
+    val whenText = remember(n, code) {
+        val loc = if (code == "ar") Locale.forLanguageTag("ar-u-nu-latn") else Locale.ENGLISH   // same Latin digits as the rest of the UI
+        NextAiring.formatWhen(n, loc, android.text.format.DateFormat.is24HourFormat(ctx))
+    }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         MetaChip(label, fg = Color(0xFFB9F0C3), bg = Color(0x3329C06A))
+        MetaChip("📅 $whenText", fg = Color(0xFFCBD3FF), bg = Color(0x336B7BFF))
         MetaChip("⏰ $countdown", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D))
     }
 }
