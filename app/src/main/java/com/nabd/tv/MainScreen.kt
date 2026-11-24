@@ -430,9 +430,9 @@ private fun HomeHero(
             AdaptiveArtImage(vm, c, landscape = !d.portrait, modifier = Modifier.fillMaxSize())
         }
         // 2. Layered gradients: text side wash, top wash for the floating header, bottom fade into the page.
-        Box(Modifier.fillMaxSize().textSideScrim(if (wide) 0.95f else 0.78f))
-        Box(Modifier.fillMaxWidth().fillMaxHeight(0.42f).background(Brush.verticalGradient(listOf(Scrim.copy(alpha = 0.72f), Color.Transparent))))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.0f to Color.Transparent, 0.38f to Scrim.copy(alpha = 0.18f), 0.74f to Scrim.copy(alpha = 0.70f), 1f to Scrim.copy(alpha = 0.90f))))
+        Box(Modifier.fillMaxSize().textSideScrim(if (wide) 0.40f else 0.35f))
+        Box(Modifier.fillMaxWidth().fillMaxHeight(0.42f).background(Brush.verticalGradient(listOf(Scrim.copy(alpha = 0.30f), Color.Transparent))))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.0f to Color.Transparent, 0.38f to Scrim.copy(alpha = 0.08f), 0.74f to Scrim.copy(alpha = 0.30f), 1f to Scrim.copy(alpha = 0.60f))))
 
         }
         // 3. Info block: anchored to the start side, bottom of the artwork; the right/centre of the image stays clear.
