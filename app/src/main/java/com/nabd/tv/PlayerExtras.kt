@@ -71,39 +71,6 @@ fun rewindLive(vm: AppViewModel, player: ExoPlayer, url: String, sec: Int) {
     } else vm.say(S(R.string.a_32fe8f74))
 }
 
-    .pointerInput(key) {
-        detectTapGestures(
-            onTap = { onTap() },
-            onDoubleTap = { o -> if (!live) onSeek(if (o.x < size.width / 2f) -1 else 1) },
-            onLongPress = { onLongPress() }
-        )
-    }
-    .pointerInput(key) {
-        var zone = 0
-        var acc = 0f
-        detectVerticalDragGestures(
-            onDragStart = { o ->
-                acc = 0f
-                zone = when { o.x < size.width * 0.28f -> 1; o.x > size.width * 0.72f -> 2; else -> 0 }
-            },
-            onDragEnd = { if (zone == 0) { if (acc < -120f) onZap(1) else if (acc > 120f) onZap(-1) } }
-        ) { _, d ->
-            acc += d
-            if (zone != 0) onSide(zone == 1, -d / size.height)
-        }
-    }
-    .pointerInput(key) {
-        // Swipe left/right anywhere on the video = scrub (VOD only), like MX Player / VLC.
-        var acc = 0f
-        detectHorizontalDragGestures(
-            onDragStart = { acc = 0f; if (!live) onHDragStart() },
-            onDragEnd = { if (!live) onHDragEnd() },
-            onDragCancel = { if (!live) onHDragEnd() }
-        ) { _, d ->
-            if (!live) { acc += d / size.width; onHDrag(acc) }
-        }
-    }
-
 /** Channel list that slides over the video, so you can switch channels without leaving the stream. */
 @Composable
 fun ChannelPanel(vm: AppViewModel, current: Channel, onClose: () -> Unit, modifier: Modifier = Modifier) {
