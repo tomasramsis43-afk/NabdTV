@@ -9,7 +9,7 @@
 | 5 | (done) the guide (EPG) files are per provider too | |
 | 6 | No ViewModel / UI / instrumented tests; the EPG parser cannot run on the JVM (`android.util.Xml`) | Needs a test harness |
 | 7 | Cleartext HTTP allowed, `Secret.kt` encryption scheme untouched | Owner decision |
-| 8 | Dependency scan done by hand (okhttp, zxing: no known issues; coil, room, work: not confirmed; media3 1.5.1 is several releases behind 1.11.1). Dependabot added for weekly checks. Dead-code scan not run | OSV is blocked from the workspace, so the scan was partial |
+| 8 | Dependency scan done by hand (okhttp, zxing: no known issues; coil, room, work: not confirmed; media3 1.5.1 is several releases behind 1.11.1). Dependabot added for weekly checks. Dead-code scan done (27 unused declarations and 6 unused strings removed); it only finds names used once, so code that is referenced but never reached is not covered | OSV is blocked from the workspace, so the scan was partial |
 | 9 | Nothing in any round was run on a device | No device available here |
 
 Done since the last version of this file: restore of the tab and open title after the system kills the app; per-provider cache with a one-time migration of the old cache; `Secret` failures noted in `Diag`.
