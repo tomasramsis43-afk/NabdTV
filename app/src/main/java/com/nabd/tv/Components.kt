@@ -299,11 +299,7 @@ fun PosterCard(
                 contentScale = if (kindOf(ch) == Kind.Live) ContentScale.Fit else ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().then(if (kindOf(ch) == Kind.Live) Modifier.padding(6.dp) else Modifier)
             )
-            // Clean artwork: no title wordmark on the card (the name is under it) and no dark wash over the picture.
-            // Only a thin strip behind the watch-progress bar so it stays visible on bright images.
-            if (progress > 0.02f) Box(
-                Modifier.matchParentSize().background(Brush.verticalGradient(0.88f to Color.Transparent, 1f to OverlayScrim))
-            )
+            // Clean artwork: no title wordmark and no dark wash anywhere over the picture.
             val tmdbOn = vm.store.tmdbKey.isNotBlank()
             // TMDB is the only source of the number when a key is set; the provider's own value is used only when there is no key at all.
             (if (tmdbArt != null && (wide || !adaptive)) tmdbArt.rating else if (tmdbOn) TmdbRatings.get(ch.url) else ratingBadge(ch))?.let { r -> RatingPill(r, Modifier.align(Alignment.TopEnd).padding(6.dp)) }
@@ -325,10 +321,6 @@ fun PosterCard(
                     androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr
                 ) {
                     Box(Modifier.matchParentSize()) {
-                        Box(
-                            Modifier.align(Alignment.BottomStart).fillMaxWidth().fillMaxHeight(0.42f)
-                                .background(Brush.verticalGradient(0f to Color.Transparent, 1f to OverlayScrim))
-                        )
                         Text(
                             "$rank", fontSize = if (d.tv) 44.sp else 34.sp, fontWeight = FontWeight.Black, maxLines = 1, softWrap = false,
                             style = androidx.compose.ui.text.TextStyle(
