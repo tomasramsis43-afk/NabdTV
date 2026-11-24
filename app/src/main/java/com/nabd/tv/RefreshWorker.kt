@@ -61,10 +61,10 @@ class NewEpisodesWorker(ctx: Context, params: WorkerParameters) : CoroutineWorke
 
     companion object {
         fun schedule(ctx: Context) {
-            val req = PeriodicWorkRequestBuilder<NewEpisodesWorker>(12, TimeUnit.HOURS)
+            val req = PeriodicWorkRequestBuilder<NewEpisodesWorker>(6, TimeUnit.HOURS)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .build()
-            WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("nabd_new_episodes", ExistingPeriodicWorkPolicy.KEEP, req)
+            WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("nabd_new_episodes", ExistingPeriodicWorkPolicy.UPDATE, req)
         }
     }
 }

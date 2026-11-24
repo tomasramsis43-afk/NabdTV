@@ -19,10 +19,9 @@ object NewEpisodes {
 
     suspend fun check(ctx: Context, store: Store, repo: Repo) {
         if (!store.notifyNewEpisodes || !repo.hasXtream) return
-        // Followed = favourites + series watched in the last 60 days + Watch later.
-        val since = System.currentTimeMillis() - 60L * 86_400_000L
-        val watched = store.history().filter { it.kind == Kind.Series && it.last >= since }.mapNotNull { store.epMeta(it.url)?.seriesUrl }
-        val favs = VmLogic.followedSeries(store.favorites, watched, store.watchLater)
+        // Followed = favourites + every series in the watch history (what the Continue watching list is built from, most recent first) + Watch later.
+        val watched = store.history().filter { it.kind == Kind.Series }.mapNotNull { store.epMeta(it.url)?.seriesUrl }
+        val favs = VmLogic.followedSeries(store.favorites, watched, store.watchLater, 30)
         if (favs.isEmpty()) return
         val series = runCatching { repo.loadSeries(false) }.getOrDefault(emptyList()).associateBy { it.url }
         for (url in favs) {
