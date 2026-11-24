@@ -151,7 +151,7 @@ private fun UpcomingDetailDialog(vm: AppViewModel, u: UpcomingItem, onClose: () 
                     Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         MBtn(if (trailerId.isNotBlank()) tr(R.string.detail_trailer) else tr(R.string.detail_trailer_search)) {
-                            val url = if (trailerId.isNotBlank()) "https://www.youtube.com/watch?v=$trailerId"
+                            val url = if (trailerId.isNotBlank()) "https://www.youtube.com/watch?v=" + android.net.Uri.encode(trailerId)
                             else "https://www.youtube.com/results?search_query=" + android.net.Uri.encode(u.title + " trailer")
                             try {
                                 ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
