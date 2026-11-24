@@ -110,10 +110,10 @@ fun DetailScreen(vm: AppViewModel) {
             // Same adaptive image system as the home screen: poster when upright, backdrop when wide; either falls back to the other.
             AdaptiveArtImage(vm, c, landscape = !upright, maxWaitMs = 6000, modifier = Modifier.fillMaxSize().then(if (blurStep > 0) Modifier.blur((blurStep * 5).dp, androidx.compose.ui.draw.BlurredEdgeTreatment.Rectangle) else Modifier))
             if (blurStep > 0) Box(Modifier.fillMaxSize().background(Scrim.copy(alpha = blurStep * 0.1f)))
-            Box(Modifier.fillMaxSize().textSideScrim(if (narrow) 0.78f else 0.95f))
+            Box(Modifier.fillMaxSize().textSideScrim(if (narrow) 0.35f else 0.40f))
             Box(
                 Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(0.0f to Scrim.copy(alpha = 0.55f), 0.30f to Color.Transparent, 0.62f to Scrim.copy(alpha = 0.55f), 1f to Scrim.copy(alpha = 0.90f))
+                    Brush.verticalGradient(0.0f to Scrim.copy(alpha = 0.20f), 0.30f to Color.Transparent, 0.62f to Scrim.copy(alpha = 0.12f), 1f to Scrim.copy(alpha = 0.55f))
                 )
             )
         }
