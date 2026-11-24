@@ -737,4 +737,14 @@
     <string name="x_about_disclaimer">jolo مشغّل وسائط فقط؛ لا يوفّر ولا يستضيف ولا يبيع أي قنوات أو أفلام أو مسلسلات. المحتوى يأتي من المزوّد الذي تضيفه أنت، وأنت المسؤول عن امتلاك حق مشاهدته.</string>
     <string name="x_about_privacy">بياناتك (بيانات الدخول والمفضلة وسجل المشاهدة) تُحفظ على جهازك فقط، وبيانات الدخول مشفّرة. لا يوجد سيرفر لـ jolo. التطبيق يتصل مباشرةً بمزوّدك وبخدمات الأفلام (TMDB وTVmaze وAniList وغيرها) وTrakt وOpenSubtitles عند تفعيلها. تقارير الأعطال لا تُرسل إلا إذا أدخلت عنوان Sentry بنفسك. التفاصيل الكاملة في PRIVACY.md على صفحة المشروع في GitHub.</string>
     <string name="x_about_tmdb">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
+    <string name="upcoming_movies">قريباً · أفلام</string>
+    <string name="upcoming_series">قريباً · مسلسلات</string>
+    <string name="upcoming_sort_popular">الأكثر شهرة</string>
+    <string name="upcoming_sort_date">الأقرب موعداً</string>
+    <string name="upcoming_kind_movie">فيلم</string>
+    <string name="upcoming_kind_series">مسلسل</string>
+    <string name="upcoming_close">إغلاق</string>
+    <string name="upcoming_cast">الأبطال: %1$s</string>
+    <string name="upcoming_runtime">%1$d دقيقة</string>
+    <string name="upcoming_no_overview">لا يوجد ملخص بعد</string>
 </resources>

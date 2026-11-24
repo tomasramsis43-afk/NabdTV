@@ -301,6 +301,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         out
     }
 
+    /** Upcoming (not yet released) titles from TMDB; the rows below hide whatever the library already has. */
+    var upcomingRaw by mutableStateOf<List<UpcomingItem>>(emptyList()); internal set
+    internal var upcomingAt = 0L
+    /** false = most popular first (default), true = soonest release first. Switchable on phone / tablet only. */
+    var upcomingByDate by mutableStateOf(false)
+
+    private fun upcomingRow(movie: Boolean): List<UpcomingItem> {
+        rev
+        val idx = if (movie) movieTitleIdx else seriesTitleIdx
+        // A title the library already has has moved from "coming soon" to "available": it is removed from the row, with no badge or marker.
+        val kept = upcomingRaw.filter { u ->
+            u.movie == movie && TmdbCharts.pick(idx, listOf(TmdbCharts.Entry(u.names, u.year, null, null)), 1) { true }.first.isEmpty()
+        }
+        return (if (upcomingByDate) kept.sortedBy { it.date } else kept.sortedByDescending { it.popularity }).take(20)
+    }
+    val upcomingMovies by derivedStateOf { upcomingRow(true) }
+    val upcomingSeries by derivedStateOf { upcomingRow(false) }
+
     /** Item currently focused on Home; drives the big preview on TV/tablet. */
     var homeFocus by mutableStateOf<Channel?>(null)
     /** TV home shows one row at a time: index of the visible row (continue-watching first, then the shelves). Survives opening a title. */
@@ -326,7 +344,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (repo.playlistUrl.isNotBlank()) { load(false); refreshRecs() }
         checkUpdate(false)
         if (store.tmdbKey.isNotBlank()) TmdbCharts.loadCached(ctx)?.let { (c, at) -> tmdbCharts = c; chartsAt = at }   // instant rows, refreshed below when older than 6 h
+        if (store.tmdbKey.isNotBlank()) Upcoming.loadCached(ctx)?.let { (l, at) -> upcomingRaw = l; upcomingAt = at }
         refreshTmdbCharts()
+        refreshUpcoming()
         viewModelScope.launch { androidx.compose.runtime.snapshotFlow { movies }.collect { l -> movieTitleIdx = withContext(Dispatchers.Default) { TmdbCharts.indexOf(l) } } }
         viewModelScope.launch { androidx.compose.runtime.snapshotFlow { series }.collect { l -> seriesTitleIdx = withContext(Dispatchers.Default) { TmdbCharts.indexOf(l) } } }
         refreshInBackgroundIfStale()

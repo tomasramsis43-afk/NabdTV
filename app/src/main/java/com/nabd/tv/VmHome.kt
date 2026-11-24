@@ -29,6 +29,18 @@ fun AppViewModel.refreshTmdbCharts(force: Boolean = false) {
     }
 }
 
+/** Loads the "coming soon" lists (cached 6 h). Call again with [force] after the key changes. */
+fun AppViewModel.refreshUpcoming(force: Boolean = false) {
+    val key = store.tmdbKey
+    if (key.isBlank()) { upcomingRaw = emptyList(); return }
+    if (!force && upcomingRaw.isNotEmpty() && System.currentTimeMillis() - upcomingAt < 6 * 3_600_000L) return
+    viewModelScope.launch {
+        val l = withContext(Dispatchers.IO) { runCatching { Upcoming.load(key, Lang.code) }.getOrNull() }
+        if (l != null) { upcomingRaw = l; upcomingAt = System.currentTimeMillis(); Upcoming.save(ctx, l, upcomingAt) }
+        else if (force) upcomingRaw = emptyList()
+    }
+}
+
 suspend fun AppViewModel.loadHomeInfo(c: Channel) {
     if (homeInfoUrl == c.url) return
     homeInfoUrl = c.url; homeInfo = null

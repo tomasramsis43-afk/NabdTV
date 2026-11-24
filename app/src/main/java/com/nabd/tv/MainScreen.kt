@@ -245,7 +245,13 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
         HomeHero(vm, focus, vm.homeInfo, d, palette, Modifier.fillMaxWidth().height(if (d.tv) d.oneRowHeroHeight else d.heroHeight).then(swipe))
         Spacer(Modifier.height(4.dp))
         // TV: the poster stays put and only ONE row is shown under it; Up / Down swap the row (see OneRowHome).
-        if (d.tv) OneRowHome(vm, d, shelves, contItems, Modifier.weight(1f).fillMaxWidth()) else {
+        if (d.tv) {
+            val up = listOfNotNull(
+                vm.upcomingMovies.takeIf { it.isNotEmpty() }?.let { tr(R.string.upcoming_movies) to it },
+                vm.upcomingSeries.takeIf { it.isNotEmpty() }?.let { tr(R.string.upcoming_series) to it }
+            )
+            OneRowHome(vm, d, shelves, contItems, up, Modifier.weight(1f).fillMaxWidth())
+        } else {
         // Rows that scroll up under the hero dissolve softly instead of being cut by a hard line; at the very top nothing is faded.
         val homeState = vm.listState("home")
         val topFade = remember(homeState) {
@@ -282,6 +288,10 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
                     }
                 }
             }
+            val upM = vm.upcomingMovies
+            val upS = vm.upcomingSeries
+            if (upM.isNotEmpty()) item(key = "upcoming-movies") { UpcomingRow(vm, d, tr(R.string.upcoming_movies), upM, edge.start, edge.end) }
+            if (upS.isNotEmpty()) item(key = "upcoming-series") { UpcomingRow(vm, d, tr(R.string.upcoming_series), upS, edge.start, edge.end) }
         }
         }
     }
@@ -296,10 +306,11 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
  */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun OneRowHome(vm: AppViewModel, d: Device, shelves: List<Shelf>, cont: List<ContinueItem>, modifier: Modifier) {
+private fun OneRowHome(vm: AppViewModel, d: Device, shelves: List<Shelf>, cont: List<ContinueItem>, up: List<Pair<String, List<UpcomingItem>>>, modifier: Modifier) {
     val edge = edgePad(d)
     val hasCont = cont.isNotEmpty()
-    val count = shelves.size + if (hasCont) 1 else 0
+    val base = shelves.size + if (hasCont) 1 else 0      // continue + shelves; the "coming soon" rows come after them
+    val count = base + up.size
     if (count == 0) return
     val idx = vm.homeRow.coerceIn(0, count - 1)
     fun shelfAt(i: Int): Shelf? = shelves.getOrNull(if (hasCont) i - 1 else i)
@@ -351,7 +362,10 @@ private fun OneRowHome(vm: AppViewModel, d: Device, shelves: List<Shelf>, cont: 
         Box(Modifier.fillMaxSize().graphicsLayer { alpha = fade.value }) {
             val s = shown.coerceIn(0, count - 1)
             val shelf = shelfAt(s)
-            if (shelf == null) {
+            if (s >= base) {
+                val (upTitle, upList) = up[s - base]
+                Column(Modifier.padding(top = 8.dp)) { UpcomingRow(vm, d, upTitle, upList, edge.start, edge.end, cardW) }
+            } else if (shelf == null) {
                 ContinueRow(vm, d, cont, edge.start, edge.end, Modifier.padding(top = 8.dp))
             } else {
                 Column(Modifier.padding(top = 8.dp)) {
