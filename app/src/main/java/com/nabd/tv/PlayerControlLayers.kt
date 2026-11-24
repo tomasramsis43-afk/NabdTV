@@ -235,7 +235,7 @@ internal fun BoxScope.PlayerControlLayers(
     }
 }
 
-/** Thin progress line with the remaining time, shown at the bottom when the full controls are hidden. */
+/** Thin progress line with elapsed and remaining time, shown at the bottom when the full controls are hidden. */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun BoxScope.VodMiniBar(position: Long, duration: Long, tv: Boolean) {
@@ -246,11 +246,10 @@ private fun BoxScope.VodMiniBar(position: Long, duration: Long, tv: Boolean) {
             .padding(horizontal = if (tv) 48.dp else 12.dp)
             .padding(top = 14.dp, bottom = if (tv) 14.dp else 8.dp)
     ) {
-        Text(
-            "-" + fmtTime(duration - position),
-            fontSize = if (tv) 13.sp else 11.sp, color = Color(0xCCFFFFFF), maxLines = 1,
-            modifier = Modifier.align(Alignment.End)
-        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(fmtTime(position), fontSize = if (tv) 13.sp else 11.sp, color = Color(0xCCFFFFFF), maxLines = 1)
+            Text("-" + fmtTime(duration - position), fontSize = if (tv) 13.sp else 11.sp, color = Color(0xCCFFFFFF), maxLines = 1)
+        }
         Spacer(Modifier.height(4.dp))
         Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color(0x33FFFFFF))) {
             Box(Modifier.fillMaxHeight().fillMaxWidth(pct).background(Accent))
