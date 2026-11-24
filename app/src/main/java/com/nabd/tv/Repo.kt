@@ -120,7 +120,7 @@ class Repo(private val ctx: Context, val store: Store) {
         try {
             val c = JSONArray(api(action))
             for (i in 0 until c.length()) c.getJSONObject(i).let { m[str(it, "category_id")] = str(it, "category_name") }
-        } catch (_: Exception) { }
+        } catch (e: Exception) { Diag.note("Repo#1", e) }
         return m
     }
 
@@ -162,7 +162,7 @@ class Repo(private val ctx: Context, val store: Store) {
         }
         var body: String? = null
         if (xtream.isNotBlank()) {
-            try { body = loadXtream() } catch (_: Exception) { }
+            try { body = loadXtream() } catch (e: Exception) { Diag.note("xtream load", e) }
         }
         if (body == null) {
             val url = playlistUrl
@@ -247,7 +247,7 @@ class Repo(private val ctx: Context, val store: Store) {
                         http.newCall(req).execute().use { r ->
                             if (r.isSuccessful) r.body!!.byteStream().use { i -> f.outputStream().use { o -> i.copyTo(o) } }
                         }
-                    } catch (_: Exception) { }
+                    } catch (e: Exception) { Diag.note("Repo#3", e) }
                 }
                 if (!f.exists()) return@withContext emptyMap()
 
@@ -496,7 +496,7 @@ class Repo(private val ctx: Context, val store: Store) {
                 } else {
                     JSONObject(api("get_vod_info", "&vod_id=${streamIdOf(c.url)}")).optJSONObject("info")?.let { parseInfo(it) }
                 }
-            } catch (_: Exception) { }
+            } catch (e: Exception) { Diag.note("Repo#4", e) }
         }
         if (info == null || info.plot.isBlank()) {
             val t = tmdb(c.name, kind == Kind.Series)

@@ -437,7 +437,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 if (hasXtream) { fetchVod(Tab.Movies, true, silent = true); fetchVod(Tab.Series, true, silent = true) }
                 store.lastSyncAt = System.currentTimeMillis()
                 bump()
-            } catch (_: Exception) { }
+            } catch (e: Exception) { Diag.note("background refresh", e) }
         }
     }
 
@@ -1027,7 +1027,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val l = repo.loadEpisodes(sid)
                 epListCache[sUrl] = l
                 if (detail?.url == sUrl) episodes = l
-            } catch (_: Exception) { }
+            } catch (e: Exception) { Diag.note("AppViewModel#2", e) }
         }
     }
 

@@ -51,7 +51,7 @@ object CrashLog {
                 val keep = if (f.exists()) f.readText().takeLast(6000) else ""
                 val stamp = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date())
                 val trace = Scrub.clean(android.util.Log.getStackTraceString(e)).take(3500)
-                f.writeText(keep + "\n=== $stamp [${t.name}] ===\n" + trace)
+                f.writeText(keep + "\n=== $stamp [${t.name}] ===\n" + trace + Diag.dump().let { if (it.isBlank()) "" else "\n--- recent handled failures ---\n$it" })
                 // Show the error on screen from a separate process (not when the crash happened inside that process).
                 if (!isCrashProcess()) {
                     ctx.startActivity(
