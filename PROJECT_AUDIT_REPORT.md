@@ -46,3 +46,14 @@ No automated dead-code tool was run (Kotlin `unusedX` lint was not enabled), so 
 | Test coverage | 55 | Unit tests for helpers only |
 | Architecture | 68 | State in the ViewModel, Room/Repo split; no DI, large ViewModel |
 | UX | 72 | Consistent, recently reworked; none verified by a person on a device after the latest changes |
+
+## Round 4: full review (manifest, concurrency, memory, logic, build, tests, new code)
+
+- Manifest: only the launcher activity and the widget are exported; services, receivers and the FileProvider are not; backup is off; exact alarms check `canScheduleExactAlarms`. The pairing server uses a 40-bit random token, a 30-wrong-guess limit, size and time limits.
+- Cleartext HTTP is allowed on purpose (IPTV links); every service the app calls itself is https-only.
+- Diagnostics and crash notes pass through `Scrub` (it removes `password`, `user`, `api_key`, `token`).
+- No `GlobalScope`, `runBlocking` or WebView. The `!!` uses are on OkHttp bodies or are guarded.
+- Caches: all are bounded except the episode list (fixed now). `Secret.dec` keeps decrypted values in memory by design (performance change by another session).
+- Translations: 725 strings in each of the three value folders, no gaps. 108 unit tests across 22 files.
+- New code since the last round (Upcoming rows, new-episode worker, media3 1.9.4, TMDB rating throttle) was read; one hardening fix (trailer link). Not run on a device.
+- Open: `-keep class androidx.media3.** { *; }` in the R8 rules keeps more code than needed (size only).

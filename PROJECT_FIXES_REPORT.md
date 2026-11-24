@@ -32,3 +32,5 @@ All items compiled and passed CI (unit tests, `assembleDebug`, compatibility lin
 | Providers | Per-provider cache (rows kept as `live@<id>` etc.), one-time migration of the old cache and category-order files, search limited to the active provider, switching shows cached lists at once | `Repo.kt`, `Db.kt`, `AppViewModel.kt` |
 | Diagnostics | `Secret` encryption / decryption failures are noted | `Secret.kt` |
 | Structure | `AppViewModel` split into seven extension files; `PlayerScreen` overlay layers moved into `PlayerEndLayers.kt`, `PlayerStatusLayers.kt`, `PlayerControlLayers.kt` (behaviour unchanged, CI green, not run on a device) | `AppViewModel.kt`, `Vm*.kt`, `PlayerScreen.kt` |
+| Memory | The episode-list cache is capped (60 series, LRU, thread-safe); the unused `imageCache` was removed | `AppViewModel.kt` |
+| Security | The TMDB trailer key is URL-encoded before it goes into the YouTube link | `UpcomingUi.kt` |
