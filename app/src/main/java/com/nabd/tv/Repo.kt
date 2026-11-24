@@ -21,8 +21,8 @@ import java.util.zip.GZIPInputStream
 @Volatile var httpUa = "IPTVSmartersPro"
 
 class Repo(private val ctx: Context, val store: Store) {
-    private val prefs = ctx.getSharedPreferences("nabd", Context.MODE_PRIVATE)
-    private val cacheFile get() = File(ctx.filesDir, "playlist2.m3u")
+    internal val prefs = ctx.getSharedPreferences("nabd", Context.MODE_PRIVATE)
+    internal val cacheFile get() = File(ctx.filesDir, "playlist2.m3u")
     val dao: ItemDao by lazy { AppDb.get(ctx).items() }
 
     /**
@@ -50,8 +50,8 @@ class Repo(private val ctx: Context, val store: Store) {
     }
 
     /** The guide files are per provider too, so switching never shows (or re-parses) another provider's guide. */
-    private fun epgXml() = File(ctx.filesDir, "epg_${slotId()}.xml")
-    private fun epgParsed() = File(ctx.filesDir, "epg_cache_${slotId()}.bin")
+    internal fun epgXml() = File(ctx.filesDir, "epg_${slotId()}.xml")
+    internal fun epgParsed() = File(ctx.filesDir, "epg_cache_${slotId()}.bin")
     /** Forgets the active provider's guide files. */
     fun dropEpgCache() { epgXml().delete(); epgParsed().delete() }
 
@@ -119,50 +119,8 @@ class Repo(private val ctx: Context, val store: Store) {
 
     val hasXtream: Boolean get() = xt() != null
 
-    /* ───────── saved sources (switch between providers without typing the login again) ───────── */
-    private fun sourceId(kind: String, a: String, user: String) = Integer.toHexString((kind + "|" + a + "|" + user).hashCode())
 
-    fun savedSources(): List<SavedSource> {
-        val raw = Secret.dec(prefs.getString("sources", "") ?: "")
-        if (raw.isBlank()) return emptyList()
-        return runCatching {
-            val a = org.json.JSONArray(raw)
-            (0 until a.length()).map { i ->
-                val o = a.getJSONObject(i)
-                SavedSource(o.getString("id"), o.getString("name"), o.getString("kind"), o.getString("a"), o.optString("user"), o.optString("pass"))
-            }
-        }.getOrDefault(emptyList())
-    }
-
-    private fun writeSources(list: List<SavedSource>) {
-        val a = org.json.JSONArray()
-        list.forEach { a.put(org.json.JSONObject().put("id", it.id).put("name", it.name).put("kind", it.kind).put("a", it.address).put("user", it.user).put("pass", it.pass)) }
-        prefs.edit().putString("sources", Secret.enc(a.toString())).apply()
-    }
-
-    /** Adds (or refreshes) a source in the saved list. [address] is the Xtream host or the playlist URL. */
-    fun rememberSource(kind: String, address: String, user: String = "", pass: String = "") {
-        if (address.isBlank()) return
-        val host = runCatching { java.net.URI(address).host }.getOrNull()?.takeIf { it.isNotBlank() } ?: address.take(40)
-        val src = SavedSource(sourceId(kind, address, user), if (kind == "xtream" && user.isNotBlank()) "$host · $user" else host, kind, address, user, pass)
-        writeSources(listOf(src) + savedSources().filter { it.id != src.id })
-    }
-
-    fun forgetSource(id: String) = writeSources(savedSources().filter { it.id != id })
-
-    /** The login currently in use as a saved source (older installs never saved theirs). */
-    fun currentSourceId(): String? {
-        xt()?.let { (h, u, _) -> return sourceId("xtream", h, u) }
-        return playlistUrl.takeIf { it.isNotBlank() }?.let { sourceId("m3u", it, "") }
-    }
-
-    fun ensureCurrentSaved() {
-        val id = currentSourceId() ?: return
-        if (savedSources().any { it.id == id }) return
-        xt()?.let { (h, u, p) -> rememberSource("xtream", h, u, p) } ?: rememberSource("m3u", playlistUrl)
-    }
-
-    private fun xt(): Triple<String, String, String>? {
+    internal fun xt(): Triple<String, String, String>? {
         val p = xtream.split("\n")
         return if (p.size == 3) Triple(p[0], p[1], p[2]) else null
     }
@@ -175,7 +133,7 @@ class Repo(private val ctx: Context, val store: Store) {
     )
 
     /** GET with User-Agent rotation: many providers answer 403 to unknown apps. */
-    private fun fetch(url: String): String {
+    internal fun fetch(url: String): String {
         var last = 0
         for (agent in agents) {
             val req = Request.Builder().url(url).header("User-Agent", agent).header("Accept", "*/*").build()
@@ -188,7 +146,7 @@ class Repo(private val ctx: Context, val store: Store) {
         error("HTTP $last")
     }
 
-    private fun str(o: JSONObject, k: String) = if (o.isNull(k)) "" else o.optString(k)
+    internal fun str(o: JSONObject, k: String) = if (o.isNull(k)) "" else o.optString(k)
 
     private fun a(x: String) = x.replace('"', '\'').replace('\n', ' ')
 
@@ -267,110 +225,6 @@ class Repo(private val ctx: Context, val store: Store) {
         store(list, "live")
         if (!epgManual) M3uParser.epgFromHeader(text)?.let { epgUrl = it }
         list
-    }
-
-    /* ───────────── EPG ───────────── */
-
-    /**
-     * Downloads the XMLTV guide (refresh every 6h), auto-matches it to the channels and returns
-     * programmes keyed by channel url. The window covers past days (for catch-up) and the next 36 hours.
-     */
-    /** Identifies what the parsed EPG depends on: the file, the channel list and the manual matches. */
-    private fun epgSignature(f: File, channels: List<Channel>): String {
-        var h = 1125899906842597L
-        for (c in channels) { h = 31 * h + c.url.hashCode(); h = 31 * h + (c.tvgId?.hashCode() ?: 0); h = 31 * h + c.name.hashCode() }
-        return "${f.lastModified()}:${f.length()}:$h:${store.epgOverrides().hashCode()}"
-    }
-
-    private fun writeEpgStr(o: java.io.DataOutputStream, s: String) { val b = s.toByteArray(Charsets.UTF_8); o.writeInt(b.size); o.write(b) }
-    private fun readEpgStr(i: java.io.DataInputStream): String { val b = ByteArray(i.readInt()); i.readFully(b); return String(b, Charsets.UTF_8) }
-
-    private fun writeEpgCache(f: File, sig: String, out: Map<String, List<Prog>>) {
-        try {
-            val tmp = File(f.parentFile, f.name + ".tmp")
-            java.io.DataOutputStream(java.io.BufferedOutputStream(tmp.outputStream())).use { o ->
-                o.writeInt(0x4E504401); o.writeUTF(sig); o.writeLong(System.currentTimeMillis()); o.writeInt(out.size)
-                for ((u, l) in out) {
-                    writeEpgStr(o, u); o.writeInt(l.size)
-                    for (p in l) { o.writeLong(p.start); o.writeLong(p.stop); writeEpgStr(o, p.title); writeEpgStr(o, p.desc) }
-                }
-            }
-            if (!tmp.renameTo(f)) tmp.delete()
-        } catch (_: Exception) { f.delete() }
-    }
-
-    private fun readEpgCache(f: File, sig: String): Map<String, List<Prog>>? {
-        if (!f.exists()) return null
-        return try {
-            java.io.DataInputStream(java.io.BufferedInputStream(f.inputStream())).use { i ->
-                if (i.readInt() != 0x4E504401 || i.readUTF() != sig) return null
-                if (System.currentTimeMillis() - i.readLong() > 6 * 3600_000L) return null
-                val n = i.readInt()
-                val m = HashMap<String, List<Prog>>(n)
-                repeat(n) {
-                    val u = readEpgStr(i)
-                    val c = i.readInt()
-                    val l = ArrayList<Prog>(c)
-                    repeat(c) { l += Prog(i.readLong(), i.readLong(), readEpgStr(i), readEpgStr(i)) }
-                    m[u] = l
-                }
-                m
-            }
-        } catch (_: Exception) { null }
-    }
-
-    suspend fun loadEpg(channels: List<Channel>, force: Boolean): Map<String, List<Prog>> =
-        withContext(Dispatchers.IO) {
-            if (!store.epgEnabled) return@withContext emptyMap()
-            try {
-                val f = epgXml()
-                val stale = !f.exists() || System.currentTimeMillis() - f.lastModified() > 6 * 3600_000L
-                if ((force || stale) && epgUrl.isNotBlank()) {
-                    try {
-                        val req = Request.Builder().url(epgUrl).header("User-Agent", httpUa).build()
-                        http.newCall(req).execute().use { r ->
-                            if (r.isSuccessful) r.body!!.byteStream().use { i -> f.outputStream().use { o -> i.copyTo(o) } }
-                        }
-                    } catch (e: Exception) { Diag.note("Repo#3", e) }
-                }
-                if (!f.exists()) return@withContext emptyMap()
-
-                fun open(): java.io.InputStream {
-                    val raw = f.inputStream().buffered()
-                    raw.mark(2); val b1 = raw.read(); val b2 = raw.read(); raw.reset()
-                    return if (b1 == 0x1f && b2 == 0x8b) GZIPInputStream(raw) else raw
-                }
-
-                // The XMLTV file is parsed twice (channel index, then programs) - heavy for a big provider file. The result
-                // is cached on disk and reused while the file, the channel list and the manual matches are unchanged
-                // (and the cache is under 6 h old, so the "now / next" window stays current).
-                val cacheFile = epgParsed()
-                val sig = epgSignature(f, channels)
-                readEpgCache(cacheFile, sig)?.let { return@withContext it }
-
-                val index = open().use { EpgParser.readChannels(it) }
-                val matched = EpgMatcher.match(channels, index, store.epgOverrides())
-                val out = HashMap<String, List<Prog>>(matched.size)
-                if (matched.isNotEmpty()) {
-                    val now = System.currentTimeMillis()
-                    val byXml = open().use { EpgParser.parse(it, matched.values.toSet(), now - 3 * 86_400_000L, now + 36 * 3600_000L) }
-                    for ((url, xml) in matched) byXml[xml]?.let { out[url] = it }
-                }
-                writeEpgCache(cacheFile, sig, out)
-                out
-            } catch (e: Exception) { emptyMap() }
-        }
-
-    /** Channel ids found in the cached guide (for the manual EPG match screen). */
-    suspend fun guideChannelNames(): List<String> = withContext(Dispatchers.IO) {
-        try {
-            val f = epgXml()
-            if (!f.exists()) return@withContext emptyList()
-            val raw = f.inputStream().buffered()
-            raw.mark(2); val b1 = raw.read(); val b2 = raw.read(); raw.reset()
-            val src = if (b1 == 0x1f && b2 == 0x8b) GZIPInputStream(raw) else raw
-            src.use { EpgParser.readChannels(it).ids.values.sorted() }
-        } catch (e: Exception) { emptyList() }
     }
 
     /* ───────────── Catch-up ───────────── */
@@ -758,79 +612,6 @@ class Repo(private val ctx: Context, val store: Store) {
         return tmdb + tvmazeStills(title, season)
     }
 
-    /* ───────────── Health probe ───────────── */
-
-    private fun looksLike(buf: ByteArray, n: Int): String {
-        if (n <= 0) return S(R.string.a_26614bfb)
-        val s = String(buf, 0, n, Charsets.ISO_8859_1)
-        return when {
-            s.startsWith("#EXTM3U") -> "HLS"
-            buf[0] == 0x47.toByte() -> "MPEG-TS"
-            s.startsWith("<") -> S(R.string.a_23045f8c)
-            s.startsWith("{") -> S(R.string.a_91ed297f)
-            else -> "بيانات"
-        }
-    }
-
-    /** One short, ranged request: classifies a stream as ok / slow / dead and measures time-to-first-byte. */
-    fun probeStream(url: String): HealthRecord {
-        val c = http.newBuilder().readTimeout(8, TimeUnit.SECONDS).callTimeout(12, TimeUnit.SECONDS).build()
-        val t0 = System.currentTimeMillis()
-        val old = store.health(url)
-        return try {
-            val req = Request.Builder().url(url).header("User-Agent", httpUa).header("Range", "bytes=0-1023").build()
-            c.newCall(req).execute().use { r ->
-                val buf = ByteArray(64)
-                val n = if (r.isSuccessful) r.body!!.byteStream().read(buf) else 0
-                val ms = System.currentTimeMillis() - t0
-                val kind = looksLike(buf, n)
-                val good = r.isSuccessful && (kind == "HLS" || kind == "MPEG-TS" || kind == "بيانات")
-                val state = when {
-                    !good -> Health.Dead
-                    ms > 4000 -> Health.Slow
-                    else -> Health.Ok
-                }
-                HealthRecord(state, ms, System.currentTimeMillis(), if (good) 0 else (old?.failures ?: 0) + 1)
-            }
-        } catch (e: Exception) {
-            HealthRecord(Health.Dead, System.currentTimeMillis() - t0, System.currentTimeMillis(), (old?.failures ?: 0) + 1)
-        }
-    }
-
-    /** One-line account status from the server (null when the login is not Xtream or the server did not answer). */
-    suspend fun accountInfo(): String? = withContext(Dispatchers.IO) {
-        val (b, u, p) = xt() ?: return@withContext null
-        try {
-            val ui = JSONObject(fetch("$b/player_api.php?username=${Uri.encode(u)}&password=${Uri.encode(p)}")).optJSONObject("user_info")
-                ?: return@withContext null
-            val exp = str(ui, "exp_date").toLongOrNull()
-                ?.let { SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(it * 1000)) } ?: S(R.string.a_5b4b0d88)
-            S(R.string.x_acct_line, str(ui, "status"), exp, str(ui, "active_cons"), str(ui, "max_connections"))
-        } catch (_: Exception) { null }
-    }
-
-    /** Self-test: account status and connection limit (the stream-level probes live in HealthChecker). */
-    suspend fun diagnose(): String = withContext(Dispatchers.IO) {
-        val (b, u, p) = xt() ?: return@withContext S(R.string.a_381f58fe)
-        val sb = StringBuilder()
-        try {
-            val ui = JSONObject(fetch("$b/player_api.php?username=${Uri.encode(u)}&password=${Uri.encode(p)}")).optJSONObject("user_info")
-            if (ui == null) sb.append(S(R.string.a_bee01191)) else {
-                val exp = str(ui, "exp_date").toLongOrNull()
-                    ?.let { SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(it * 1000)) } ?: S(R.string.a_5b4b0d88)
-                sb.append(S(R.string.x_diag_acct, str(ui, "status"), str(ui, "auth"), exp))
-                sb.append(S(R.string.x_diag_cons, str(ui, "active_cons"), str(ui, "max_connections")))
-            }
-        } catch (e: Exception) { sb.append(S(R.string.x_diag_acct_failed, e.message ?: "")) }
-        val live = cacheFile.takeIf { it.exists() }?.let { M3uParser.parse(it.readText()).firstOrNull()?.url }
-        if (live == null) sb.append(S(R.string.a_ee94ac8e)) else {
-            val stem = live.removeSuffix(".m3u8").removeSuffix(".ts")
-            val ts = probeStream("$stem.ts")
-            val hls = probeStream("$stem.m3u8")
-            sb.append(S(R.string.x_diag_live, ts.state, ts.latencyMs, hls.state, hls.latencyMs))
-            if (hls.state != Health.Dead && ts.state == Health.Dead) {
-                liveExt = "m3u8"; cacheFile.delete()
-                sb.append(S(R.string.a_a1845b79))
             } else if (ts.state != Health.Dead && hls.state == Health.Dead) liveExt = "ts"
             if (ts.state == Health.Dead && hls.state == Health.Dead)
                 sb.append(S(R.string.a_eb16298d))
