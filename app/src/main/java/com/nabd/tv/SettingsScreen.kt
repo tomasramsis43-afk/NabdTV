@@ -78,6 +78,14 @@ private fun accentFor(p: SettingsPage): Color = when (p) {
     SettingsPage.About -> Color(0xFFA9B4C6)
 }
 
+/**
+ * Number of edits made on the settings screen so far. The Store is plain SharedPreferences (not observable) and every argument
+ * the pages receive keeps its identity, so Compose skips them and they keep showing old values. Every page and every [Group]
+ * reads this local instead: a change invalidates exactly those readers, even when their parents were skipped, and nodes and
+ * focus stay where they are (no re-creation, so the TV remote keeps its place).
+ */
+private val LocalSettingsRev = compositionLocalOf { 0 }
+
 @Composable
 fun SettingsScreen(vm: AppViewModel) {
     val dash = LocalDevice.current
@@ -119,7 +127,9 @@ fun SettingsScreen(vm: AppViewModel) {
                 onBack = { vm.closeSettings() }
             )
         } else {
-            PageView(vm, s, page!!, dash, onBack = { page = null }, upd = ::upd, rev = tick)
+            CompositionLocalProvider(LocalSettingsRev provides tick) {
+                PageView(vm, s, page!!, dash, onBack = { page = null }, upd = ::upd, rev = tick)
+            }
         }
     }
 }
@@ -217,7 +227,7 @@ private fun PageView(
     d: Device,
     onBack: () -> Unit,
     upd: (() -> Unit) -> Unit,
-    /** Changes after every edit. The Store is not observable and every other argument keeps its identity, so without this the page is skipped and keeps showing the old values. */
+    /** Changes after every edit so this frame is not skipped; the pages and groups inside follow [LocalSettingsRev]. */
     @Suppress("UNUSED_PARAMETER") rev: Int = 0
 ) {
     val tint = accentFor(page)
@@ -267,6 +277,7 @@ private fun PageView(
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun Group(title: String, content: @Composable ColumnScope.() -> Unit) {
+    if (LocalSettingsRev.current < 0) return   // re-run the rows below after every edit (see LocalSettingsRev)
     Column {
         Text(
             title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextSecondary,
@@ -340,6 +351,7 @@ private fun langLabel(code: String): String = when (code) {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun AppearancePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
+    if (LocalSettingsRev.current < 0) return   // re-read the Store after every edit (see LocalSettingsRev)
     val cx = LocalContext.current
     Group(S(R.string.a_768ba958)) {
         Toggle(S(R.string.a_3318a3c3), vm.darkPref) { vm.setDark(it) }
@@ -358,6 +370,7 @@ private fun AppearancePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun DisplayPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
+    if (LocalSettingsRev.current < 0) return   // re-read the Store after every edit (see LocalSettingsRev)
     Group(S(R.string.a_80e8bb66)) {
         Row2(S(R.string.a_5b84a796), AspectMode.of(s.defaultAspect).label) {
             vm.menu = MenuRequest(S(R.string.a_06160737), AspectMode.entries.map { a -> a.label to { upd { s.defaultAspect = a.name } } })
@@ -389,6 +402,7 @@ private fun DisplayPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun AudioPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
+    if (LocalSettingsRev.current < 0) return   // re-read the Store after every edit (see LocalSettingsRev)
     Group(S(R.string.a_beb4436d)) {
         Row2(S(R.string.a_6b558ffd), langLabel(s.prefAudioLang)) {
             vm.menu = MenuRequest(S(R.string.a_31c39c9d), listOf("ar", "en", "fr", "tr", "es").map { l -> langLabel(l) to { upd { s.prefAudioLang = l } } })
@@ -414,6 +428,7 @@ private fun AudioPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun SubtitlePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
+    if (LocalSettingsRev.current < 0) return   // re-read the Store after every edit (see LocalSettingsRev)
     Group(S(R.string.a_bb8d46f9)) {
         Row2(S(R.string.a_17ea7fb2), langLabel(s.prefSubLang)) {
             vm.menu = MenuRequest(S(R.string.a_9eb26ff7), listOf("ar", "en", "fr", "tr", "es").map { l -> langLabel(l) to { upd { s.prefSubLang = l } } })
@@ -458,6 +473,7 @@ private fun SubtitlePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun PlaybackPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
+    if (LocalSettingsRev.current < 0) return   // re-read the Store after every edit (see LocalSettingsRev)
     Group(S(R.string.a_0ee01a2d)) {
         Row2(S(R.string.a_350c3a32), if (s.defaultSpeed == 1f) S(R.string.a_e7331441) else "${s.defaultSpeed}x") {
             vm.menu = MenuRequest(S(R.string.a_6bc0cff3), PLAYER_SPEEDS.map { v ->
@@ -487,6 +503,7 @@ private fun PlaybackPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun NetworkPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
+    if (LocalSettingsRev.current < 0) return   // re-read the Store after every edit (see LocalSettingsRev)
     Group(S(R.string.a_7a466b92)) {
         Row2(if (vm.diagBusy) S(R.string.a_bf15efb7) else S(R.string.a_61809fbd)) { if (!vm.diagBusy) vm.runDiag() }
         Row2(S(R.string.a_5b5ad423)) { vm.refreshAccount() }
@@ -505,6 +522,7 @@ private fun NetworkPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun AccountPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
+    if (LocalSettingsRev.current < 0) return   // re-read the Store after every edit (see LocalSettingsRev)
     Group(S(R.string.a_19471ecc)) {
         Row2(S(R.string.a_a6f38e32), if (vm.hasXtream) "Xtream Codes" else S(R.string.a_57ccaa8d))
         Row2(S(R.string.a_7e8da771), runCatching { java.net.URI(vm.savedUrl).host }.getOrNull()?.takeIf { it.isNotBlank() } ?: "—")
@@ -545,6 +563,7 @@ private fun AccountPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun ProfilePage(vm: AppViewModel, upd: (() -> Unit) -> Unit) {
+    if (LocalSettingsRev.current < 0) return   // re-read the Store after every edit (see LocalSettingsRev)
     Group(S(R.string.a_ace4080f)) {
         Row2(S(R.string.a_7ae8d996), vm.profile.name + if (vm.profile.kids) S(R.string.a_204b9073) else "") { vm.openProfiles() }
         Row2(S(R.string.a_fafed82e)) {
@@ -571,6 +590,7 @@ private fun ProfilePage(vm: AppViewModel, upd: (() -> Unit) -> Unit) {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun ParentalPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
+    if (LocalSettingsRev.current < 0) return   // re-read the Store after every edit (see LocalSettingsRev)
     Group(S(R.string.a_64d8acb6)) {
         Row2(if (s.hasPin) S(R.string.a_4100db18) else S(R.string.a_24f46537)) {
             val set = {
@@ -611,6 +631,7 @@ private fun ParentalPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun NotificationPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
+    if (LocalSettingsRev.current < 0) return   // re-read the Store after every edit (see LocalSettingsRev)
     val ctx = LocalContext.current
     Group(S(R.string.a_1711387d)) {
         Toggle(S(R.string.a_69934be2), s.autoRefresh) { upd { s.autoRefresh = it } }
@@ -626,6 +647,7 @@ private fun NotificationPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Un
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun StoragePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
+    if (LocalSettingsRev.current < 0) return   // re-read the Store after every edit (see LocalSettingsRev)
     val cx = LocalContext.current
     Group(S(R.string.a_a1d8f99b)) {
         Row2(S(R.string.a_17fd2870)) {
@@ -671,6 +693,7 @@ private fun StoragePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun LanguagePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
+    if (LocalSettingsRev.current < 0) return   // re-read the Store after every edit (see LocalSettingsRev)
     val appCtx = androidx.compose.ui.platform.LocalContext.current.applicationContext
     Group(S(R.string.a_8a62656e)) {
         Row2(S(R.string.a_7f272eba), if (Lang.code == "ar") S(R.string.a_9970632f) else "English") {
@@ -699,6 +722,7 @@ private fun LanguagePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun RemotePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
+    if (LocalSettingsRev.current < 0) return   // re-read the Store after every edit (see LocalSettingsRev)
     Group(S(R.string.a_028a5860)) {
         Row2(S(R.string.a_635631fb), UpDownAction.of(s.tvUpDown).label) {
             vm.menu = MenuRequest(S(R.string.a_776ca067), UpDownAction.entries.map { a -> a.label to { upd { s.tvUpDown = a.name } } })
@@ -719,6 +743,7 @@ private fun RemotePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun AboutPage(vm: AppViewModel, upd: (() -> Unit) -> Unit) {
+    if (LocalSettingsRev.current < 0) return   // re-read the Store after every edit (see LocalSettingsRev)
     val ctx = LocalContext.current
     Group(S(R.string.a_6d0ff9f6)) {
         Row2(S(R.string.a_3560b6e8), Updater.currentName(ctx))
