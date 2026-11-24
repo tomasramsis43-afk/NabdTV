@@ -322,6 +322,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     init {
         syncTheme()
         RefreshWorker.schedule(app)
+        NewEpisodesWorker.schedule(app)
         if (repo.playlistUrl.isNotBlank()) { load(false); refreshRecs() }
         checkUpdate(false)
         if (store.tmdbKey.isNotBlank()) TmdbCharts.loadCached(ctx)?.let { (c, at) -> tmdbCharts = c; chartsAt = at }   // instant rows, refreshed below when older than 6 h
