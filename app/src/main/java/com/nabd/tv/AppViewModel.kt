@@ -550,7 +550,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setUrl(url: String, cached: Boolean = false) {
         repo.epgManual = false; repo.xtream = ""; repo.playlistUrl = url.trim()
         repo.rememberSource("m3u", url.trim())
-        if (cached) repo.dropEpgCache()
         resetVod(!cached); load(!cached)
     }
 
@@ -564,7 +563,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         repo.epgUrl = "$b/xmltv.php?$q"
         repo.playlistUrl = "$b/get.php?$q&type=m3u_plus&output=ts"
         repo.rememberSource("xtream", b, user.trim(), pass.trim())
-        if (cached) repo.dropEpgCache()
         resetVod(!cached); load(!cached)
     }
 

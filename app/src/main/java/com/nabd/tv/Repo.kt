@@ -49,8 +49,11 @@ class Repo(private val ctx: Context, val store: Store) {
         dao.replace(slot(kind), list.map { it.toEntity(slot(kind)) })
     }
 
-    /** A different provider is about to be used with its own cached lists: the guide file on disk belongs to the previous one. */
-    fun dropEpgCache() { File(ctx.filesDir, "epg.xml").delete(); File(ctx.filesDir, "epg_cache.bin").delete() }
+    /** The guide files are per provider too, so switching never shows (or re-parses) another provider's guide. */
+    private fun epgXml() = File(ctx.filesDir, "epg_${slotId()}.xml")
+    private fun epgParsed() = File(ctx.filesDir, "epg_cache_${slotId()}.bin")
+    /** Forgets the active provider's guide files. */
+    fun dropEpgCache() { epgXml().delete(); epgParsed().delete() }
 
     /* Category order is the provider's own order and stays fixed across refreshes (new categories go to the end). */
     private val orderCache = HashMap<String, List<String>>()
@@ -79,6 +82,10 @@ class Repo(private val ctx: Context, val store: Store) {
                     val old = File(ctx.filesDir, "gorder_$k.txt")
                     if (old.exists()) old.copyTo(File(ctx.filesDir, "gorder_${k}_${slotId()}.txt"), overwrite = false)
                 }
+            }
+            runCatching {   // the guide downloaded before the upgrade belongs to the provider in use: keep it instead of downloading again
+                File(ctx.filesDir, "epg.xml").takeIf { it.exists() }?.renameTo(epgXml())
+                File(ctx.filesDir, "epg_cache.bin").takeIf { it.exists() }?.renameTo(epgParsed())
             }
             prefs.edit().putBoolean("slots1o", true).apply()
         }
@@ -316,7 +323,7 @@ class Repo(private val ctx: Context, val store: Store) {
         withContext(Dispatchers.IO) {
             if (!store.epgEnabled) return@withContext emptyMap()
             try {
-                val f = File(ctx.filesDir, "epg.xml")
+                val f = epgXml()
                 val stale = !f.exists() || System.currentTimeMillis() - f.lastModified() > 6 * 3600_000L
                 if ((force || stale) && epgUrl.isNotBlank()) {
                     try {
@@ -337,7 +344,7 @@ class Repo(private val ctx: Context, val store: Store) {
                 // The XMLTV file is parsed twice (channel index, then programs) - heavy for a big provider file. The result
                 // is cached on disk and reused while the file, the channel list and the manual matches are unchanged
                 // (and the cache is under 6 h old, so the "now / next" window stays current).
-                val cacheFile = File(ctx.filesDir, "epg_cache.bin")
+                val cacheFile = epgParsed()
                 val sig = epgSignature(f, channels)
                 readEpgCache(cacheFile, sig)?.let { return@withContext it }
 
@@ -357,7 +364,7 @@ class Repo(private val ctx: Context, val store: Store) {
     /** Channel ids found in the cached guide (for the manual EPG match screen). */
     suspend fun guideChannelNames(): List<String> = withContext(Dispatchers.IO) {
         try {
-            val f = File(ctx.filesDir, "epg.xml")
+            val f = epgXml()
             if (!f.exists()) return@withContext emptyList()
             val raw = f.inputStream().buffered()
             raw.mark(2); val b1 = raw.read(); val b2 = raw.read(); raw.reset()
