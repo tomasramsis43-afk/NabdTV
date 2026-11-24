@@ -12,3 +12,15 @@ All items compiled and passed CI (unit tests, `assembleDebug`, compatibility lin
 | Navigation | Swipe / left-right on detail moves along the originating list | `AppViewModel.kt`, `DetailScreen.kt` |
 | Back key | Back closes player popups and the side panel directly from the key event | `PlayerScreen.kt`, `PlayerSheet.kt` |
 | Tests | Added `AdaptiveArtTest` (artwork pick / size helpers) | `app/src/test/.../AdaptiveArtTest.kt` |
+
+## Second cycle
+| Area | Change | Files |
+|---|---|---|
+| Network | One shared HTTP stack (one connection pool / dispatcher), each client keeps its own timeouts | `Net.kt`, `Artwork.kt`, `TitleLogos.kt`, `TmdbCharts.kt`, `Prefetch.kt`, `Recorder.kt`, `Repo.kt`, `AutoUpdate.kt`, `NabdApp.kt` |
+| Player | After a playback error, retries once by itself when the connection comes back | `PlayerScreen.kt` |
+| Diagnostics | The six silent `catch` blocks note the failure in `Diag`; the last 40 notes are appended to the crash log | `Diag.kt`, `Repo.kt`, `AppViewModel.kt`, `NabdApp.kt` |
+| Accessibility | Poster / wide / live cards announce their title to screen readers | `Components.kt` |
+| Providers | Every login is remembered (encrypted) and can be switched from Settings > Account; switching downloads that provider's lists again | `Repo.kt`, `Models.kt`, `AppViewModel.kt`, `SettingsScreen.kt`, strings |
+| Settings | Pages refresh right after a change | `SettingsScreen.kt` |
+| Release | Optimised (R8) APK attached to every release and preferred by the in-app updater | `build.yml`, `Updater.kt` |
+| Tests | `EpgMatcherTest`, `PrefetchTest`, `DiagTest`, `SavedSourceTest` | `app/src/test` |

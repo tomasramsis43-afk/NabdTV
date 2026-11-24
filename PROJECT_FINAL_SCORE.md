@@ -4,10 +4,10 @@ The changes in this cycle are small and unverified on a device, so the scores mo
 
 | Area | Initial | Final | Note |
 |---|---|---|---|
-| Stability | 68 | 70 | Thread-safe caches, stale-info guard, Back handling; the freeze is still open |
+| Stability | 68 | 74 | Thread-safe caches, stale-info guard, Back handling, auto-retry when the network returns, failures now traceable; the freeze is unconfirmed |
 | Performance | 72 | 73 | Background list preparation (unmeasured) |
 | Security | 80 | 80 | Corrected after finding credentials were already encrypted |
 | Code quality | 70 | 70 | No structural change |
-| Test coverage | 55 | 56 | One new helper test file |
+| Test coverage | 55 | 60 | Five new test files (helpers, EPG matcher, diagnostics) |
 | Architecture | 68 | 68 | No change |
 | UX | 72 | 74 | Detail stability, neighbour navigation, textless posters (unverified) |
