@@ -38,7 +38,7 @@ fun kindOf(c: Channel): Kind = when {
 }
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
-    private val ctx: Application = app
+    internal val ctx: Application = app
 
     /** Localised string for non-composable code. */
     fun tx(@androidx.annotation.StringRes id: Int, vararg a: Any): String = Lang.str(ctx, id, *a)
@@ -56,10 +56,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     })
     var screen: Screen
         get() = screenState
-        private set(v) { screenState = v; syncTheme() }
+        internal set(v) { screenState = v; syncTheme() }
 
     /** User's light/dark choice. Video screens are always dark so controls and overlays stay readable. */
-    var darkPref by mutableStateOf(store.darkMode); private set
+    var darkPref by mutableStateOf(store.darkMode); internal set
     private fun syncTheme() { Ui.dark = darkPref || screenState == Screen.Player || screenState == Screen.MultiView || screenState == Screen.Detail }
     fun setDark(on: Boolean) { store.darkMode = on; darkPref = on; syncTheme() }
 
@@ -74,18 +74,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun contentEntry(): androidx.compose.ui.focus.FocusRequester? =
         lastFocusKey?.let { cardFocus[it] } ?: firstKey?.let { cardFocus[it] }
     fun enterContent(): Boolean = contentEntry()?.let { runCatching { it.requestFocus(); true }.getOrDefault(false) } ?: false
-    private val gridStates = HashMap<String, androidx.compose.foundation.lazy.grid.LazyGridState>()
-    private val listStates = HashMap<String, androidx.compose.foundation.lazy.LazyListState>()
+    internal val gridStates = HashMap<String, androidx.compose.foundation.lazy.grid.LazyGridState>()
+    internal val listStates = HashMap<String, androidx.compose.foundation.lazy.LazyListState>()
     fun gridState(key: String) = gridStates.getOrPut(key) { androidx.compose.foundation.lazy.grid.LazyGridState() }
     fun listState(key: String) = listStates.getOrPut(key) { androidx.compose.foundation.lazy.LazyListState() }
     var tab by mutableStateOf(runCatching { Tab.valueOf(store.startSection) }.getOrDefault(Tab.Home))
-        private set
-    private var back = Screen.Main
+        internal set
+    internal var back = Screen.Main
 
     /** Bumped whenever something that affects visibility changes (unlock, hide, health…). */
     var rev by mutableIntStateOf(0)
-        private set
-    private fun bump() { rev++ }
+        internal set
+    internal fun bump() { rev++ }
 
     /** Re-derives the lists after a setting that changes what they show. */
     fun listsChanged() = bump()
@@ -97,22 +97,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var prompt by mutableStateOf<PromptRequest?>(null)
 
     /* ───────── content ───────── */
-    var all by mutableStateOf<List<Channel>>(emptyList()); private set
-    var movies by mutableStateOf<List<Channel>>(emptyList()); private set
-    var series by mutableStateOf<List<Channel>>(emptyList()); private set
-    var epg by mutableStateOf<Map<String, List<Prog>>>(emptyMap()); private set
-    var loading by mutableStateOf(false); private set
-    var vodLoading by mutableStateOf(false); private set
-    var error by mutableStateOf<String?>(null); private set
+    var all by mutableStateOf<List<Channel>>(emptyList()); internal set
+    var movies by mutableStateOf<List<Channel>>(emptyList()); internal set
+    var series by mutableStateOf<List<Channel>>(emptyList()); internal set
+    var epg by mutableStateOf<Map<String, List<Prog>>>(emptyMap()); internal set
+    var loading by mutableStateOf(false); internal set
+    var vodLoading by mutableStateOf(false); internal set
+    var error by mutableStateOf<String?>(null); internal set
 
-    var favs by mutableStateOf(store.favorites); private set
-    var history by mutableStateOf(store.history()); private set
+    var favs by mutableStateOf(store.favorites); internal set
+    var history by mutableStateOf(store.history()); internal set
     /** url → history entry, rebuilt only when history changes (cards look progress up here instead of scanning the list). */
     val historyByUrl: Map<String, HistoryEntry> by derivedStateOf { history.associateBy { it.url } }
-    private val recCtl = RecordingsController(app, store)
+    internal val recCtl = RecordingsController(app, store)
     val recordings: List<Recording> get() = recCtl.items
-    var recs by mutableStateOf<List<Channel>>(emptyList()); private set
-    var because by mutableStateOf<Pair<String, List<Channel>>?>(null); private set
+    var recs by mutableStateOf<List<Channel>>(emptyList()); internal set
+    var because by mutableStateOf<Pair<String, List<Channel>>?>(null); internal set
 
     var group by mutableStateOf(GROUP_ALL)
     var query by mutableStateOf("")
@@ -124,15 +124,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var splashDone by mutableStateOf(false)
 
     /** Observable copy of the "hide names under posters" option, so every poster updates the moment it is switched. */
-    var hidePosterTitles by mutableStateOf(store.hidePosterTitles); private set
+    var hidePosterTitles by mutableStateOf(store.hidePosterTitles); internal set
     fun applyHidePosterTitles(v: Boolean) { hidePosterTitles = v; store.hidePosterTitles = v }
-    var heroRotate by mutableStateOf(store.heroRotate); private set
+    var heroRotate by mutableStateOf(store.heroRotate); internal set
     fun applyHeroRotate(v: Boolean) { heroRotate = v; store.heroRotate = v }
 
     /** The first screen has something real to show: cached lists loaded, or an error / the setup screen is needed. */
     fun startupReady(): Boolean = screen == Screen.Setup || error != null || (!loading && all.isNotEmpty() && !vodLoading)
 
-    private fun ok(c: Channel, live: Boolean, hidden: Set<String>): Boolean =
+    internal fun ok(c: Channel, live: Boolean, hidden: Set<String>): Boolean =
         parental.visible(c) && c.url !in hidden && !(live && store.hideDead && health.isDead(c.url))
 
     /**
@@ -226,9 +226,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Global search across live, movies and series, answered by the database. */
-    var searchResults by mutableStateOf<List<Channel>>(emptyList()); private set
+    var searchResults by mutableStateOf<List<Channel>>(emptyList()); internal set
     /** Programs (now or upcoming) whose title matches the search, taken from the EPG. */
-    var progResults by mutableStateOf<List<Pair<Channel, Prog>>>(emptyList()); private set
+    var progResults by mutableStateOf<List<Pair<Channel, Prog>>>(emptyList()); internal set
     private var searchJob: kotlinx.coroutines.Job? = null
 
     fun runSearch() {
@@ -253,28 +253,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /* ───────── home shelves ───────── */
-    private fun histChannel(h: HistoryEntry) = Channel(-1, h.name, h.url, h.logo, h.group)
-
     /** TMDB daily trending + top-rated charts (null until loaded / without a TMDB key). */
-    var tmdbCharts by mutableStateOf<TmdbCharts.Charts?>(null); private set
-    private var chartsAt = 0L
+    var tmdbCharts by mutableStateOf<TmdbCharts.Charts?>(null); internal set
+    internal var chartsAt = 0L
     // Title indexes used to match the TMDB charts. Built ONCE per loaded list on a background thread. (They used to be rebuilt
     // on the UI thread after every state bump, normalising every title of a 50k-item library each time: it froze TV boxes.)
     private var movieTitleIdx by mutableStateOf<Map<String, List<Pair<Channel, Int?>>>>(emptyMap())
     private var seriesTitleIdx by mutableStateOf<Map<String, List<Pair<Channel, Int?>>>>(emptyMap())
-
-    /** Loads the TMDB charts (cached 6 h). Call again with [force] after the key changes. */
-    fun refreshTmdbCharts(force: Boolean = false) {
-        val key = store.tmdbKey
-        if (key.isBlank()) { tmdbCharts = null; return }
-        if (!force && tmdbCharts != null && System.currentTimeMillis() - chartsAt < 6 * 3_600_000L) return
-        viewModelScope.launch {
-            val c = withContext(Dispatchers.IO) { runCatching { TmdbCharts.load(key) }.getOrNull() }
-            if (c != null) { tmdbCharts = c; chartsAt = System.currentTimeMillis(); TmdbCharts.save(ctx, c, chartsAt) }
-            else if (force) tmdbCharts = null
-        }
-    }
 
     val shelves by derivedStateOf {
         rev
@@ -320,70 +305,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var homeFocus by mutableStateOf<Channel?>(null)
     /** TV home shows one row at a time: index of the visible row (continue-watching first, then the shelves). Survives opening a title. */
     var homeRow by mutableIntStateOf(0)
-    var homeInfo by mutableStateOf<VodInfo?>(null); private set
-    var homeInfoUrl: String? = null; private set
-    suspend fun loadHomeInfo(c: Channel) {
-        if (homeInfoUrl == c.url) return
-        homeInfoUrl = c.url; homeInfo = null
-        val k = kindOf(c)
-        if (k != Kind.Live) homeInfo = runCatching { repo.vodInfo(c, k) }.getOrNull()
-    }
+    var homeInfo by mutableStateOf<VodInfo?>(null); internal set
+    var homeInfoUrl: String? = null; internal set
 
-    /** Poster + backdrop for [c] from caches / TMDB only (never hits the provider's API), for the adaptive image system. */
-    suspend fun artworkFor(c: Channel, kind: Kind): Pair<String?, String?> = withContext(Dispatchers.IO) {
-        val info = repo.cachedInfo(c, kind)
-        val year = info?.year?.toIntOrNull()
-        val backdrop = info?.backdrop ?: runCatching { Artwork.backdrop(c.name, kind, year)?.url }.getOrNull()
-        val poster = info?.poster ?: runCatching { Artwork.poster(c.name, kind, year)?.url }.getOrNull()
-        poster to backdrop
-    }
-
-    private val recsFile get() = java.io.File(ctx.filesDir, "home_recs_${store.currentProfile.id}.json")
-
-    /**
-     * Home recommendations. The last result is kept on the device and shown at once on the next launch while the fresh
-     * one is computed in the background. Only plain values are read off the main thread (raw lists + a snapshot of
-     * history / favourites), never derived Compose state.
-     */
-    private fun refreshRecs() {
-        val a = all; val m = movies; val sr = series
-        val h = history; val f = favs
-        viewModelScope.launch {
-            val file = recsFile
-            if (recs.isEmpty() && because == null) {
-                val restored = withContext(Dispatchers.Default) { runCatching { readRecsSnapshot(file, a + m + sr) }.getOrNull() }
-                if (restored != null && recs.isEmpty() && because == null) { recs = restored.first; because = restored.second }
-            }
-            val (r, b) = withContext(Dispatchers.Default) {
-                val pool = (a + m + sr).filter { parental.visible(it) }
-                Recommender.recommend(pool, h, f, 24) to Recommender.becauseYouWatched(pool, h, 20)
-            }
-            recs = r; because = b
-            withContext(Dispatchers.IO) { runCatching { writeRecsSnapshot(file, r, b) } }
-        }
-    }
-
-    private fun writeRecsSnapshot(file: java.io.File, r: List<Channel>, b: Pair<String, List<Channel>>?) {
-        val o = org.json.JSONObject()
-        o.put("recs", org.json.JSONArray(r.map { it.url }))
-        if (b != null) { o.put("becauseTitle", b.first); o.put("because", org.json.JSONArray(b.second.map { it.url })) }
-        file.writeText(o.toString())
-    }
-
-    private fun readRecsSnapshot(file: java.io.File, pool: List<Channel>): Pair<List<Channel>, Pair<String, List<Channel>>?>? {
-        if (!file.exists() || pool.isEmpty()) return null
-        val o = org.json.JSONObject(file.readText())
-        val byUrl = HashMap<String, Channel>(pool.size * 2)
-        for (c in pool) byUrl[c.url] = c
-        fun urls(key: String): List<Channel> {
-            val arr = o.optJSONArray(key) ?: return emptyList()
-            return (0 until arr.length()).mapNotNull { byUrl[arr.optString(it)] }.filter { parental.visible(it) }
-        }
-        val r = urls("recs")
-        val bl = urls("because")
-        val bt = o.optString("becauseTitle")
-        return r to (if (bl.isNotEmpty() && bt.isNotBlank()) bt to bl else null)
-    }
+    internal val recsFile get() = java.io.File(ctx.filesDir, "home_recs_${store.currentProfile.id}.json")
 
     /* ───────── guide ───────── */
     fun nowNext(c: Channel): Pair<Prog?, Prog?> {
@@ -407,578 +332,71 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { while (true) { kotlinx.coroutines.delay(20 * 60_000L); checkUpdate(false) } }
     }
 
-    private fun friendly(e: Exception): String = when (e) {
-        is java.net.UnknownHostException -> tx(R.string.x_err_unknown_host)
-        is java.net.SocketTimeoutException -> tx(R.string.x_err_timeout)
-        is java.net.ConnectException -> tx(R.string.x_err_refused)
-        is IllegalArgumentException -> tx(R.string.x_err_bad_address, e.message ?: "")
-        is org.json.JSONException -> tx(R.string.x_err_json)
-        else -> e.message ?: tx(R.string.x_err_unknown)
-    }
-
-    private fun recordMsg(scheduled: Boolean, clash: Boolean): String = when {
-        !scheduled -> tx(R.string.x_rec_already)
-        clash -> tx(R.string.x_rec_clash)
-        else -> tx(R.string.x_rec_ok)
-    }
-
-    /**
-     * Stale-while-revalidate: the cached lists are on screen at once. If they are older than 12 h, refresh quietly in the
-     * background (after startup has settled) and swap the new data in; offline or on a server error the cache simply stays.
-     */
-    private fun refreshInBackgroundIfStale() {
-        if (!store.autoRefresh || (repo.playlistUrl.isBlank() && !hasXtream)) return
-        viewModelScope.launch {
-            kotlinx.coroutines.delay(90_000L)
-            if (System.currentTimeMillis() - store.lastSyncAt < 12 * 3_600_000L) return@launch
-            try {
-                val fresh = repo.load(true)
-                if (fresh.isNotEmpty()) all = fresh
-                if (hasXtream) { fetchVod(Tab.Movies, true, silent = true); fetchVod(Tab.Series, true, silent = true) }
-                store.lastSyncAt = System.currentTimeMillis()
-                bump()
-            } catch (e: Exception) { Diag.note("background refresh", e) }
-        }
-    }
-
-    fun load(force: Boolean) {
-        viewModelScope.launch {
-            loading = true; error = null
-            try {
-                all = repo.load(force)
-                if (force) store.lastSyncAt = System.currentTimeMillis()
-                group = GROUP_ALL
-                warmLists()
-                screen = Screen.Main
-                preloadVod()
-                pendingRestore?.let { pendingRestore = null; it() }
-                pendingResume?.let { pendingResume = null; playResume(it) }
-                launch {
-                    epg = repo.loadEpg(all, force)
-                    Recorder.syncAuto(ctx, store, all, epg)
-                    recCtl.refresh()
-                    bump()
-                }
-                refreshRecs()
-            } catch (e: Exception) {
-                error = friendly(e)
-                if (all.isEmpty()) screen = Screen.Setup
-            }
-            loading = false
-        }
-    }
-
     /** Tabs whose VOD list is being fetched right now (prevents duplicate / parallel loads of the same list). */
-    private val vodActive = HashSet<Tab>()
-    private var vodBusy = 0
-    private var clearJob: kotlinx.coroutines.Job? = null
+    internal val vodActive = HashSet<Tab>()
+    internal var vodBusy = 0
+    internal var clearJob: kotlinx.coroutines.Job? = null
 
-    private suspend fun fetchVod(t: Tab, force: Boolean, silent: Boolean) {
-        if (!vodActive.add(t)) return
-        vodBusy++; vodLoading = true
-        if (!silent) error = null
-        try {
-            if (t == Tab.Movies) movies = repo.loadMovies(force) else series = repo.loadSeries(force)
-            warmLists()
-            refreshRecs()
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            if (!silent) error = friendly(e)
-        } catch (e: OutOfMemoryError) {
-            if (!silent) error = tx(R.string.err_oom)
-        } finally {
-            vodActive.remove(t)
-            vodBusy--; vodLoading = vodBusy > 0
-        }
-    }
-
-    private fun loadVod(t: Tab, force: Boolean) {
-        viewModelScope.launch { clearJob?.join(); fetchVod(t, force, silent = false) }
-    }
-
-    /** Movies and series load automatically in the background right after the live list, so Home shelves are filled without visiting those tabs. */
-    private fun preloadVod() {
-        if (!hasXtream) return
-        viewModelScope.launch {
-            clearJob?.join()
-            if (movies.isEmpty()) fetchVod(Tab.Movies, false, silent = true)
-            if (series.isEmpty()) fetchVod(Tab.Series, false, silent = true)
-        }
-    }
-
-    fun selectTab(t: Tab) {
-        tab = t; group = GROUP_ALL; query = ""
-        // A fresh start on the first card of the page (scroll + focus), unlike returning from a movie page.
-        lastFocusKey = null; restoreFocus = false
-        gridStates.keys.removeAll { it.startsWith(t.name + "|") || it == "search" }
-        if (t == Tab.Home) listStates.keys.removeAll { it == "home" || it.startsWith("row:") }
-        focusContentTick++
-        if (t == Tab.Movies && movies.isEmpty() && hasXtream) loadVod(t, false)
-        if (t == Tab.Series && series.isEmpty() && hasXtream) loadVod(t, false)
-        if (t == Tab.Guide && guideChannel == null) guideChannel = guideChannels.firstOrNull()
-        if (t == Tab.Recordings) recCtl.refresh()
-    }
-
-    fun refresh() {
-        if (tab == Tab.Movies || tab == Tab.Series) loadVod(tab, true)
-        else if (tab == Tab.Home && hasXtream) refreshAccount()
-        else load(true)
-    }
-
-    /** Re-reads everything from the provider: account status, channels, movies, series and the guide. */
-    fun refreshAccount() {
-        viewModelScope.launch {
-            say(tx(R.string.msg_refreshing))
-            val info = repo.accountInfo()
-            if (info != null) say(info)
-            load(true)
-            if (hasXtream) {
-                clearJob?.join()
-                fetchVod(Tab.Movies, true, silent = false)
-                fetchVod(Tab.Series, true, silent = false)
-            }
-        }
-    }
-
-    private fun resetVod(dropCache: Boolean = true) {
-        movies = emptyList(); series = emptyList(); tab = Tab.Home
-        if (dropCache) clearJob = viewModelScope.launch { repo.clearVod() }
-    }
-
-    /** [cached] = switching to a saved provider: its own cached lists are shown at once (and refreshed later in the background). */
-    fun setUrl(url: String, cached: Boolean = false) {
-        repo.epgManual = false; repo.xtream = ""; repo.playlistUrl = url.trim()
-        repo.rememberSource("m3u", url.trim())
-        resetVod(!cached); load(!cached)
-    }
-
-    /** Xtream Codes login → standard M3U + XMLTV endpoints. */
-    fun setXtream(host: String, user: String, pass: String, cached: Boolean = false) {
-        var b = host.trim().trimEnd('/')
-        if (!b.startsWith("http")) b = "http://$b"
-        val q = "username=${Uri.encode(user.trim())}&password=${Uri.encode(pass.trim())}"
-        repo.epgManual = true
-        repo.xtream = "$b\n${user.trim()}\n${pass.trim()}"
-        repo.epgUrl = "$b/xmltv.php?$q"
-        repo.playlistUrl = "$b/get.php?$q&type=m3u_plus&output=ts"
-        repo.rememberSource("xtream", b, user.trim(), pass.trim())
-        resetVod(!cached); load(!cached)
-    }
-
-    fun savedSources(): List<SavedSource> { repo.ensureCurrentSaved(); return repo.savedSources() }
-    fun currentSourceId(): String? = repo.currentSourceId()
-    fun forgetSource(s: SavedSource) { repo.forgetSource(s.id) }
-    /** Switches to a saved provider: its cached lists show at once; a provider never opened before is downloaded. */
-    fun switchSource(s: SavedSource) {
-        if (s.id == repo.currentSourceId()) return
-        if (s.kind == "xtream") setXtream(s.address, s.user, s.pass, cached = true) else setUrl(s.address, cached = true)
-    }
-
-    fun openSetup() { back = Screen.Main; screen = Screen.Setup }
-    fun closeSetup() { if (all.isNotEmpty()) screen = Screen.Main }
-    fun openSettings() { if (profile.kids) requirePin(tx(R.string.pin_enter)) { screen = Screen.Settings } else screen = Screen.Settings }
-    fun closeSettings() { restoreFocus = true; screen = Screen.Main; bump() }
-
-    var diag by mutableStateOf<String?>(null); private set
-    var diagBusy by mutableStateOf(false); private set
-    fun runDiag() {
-        viewModelScope.launch {
-            diagBusy = true; diag = null
-            diag = try { repo.diagnose() } catch (e: Exception) { tx(R.string.diag_failed, e.message ?: "") }
-            diagBusy = false
-        }
-    }
+    var diag by mutableStateOf<String?>(null); internal set
+    var diagBusy by mutableStateOf(false); internal set
 
     /* ───────── sleep timer / daily limit / suggestions ───────── */
     var sleepAt by mutableStateOf(0L)
 
-    fun limitReached(): Boolean {
-        return VmLogic.limitReached(store.limitMinutes, store.hasPin, parental.unlocked, store.watchedSeconds().toLong())
-    }
-
-    /** Called every 30 s while something is playing. */
-    fun tickWatch(sec: Int) {
-        store.addWatched(sec)
-        if (limitReached() && screen == Screen.Player) {
-            stop()
-            pin = PinRequest(tx(R.string.pin_time_limit)) { }
-        }
-    }
-
-    /** "What should I watch?" — a few picks that fit the time of day and the user's taste. */
-    fun tonight() {
-        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-        val pool = when {
-            hour in 5..11 -> liveList.filter { Classifier.genre(it) == Genre.News }.ifEmpty { liveList }
-            hour in 18..23 || hour < 2 -> (movieList + seriesList).ifEmpty { liveList }
-            else -> liveList
-        }
-        val picks = (recs.shuffled().take(3) + pool.shuffled().take(5)).distinctBy { it.url }.take(6)
-        if (picks.isEmpty()) { say(tx(R.string.no_suggestions)); return }
-        menu = MenuRequest(tx(R.string.what_to_watch), picks.map { c -> (if (kindOf(c) == Kind.Live) "📺 " else "🎬 ") + c.name to { open(c) } })
-    }
-
     /* ───────── in-app update ───────── */
-    var update by mutableStateOf<Updater.Release?>(null); private set
-    var updateProgress by mutableStateOf<Int?>(null); private set
-    private var pendingApk: java.io.File? = null
-
-    fun checkUpdate(manual: Boolean) {
-        viewModelScope.launch {
-            try {
-                update = Updater.check(ctx, repo.http)
-                if (!manual && update != null && UpdatePrefs.auto(ctx) && screen != Screen.Player && !PlaybackBus.active) installUpdate(auto = true)
-                if (manual) say(if (update == null) tx(R.string.up_to_date) else tx(R.string.new_version, update!!.tag))
-            } catch (e: Exception) {
-                if (manual) say(tx(R.string.update_check_failed, e.message ?: ""))
-            }
-        }
-    }
-
-    fun installUpdate(auto: Boolean = false) {
-        val rel = update ?: return
-        if (updateProgress != null) return
-        if (auto && android.os.Build.VERSION.SDK_INT >= 26 && !ctx.packageManager.canRequestPackageInstalls()) {
-            say(tx(R.string.update_allow_install)); return
-        }
-        viewModelScope.launch {
-            try {
-                updateProgress = 0
-                val f = pendingApk?.takeIf { it.exists() && it.name.contains("${rel.build}") }
-                    ?: Updater.download(ctx, repo.http, rel) { updateProgress = it }
-                pendingApk = f
-                updateProgress = null
-                if (!Updater.install(ctx, f)) say(tx(R.string.update_allow_retry))
-            } catch (e: Exception) {
-                updateProgress = null
-                say(tx(R.string.download_failed, e.message ?: ""))
-            }
-        }
-    }
+    var update by mutableStateOf<Updater.Release?>(null); internal set
+    var updateProgress by mutableStateOf<Int?>(null); internal set
+    internal var pendingApk: java.io.File? = null
 
     /* ───────── pairing from phone ───────── */
-    var pairingUrl by mutableStateOf<String?>(null); private set
-    private var pairing: PairingServer? = null
-
-    fun startPairing() {
-        val srv = PairingServer { f ->
-            viewModelScope.launch {
-                val ok = when (f["t"]) {
-                    "m3u" -> f["url"].orEmpty().takeIf { it.isNotBlank() }?.also { setUrl(it) }
-                    else -> if (!f["host"].isNullOrBlank() && !f["user"].isNullOrBlank() && !f["pass"].isNullOrBlank()) {
-                        setXtream(f["host"]!!, f["user"]!!, f["pass"]!!); "ok"
-                    } else null
-                }
-                if (ok != null) { stopPairing(); say(tx(R.string.pair_received)) } else say(tx(R.string.pair_incomplete))
-            }
-        }
-        val u = srv.start()
-        if (u == null) { say(tx(R.string.pair_failed)); return }
-        pairing = srv; pairingUrl = u
-    }
-
-    fun stopPairing() { pairing?.stop(); pairing = null; pairingUrl = null }
+    var pairingUrl by mutableStateOf<String?>(null); internal set
+    internal var pairing: PairingServer? = null
 
     override fun onCleared() { stopPairing(); super.onCleared() }
 
     /* ───────── profiles ───────── */
-    var profile by mutableStateOf(store.currentProfile); private set
-    var profileList by mutableStateOf(store.profiles()); private set
-
-    private fun reloadProfileState() {
-        profile = store.currentProfile; profileList = store.profiles()
-        favs = store.favorites; history = store.history()
-        tab = runCatching { Tab.valueOf(store.startSection) }.getOrDefault(Tab.Home)
-        group = GROUP_ALL; query = ""
-        parental.lock(); bump(); refreshRecs()
-    }
-
-    private fun doSwitch(id: String) { store.switchProfile(id); reloadProfileState(); screen = Screen.Main }
-
-    /** Leaving a kids profile needs the PIN (when one is set), so a child cannot hop to an adult profile. */
-    fun switchProfile(id: String) {
-        if (id == profile.id) { screen = Screen.Main; return }
-        if (profile.kids && store.hasPin && !parental.unlocked) pin = PinRequest(tx(R.string.pin_switch)) { doSwitch(id) }
-        else doSwitch(id)
-    }
-
-    fun openProfiles() { reloadProfileState(); screen = Screen.Profiles }
-
-    fun addProfile(name: String, kids: Boolean) { store.addProfile(name, kids); profileList = store.profiles() }
-
-    fun deleteProfile(id: String) {
-        requirePin(tx(R.string.pin_enter)) { store.deleteProfile(id); reloadProfileState() }
-    }
-
-    /* ───────── parental control ───────── */
-    private fun guard(c: Channel, go: () -> Unit) {
-        if (parental.needsPin(c)) pin = PinRequest(tx(R.string.pin_enter)) { go() } else go()
-    }
-
-    fun submitPin(code: String): Boolean {
-        val req = pin ?: return false
-        if (!parental.unlock(code)) {
-            val w = parental.lockoutSeconds()
-            if (w > 0) say(tx(R.string.pin_throttled, w))
-            return false
-        }
-        pin = null; bump(); req.onOk()
-        return true
-    }
-
-    /** Runs [go] directly when no PIN is set, otherwise after the PIN is verified. */
-    fun requirePin(title: String, go: () -> Unit) {
-        if (!store.hasPin || parental.unlocked) go() else pin = PinRequest(title) { go() }
-    }
-
-    fun setPin(code: String) { store.setPin(code); bump() }
-    fun clearPin() { requirePin(tx(R.string.pin_clear)) { store.clearPin(); parental.lock(); bump() } }
-    fun setLevel(m: Maturity) { requirePin(tx(R.string.pin_enter)) { store.parentalLevel = m; bump() } }
-    fun lockNow() { parental.lock(); bump() }
-
-    fun toggleGroupLock(g: String) {
-        if (!store.hasPin) { say(tx(R.string.pin_set_first)); return }
-        requirePin(tx(R.string.pin_enter)) {
-            store.lockedGroups = if (g in store.lockedGroups) store.lockedGroups - g else store.lockedGroups + g
-            bump()
-        }
-    }
-
-    fun togglePinGroup(g: String) {
-        store.pinnedGroups = if (g in store.pinnedGroups) store.pinnedGroups - g else store.pinnedGroups + g; bump()
-    }
-
-    fun hideGroup(g: String) {
-        requirePin(tx(R.string.pin_enter)) { store.hiddenGroups = store.hiddenGroups + g; if (group == g) group = GROUP_ALL; bump() }
-    }
-
-    fun unhideAllGroups() { store.hiddenGroups = emptySet(); bump() }
-
-    fun say(m: String) { message = m }
+    var profile by mutableStateOf(store.currentProfile); internal set
+    var profileList by mutableStateOf(store.profiles()); internal set
 
     /* ───────── favourites / custom groups / hiding ───────── */
     /** Movies and series saved for later (newest first). Observable so shelves and menus update at once. */
-    var laterUrls by mutableStateOf(store.watchLater); private set
-
-    fun toggleLater(c: Channel) {
-        if (c.url in laterUrls) { store.removeWatchLater(c.url); say(tx(R.string.x_later_removed)) }
-        else { store.addWatchLater(c.url); say(tx(R.string.x_later_added)) }
-        laterUrls = store.watchLater
-    }
-
-    /** Leaves the list once the title has been started (series) or finished (movie). */
-    private fun dropLater(url: String) {
-        if (url in laterUrls) { store.removeWatchLater(url); laterUrls = store.watchLater }
-    }
-
-    fun toggleFav(c: Channel) {
-        favs = if (c.url in favs) favs - c.url else favs + c.url
-        store.favorites = favs
-        refreshRecs()
-    }
-
-    fun hideChannel(c: Channel) { store.hiddenChannels = store.hiddenChannels + c.url; bump(); say(tx(R.string.channel_hidden)) }
-    fun unhideAllChannels() { store.hiddenChannels = emptySet(); bump() }
-
-    fun addToCustomGroup(name: String, c: Channel) {
-        val m = LinkedHashMap(store.customGroups())
-        m[name] = (m[name] ?: emptyList()) + c.url
-        store.saveCustomGroups(m); bump()
-        say(tx(R.string.added_to, name))
-    }
-
-    fun removeCustomGroup(name: String) {
-        val m = LinkedHashMap(store.customGroups()); m.remove(name); store.saveCustomGroups(m)
-        if (group == GROUP_CUSTOM + name) group = GROUP_ALL
-        bump()
-    }
+    var laterUrls by mutableStateOf(store.watchLater); internal set
 
     /* ───────── details (movies / series) ───────── */
-    var detail by mutableStateOf<Channel?>(null); private set
-    var info by mutableStateOf<VodInfo?>(null); private set
-    var episodes by mutableStateOf<List<Episode>>(emptyList()); private set
-    var epLoading by mutableStateOf(false); private set
-    var season by mutableStateOf(1); private set
+    var detail by mutableStateOf<Channel?>(null); internal set
+    var info by mutableStateOf<VodInfo?>(null); internal set
+    var episodes by mutableStateOf<List<Episode>>(emptyList()); internal set
+    var epLoading by mutableStateOf(false); internal set
+    var season by mutableStateOf(1); internal set
     /** Other titles from the library featuring the lead actors of the open title (needs TMDB). */
-    var castWorks by mutableStateOf<List<Channel>>(emptyList()); private set
+    var castWorks by mutableStateOf<List<Channel>>(emptyList()); internal set
     /** Episode last focused / started in the gallery, so returning from playback lands on the same card. */
     var epFocusUrl: String? = null
 
     /** Titles opened before the current one, so Back from a suggested title returns to the page you came from. */
-    private val detailStack = ArrayList<Channel>()
+    internal val detailStack = ArrayList<Channel>()
     /** The list the open title came from (shelf, tab list, search...): left / right on the detail page moves along it. */
-    private var neighborList: List<Channel> = emptyList()
-    private fun detailable(c: Channel) = when (kindOf(c)) { Kind.Live -> false; Kind.Series -> c.url.startsWith("series:"); Kind.Movie -> true }
-    private fun contextFor(c: Channel): List<Channel> {
-        val cands = ArrayList<List<Channel>>()
-        cands.add(visible); shelves.forEach { cands.add(it.items) }; cands.add(recs); because?.second?.let { cands.add(it) }
-        return (cands.firstOrNull { l -> l.any { it.url == c.url } } ?: listOf(c)).filter { detailable(it) }
-    }
-    /** Titles next to the open one: index 0 = previous, 1 = next (null at the ends). */
-    fun neighbors(): List<Channel?> {
-        val cur = detail ?: return listOf(null, null)
-        val i = neighborList.indexOfFirst { it.url == cur.url }
-        if (i < 0) return listOf(null, null)
-        return listOf(neighborList.getOrNull(i - 1), neighborList.getOrNull(i + 1))
-    }
-    /** Moves to the previous (-1) / next (+1) title of the list it was opened from; stops at the ends. */
-    fun stepDetail(delta: Int): Boolean {
-        val t = neighbors().getOrNull(if (delta < 0) 0 else 1) ?: return false
-        showDetail(t, push = false)
-        return true
-    }
+    internal var neighborList: List<Channel> = emptyList()
 
-    fun openDetail(c: Channel) = guard(c) { showDetail(c, push = true) }
-
-    private fun showDetail(c: Channel, push: Boolean) {
-        if (screen == Screen.Detail) {
-            if (push) detail?.takeIf { it.url != c.url }?.let {
-                detailStack.add(it)
-                if (detailStack.size > 20) detailStack.removeAt(0)
-            }
-        } else { detailStack.clear(); neighborList = contextFor(c) }   // opened from Home / search / a list: a fresh trail
-        val k = kindOf(c)
-        detail = c; info = repo.cachedInfo(c, k); episodes = emptyList(); season = 1; error = null; epFocusUrl = null; castWorks = emptyList()
-        back = Screen.Main; screen = Screen.Detail
-        viewModelScope.launch {
-            val i = repo.vodInfo(c, k)
-            if (detail?.url != c.url) return@launch   // another title was opened meanwhile: never let this one's info replace it
-            info = i
-            if (i != null) loadCastWorks(c, i)
-        }
-        if (k == Kind.Series) {
-            epLoading = true
-            viewModelScope.launch {
-                try {
-                    episodes = repo.loadEpisodes(c.url.removePrefix("series:").toInt())
-                    season = episodes.firstOrNull()?.season ?: 1
-                    loadStills(c, season)
-                } catch (e: Exception) { error = friendly(e) }
-                epLoading = false
-            }
-        }
-    }
-
-    /** Library titles starring the first few cast members (matched by exact normalised title), most recent additions first. */
-    private suspend fun loadCastWorks(c: Channel, i: VodInfo) {
-        val ids = i.people.filter { it.id > 0 }.take(3).map { it.id }
-        if (ids.isEmpty()) return
-        val titles = HashSet<String>()
-        ids.forEach { titles += Artwork.filmography(it) }
-        if (titles.isEmpty()) return
-        val found = withContext(Dispatchers.Default) {
-            val self = LogoMatch.norm(LogoMatch.clean(c.name).first)
-            (movieList + seriesList).filter { x ->
-                x.url != c.url && LogoMatch.norm(LogoMatch.clean(x.name).first).let { it != self && it in titles }
-            }.distinctBy { LogoMatch.norm(LogoMatch.clean(it.name).first) }.take(20)
-        }
-        if (detail?.url == c.url) castWorks = found
-    }
-
-    /** Shows which artwork/metadata fields the provider really sends for one movie and one series (no credentials are shown). */
-    fun providerCheck() {
-        viewModelScope.launch {
-            fun mark(b: Boolean) = if (b) "✓" else "✗"
-            val lines = ArrayList<String>()
-            suspend fun check(c: Channel?, k: Kind, label: String) {
-                if (c == null) { lines += tx(R.string.prov_none, label); return }
-                val i = runCatching { repo.vodInfo(c, k) }.getOrNull()
-                lines += "$label: ${c.name.take(28)}"
-                lines += tx(R.string.prov_fields, mark(!i?.poster.isNullOrBlank()), mark(!i?.backdrop.isNullOrBlank()), mark(!i?.trailer.isNullOrBlank()),
-                    mark(!i?.cast.isNullOrBlank()), mark(!i?.plot.isNullOrBlank()))
-                if (k == Kind.Series) {
-                    val eps = runCatching { repo.loadEpisodes(c.url.removePrefix("series:").toInt()) }.getOrDefault(emptyList())
-                    lines += tx(R.string.prov_eps, eps.size, eps.count { !it.image.isNullOrBlank() })
-                }
-            }
-            check(movieList.firstOrNull(), Kind.Movie, tx(R.string.detail_type_movie))
-            check(seriesList.firstOrNull { it.url.startsWith("series:") }, Kind.Series, tx(R.string.detail_type_series))
-            menu = MenuRequest(tx(R.string.prov_check_title), lines.map { it to {} })
-        }
-    }
-
-    fun closeDetail() {
-        val prev = if (detailStack.isEmpty()) null else detailStack.removeAt(detailStack.size - 1)
-        if (prev != null) { showDetail(prev, push = false); return }   // back to the title you came from
-        restoreFocus = true; screen = Screen.Main
-    }
-    fun selectSeason(n: Int) { season = n; detail?.let { loadStills(it, n) } }
-
-    private val stillsRequested = HashSet<String>()
-
-    /** Fetches real TMDB stills for one season (lazy: only the season on screen) and merges them into [episodes]. */
-    private fun loadStills(c: Channel, n: Int) {
-        val k = "${c.url}:$n"
-        if (!stillsRequested.add(k)) return
-        viewModelScope.launch {
-            val m = repo.episodeStills(c.name, n)
-            if (m.isEmpty()) { stillsRequested.remove(k); return@launch }
-            if (detail?.url != c.url) return@launch
-            episodes = episodes.map { e -> if (e.season == n) m[e.num]?.let { e.copy(image = it) } ?: e else e }
-        }
-    }
-
-    /** Opens the right screen for an item from any shelf or grid. */
-    fun open(c: Channel) {
-        when (kindOf(c)) {
-            Kind.Live -> play(c)
-            Kind.Series -> if (c.url.startsWith("series:")) openDetail(c) else play(c)
-            Kind.Movie -> openDetail(c)
-        }
-    }
+    internal val stillsRequested = HashSet<String>()
 
     /* ───────── playback ───────── */
-    var current by mutableStateOf<Channel?>(null); private set
-    var playMode by mutableStateOf(PlayMode.Live); private set
-    var resumeAt by mutableStateOf(0L); private set
-    var zapList by mutableStateOf<List<Channel>>(emptyList()); private set
-    private var tried = HashSet<String>()
+    var current by mutableStateOf<Channel?>(null); internal set
+    var playMode by mutableStateOf(PlayMode.Live); internal set
+    var resumeAt by mutableStateOf(0L); internal set
+    var zapList by mutableStateOf<List<Channel>>(emptyList()); internal set
+    internal var tried = HashSet<String>()
 
     val zapEnabled: Boolean get() = playMode == PlayMode.Live && zapList.isNotEmpty()
 
-    fun play(c: Channel, mode: PlayMode? = null, startAt: Long = -1) = guard(c) {
-        if (limitReached()) { pin = PinRequest(tx(R.string.pin_time_limit)) { }; return@guard }
-        if (screen != Screen.Player) back = screen
-        val m = mode ?: if (kindOf(c) == Kind.Live) PlayMode.Live else PlayMode.Vod
-        playMode = m
-        resumeAt = when {
-            startAt >= 0 -> startAt
-            m == PlayMode.Vod -> store.historyOf(c.url)?.takeIf { !it.finished }?.position ?: 0L
-            else -> 0L
-        }
-        zapList = if (m == PlayMode.Live) (if (tab == Tab.Live || tab == Tab.Home) visible.takeIf { it.any { x -> x.url == c.url } } ?: liveList else liveList) else emptyList()
-        tried = hashSetOf(c.url)
-        current = c
-        screen = Screen.Player
-    }
-
-    fun playEpisode(s: Channel, e: Episode) {
-        // Remember the episode (image, number, title) and make it the series' current episode for Continue watching.
-        store.saveEpMeta(e.url, EpMeta(s.url, s.name, e.season, e.num, e.title, VmLogic.episodeImage(e, episodes, s.logo)))
-        store.setContCursor(s.url, e.url)
-        dropLater(s.url)
-        if (detail?.url == s.url && episodes.isNotEmpty()) epListCache[s.url] = episodes
-        bump()
-        play(Channel(-1, "${s.name} · ${tx(R.string.ep_label, e.season, e.num)}", e.url, s.logo, s.group), PlayMode.Vod)
-    }
-
     /* ---------- Continue watching (movies + series episodes) ---------- */
-    private val epListCache = HashMap<String, List<Episode>>()
-    private val imageCache = HashMap<String, String?>()
+    internal val epListCache = HashMap<String, List<Episode>>()
+    internal val imageCache = HashMap<String, String?>()
 
     /** Newest first: unfinished movies, and one card per series showing its current episode with that episode's own image. */
     /** Series of the library by normalised name; only names that identify ONE series are usable. */
-    private val uniqueSeriesByName: Map<String, Channel> by derivedStateOf {
+    internal val uniqueSeriesByName: Map<String, Channel> by derivedStateOf {
         series.groupBy { LogoMatch.norm(it.name) }.filterValues { it.size == 1 }.mapValues { it.value[0] }   // raw list: rebuilt only when it is (re)loaded
-    }
-
-    /** History from before Continue watching existed has no episode metadata: rebuild it from the entry's name. */
-    private fun legacyMeta(h: HistoryEntry): EpMeta? {
-        if (h.kind != Kind.Series) return null
-        val (name, season, num) = VmLogic.parseEpisodeName(h.name) ?: return null
-        val s = uniqueSeriesByName[LogoMatch.norm(name)] ?: return null
-        return EpMeta(s.url, s.name, season, num, "", null)
     }
 
     val continueItems: List<ContinueItem> by derivedStateOf {
@@ -1013,456 +431,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         out.sortedByDescending { it.last }.take(30)
     }
 
-    /** Landscape image for a card that has none yet: a movie's backdrop, or the episode's still (TVmaze / TMDB). */
-    suspend fun continueImage(it: ContinueItem): String? {
-        if (imageCache.containsKey(it.key + it.episodeUrl)) return imageCache[it.key + it.episodeUrl]
-        val img = try {
-            if (it.seriesUrl == null) repo.vodInfo(it.play, Kind.Movie)?.backdrop
-            else repo.episodeStills(it.title, it.season)[it.num]?.also { still ->
-                val m = store.epMeta(it.episodeUrl) ?: EpMeta(it.seriesUrl, it.title, it.season, it.num, it.subtitle, null)
-                store.saveEpMeta(it.episodeUrl, m.copy(image = still)); bump()
-            }
-        } catch (_: Exception) { null }
-        if (img != null) imageCache[it.key + it.episodeUrl] = img
-        return img
-    }
-
-    fun playContinue(it: ContinueItem) {
-        val sUrl = it.seriesUrl
-        if (sUrl == null) { play(it.play); return }
-        detail = Channel(-1, it.title, sUrl, it.poster, it.group); info = null
-        episodes = epListCache[sUrl].orEmpty(); season = it.season
-        store.setContCursor(sUrl, it.episodeUrl)
-        play(it.play, PlayMode.Vod)
-        val sid = sUrl.removePrefix("series:").toIntOrNull()
-        if (episodes.isEmpty() && sid != null) viewModelScope.launch {
-            try {
-                val l = repo.loadEpisodes(sid)
-                epListCache[sUrl] = l
-                if (detail?.url == sUrl) episodes = l
-            } catch (e: Exception) { Diag.note("AppViewModel#2", e) }
-        }
-    }
-
-    /** Moves a series card to the next (+1) or previous (-1) episode. Tapping the card then plays that episode. */
-    fun continueStep(it: ContinueItem, delta: Int) {
-        val sUrl = it.seriesUrl ?: return
-        val sid = sUrl.removePrefix("series:").toIntOrNull() ?: return
-        viewModelScope.launch {
-            val eps = epListCache[sUrl] ?: try { repo.loadEpisodes(sid).also { epListCache[sUrl] = it } }
-                catch (e: Exception) { say(friendly(e)); return@launch }
-            val t = if (delta > 0) VmLogic.nextEpisode(eps, it.episodeUrl) else VmLogic.previousEpisode(eps, it.episodeUrl)
-            if (t == null) { say(tx(if (delta > 0) R.string.x_cont_no_next else R.string.x_cont_no_prev)); return@launch }
-            val still = try { repo.episodeStills(it.title, t.season)[t.num] } catch (_: Exception) { null }
-            store.saveEpMeta(t.url, EpMeta(sUrl, it.title, t.season, t.num, t.title, still ?: VmLogic.episodeImage(t, eps, it.poster)))
-            store.setContCursor(sUrl, t.url)
-            bump()
-        }
-    }
-
-    /**
-     * An episode was just finished: make Continue watching offer the NEXT episode ("up next") with its own image.
-     * Skipped when the user already moved on (autoplay / picked another episode) or it was the last episode.
-     */
-    private fun advanceAfterFinish(c: Channel) {
-        val m = store.epMeta(c.url) ?: return
-        val cur = store.contCursor(m.seriesUrl)
-        if (cur != null && cur.first != c.url) return
-        val sid = m.seriesUrl.removePrefix("series:").toIntOrNull() ?: return
-        viewModelScope.launch {
-            val eps = epListCache[m.seriesUrl]
-                ?: (if (detail?.url == m.seriesUrl && episodes.isNotEmpty()) episodes else null)
-                ?: try { repo.loadEpisodes(sid) } catch (_: Exception) { return@launch }
-            epListCache[m.seriesUrl] = eps
-            val t = VmLogic.nextEpisode(eps, c.url) ?: return@launch
-            val still = try { repo.episodeStills(m.seriesName, t.season)[t.num] } catch (_: Exception) { null }
-            store.saveEpMeta(t.url, EpMeta(m.seriesUrl, m.seriesName, t.season, t.num, t.title, still ?: VmLogic.episodeImage(t, eps, c.logo)))
-            store.setContCursor(m.seriesUrl, t.url)
-            bump()
-        }
-    }
-
-    fun continueMenu(it: ContinueItem) {
-        val items = ArrayList<Pair<String, () -> Unit>>()
-        val title = Channel(-1, it.title, it.seriesUrl ?: it.episodeUrl, it.poster, it.group)
-        items += tx(R.string.play) to { playContinue(it) }
-        if (it.seriesUrl != null) {
-            items += tx(R.string.x_cont_next) to { continueStep(it, 1) }
-            items += tx(R.string.x_cont_prev) to { continueStep(it, -1) }
-        }
-        items += tx(R.string.details) to { openDetail(title) }
-        items += (if (title.url in favs) tx(R.string.menu_fav_remove) else tx(R.string.menu_fav_add)) to { toggleFav(title) }
-        items += tx(R.string.menu_remove_continue) to { removeFromContinue(it) }
-        menu = MenuRequest(if (it.badge.isNotEmpty()) "${it.title} · ${it.badge}" else it.title, items)
-    }
-
-    /** Removes a movie / series from Continue watching (its watch progress is forgotten; favourites are untouched). */
-    fun removeFromContinue(it: ContinueItem) {
-        if (it.seriesUrl == null) {
-            store.removeHistory(listOf(it.episodeUrl))
-        } else {
-            val urls = history.filter { h -> (store.epMeta(h.url) ?: legacyMeta(h))?.seriesUrl == it.seriesUrl }.map { h -> h.url }
-            store.removeSeriesProgress(it.seriesUrl, urls)
-        }
-        WatchNext.remove(ctx, it.episodeUrl)
-        history = store.history()
-        bump(); say(tx(R.string.menu_removed))
-    }
-
-    /** Removes one movie / episode from the watch history (also takes it out of Continue watching). */
-    fun removeFromHistory(c: Channel) {
-        store.removeHistory(listOf(c.url))
-        WatchNext.remove(ctx, c.url)
-        history = store.history()
-        bump(); say(tx(R.string.menu_removed))
-    }
-
-    /** Episode that follows the one currently playing, if any (for auto-next). */
-    fun nextEpisodeOf(c: Channel): Episode? {
-        return VmLogic.nextEpisode(episodes, c.url)
-    }
-
-    /** Episode before the current one, if any. */
-    fun previousEpisodeOf(c: Channel): Episode? {
-        return VmLogic.previousEpisode(episodes, c.url)
-    }
-
-    fun hasNextEpisode(c: Channel): Boolean = nextEpisodeOf(c) != null
-    fun hasPreviousEpisode(c: Channel): Boolean = previousEpisodeOf(c) != null
-
-    fun playNext() {
-        val c = current ?: return
-        val d = detail ?: return
-        nextEpisodeOf(c)?.let { playEpisode(d, it) }
-    }
-
-    fun playPrevious() {
-        val c = current ?: return
-        val d = detail ?: return
-        previousEpisodeOf(c)?.let { playEpisode(d, it) }
-    }
-
-    /** Next/previous item for the player's transport row: channels in live, episodes in a series. */
-    fun playNeighbor(delta: Int) {
-        if (playMode == PlayMode.Live) zap(delta)
-        else if (delta > 0) playNext() else playPrevious()
-    }
-
-    fun hasNeighbor(delta: Int): Boolean {
-        if (playMode == PlayMode.Live) return zapEnabled
-        val c = current ?: return false
-        return if (delta > 0) hasNextEpisode(c) else hasPreviousEpisode(c)
-    }
-
-    fun playCatchup(c: Channel, p: Prog) {
-        val u = repo.catchupUrl(c, p)
-        if (u == null) { say(tx(R.string.no_catchup)); return }
-        play(Channel(-1, "${c.name} · ${p.title}", u, c.logo, c.group), PlayMode.Catchup, 0)
-    }
-
-    fun playRecording(r: Recording) {
-        val f = r.file ?: return
-        play(Channel(-1, r.title, "file://$f", null, r.channelName), PlayMode.Recording, 0)
-    }
-
-    fun stop() {
-        sleepAt = 0L; history = store.history(); restoreFocus = true; screen = back
-        // Re-deriving every list (tens of thousands of channels) on the main thread made the way back from the player
-        // take seconds. History is observable state, so shelves refresh on their own; lists only depend on health when these are on.
-        if (store.hideDead || store.mergeDuplicates) bump()
-        refreshRecs()
-    }
-
-    fun zap(delta: Int) {
-        if (!zapEnabled) return
-        val list = zapList
-        val i = list.indexOfFirst { it.url == current?.url }
-        var idx = if (i < 0) 0 else i
-        repeat(list.size) {
-            idx = (idx + delta + list.size) % list.size
-            val c = list[idx]
-            if (!parental.needsPin(c) && !health.isDead(c.url)) { tried = hashSetOf(c.url); current = c; return }
-        }
-    }
-
-    /** Direct channel number entry from the remote's digits. */
-    fun zapToNumber(n: Int) {
-        val list = zapList
-        val c = list.firstOrNull { it.number == n } ?: list.getOrNull(n - 1) ?: return
-        if (parental.needsPin(c)) return
-        tried = hashSetOf(c.url); current = c
-    }
-
-    /** Switch to a specific channel while the player is open (side panel / last channel). */
-    fun switchTo(c: Channel) {
-        if (parental.needsPin(c)) return
-        tried = hashSetOf(c.url); current = c
-    }
-
-    /** Same channel from another source (HD/FHD/SD duplicates), used by manual switch and auto-failover. */
-    fun alternativesOf(c: Channel): List<Channel> = health.alternatives(c, all)
-
-    fun failover(): Boolean {
-        val c = current ?: return false
-        val next = alternativesOf(c).firstOrNull { it.url !in tried } ?: return false
-        tried += next.url
-        current = next
-        return true
-    }
-
-    fun useAlternative(c: Channel) { tried += c.url; current = c }
-
-    /**
-     * A movie or episode failed to play: try the SAME title from another source (never a different title: see
-     * [VmLogic.sameTitle]). Returns true when something is being tried; an episode lookup is asynchronous and [onNone]
-     * runs if no source has that episode. Each failure comes back here, so sources are tried one after another.
-     */
-    fun tryVodFailover(onNone: () -> Unit): Boolean {
-        val c = current ?: return false
-        if (playMode != PlayMode.Vod) return false
-        val meta = store.epMeta(c.url)
-        if (meta == null) {
-            if (kindOf(c) != Kind.Movie) return false
-            val alt = movies.asSequence()
-                .filter { it.url != c.url && it.url !in tried && health.state(it.url) != Health.Dead && VmLogic.sameTitle(it.name, c.name) }
-                .sortedBy { health.score(it.url) }.firstOrNull() ?: return false
-            tried += alt.url; current = alt
-            return true
-        }
-        val cands = series.filter { it.url != meta.seriesUrl && VmLogic.sameTitle(it.name, meta.seriesName) }.take(4)
-        if (cands.isEmpty()) return false
-        viewModelScope.launch {
-            var switched = false
-            for (s in cands) {
-                val sid = s.url.removePrefix("series:").toIntOrNull() ?: continue
-                val eps = epListCache[s.url] ?: try { repo.loadEpisodes(sid) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
-                    android.util.Log.w("Failover", "episodes of ${s.name} unavailable", e); continue
-                }
-                epListCache[s.url] = eps
-                val e = VmLogic.episodeIn(eps, meta.season, meta.num) ?: continue
-                if (e.url in tried || health.state(e.url) == Health.Dead) continue
-                if (current?.url != c.url) return@launch            // the user already left or changed episode
-                tried += e.url
-                // Continue watching keeps pointing at the ORIGINAL series, whichever source is playing.
-                store.saveEpMeta(e.url, EpMeta(meta.seriesUrl, meta.seriesName, meta.season, meta.num, meta.title, meta.image))
-                store.setContCursor(meta.seriesUrl, e.url)
-                current = Channel(-1, c.name, e.url, c.logo, c.group)
-                bump(); switched = true; break
-            }
-            if (!switched && current?.url == c.url) onNone()
-        }
-        return true
-    }
-
-    /** Optional: warm the next and previous channel of the zap list (see [Prefetch]). */
-    fun prefetchNeighbors() {
-        if (!store.prefetchNext || !zapEnabled) return
-        val list = zapList
-        val i = list.indexOfFirst { it.url == current?.url }
-        if (i < 0 || list.size < 2) return
-        val n = list.size
-        val targets = listOf(list[(i + 1) % n], list[(i - 1 + n) % n])
-            .filter { !parental.needsPin(it) && !health.isDead(it.url) }
-        viewModelScope.launch { targets.forEach { Prefetch.warm(it.url) } }
-    }
-
-    /** Local report of the channels that failed most often, for the settings screen. */
-    fun problemReport(): List<String> = store.worstHealth(15).map { (u, r) ->
-        val name = all.firstOrNull { it.url == u }?.name ?: u.takeLast(30)
-        tx(R.string.x_problem_line, name, tx(if (r.state == Health.Dead) R.string.x_word_dead else R.string.x_word_slow), r.failures)
-    }
-
-
-    fun noteStart(c: Channel) {
-        val old = store.historyOf(c.url)
-        store.recordWatch(c, kindOf(c), old?.position ?: 0, old?.duration ?: 0, true)
-    }
-
-    fun saveProgress(c: Channel, pos: Long, dur: Long) {
-        if (kindOf(c) == Kind.Live || playMode == PlayMode.Catchup) return
-        val wasFinished = store.historyOf(c.url)?.finished == true
-        store.recordWatch(c, kindOf(c), pos, dur, false)
-        if (!wasFinished && store.historyOf(c.url)?.finished == true) { traktMarkWatched(c); advanceAfterFinish(c); dropLater(c.url) }
-        // The last save happens while the player is being torn down (after stop()), so Continue watching must refresh here.
-        if (screen != Screen.Player) history = store.history()
-        // Launcher/widget updates touch content providers: keep them off the main thread so leaving the player stays quick.
-        val entry = if (parental.visible(c)) store.historyOf(c.url) else null
-        viewModelScope.launch(Dispatchers.IO) {
-            entry?.let { WatchNext.sync(ctx, it) }   // Android TV "Watch Next" row
-            NabdWidget.refresh(ctx)                  // phone home-screen widget
-        }
-    }
-
     /* ───────── Trakt ───────── */
-    private var traktJob: kotlinx.coroutines.Job? = null
-
-    /** Starts the device-code link: shows the code on screen and waits for approval on trakt.tv/activate. */
-    fun traktLink() {
-        traktJob?.cancel()
-        traktJob = viewModelScope.launch {
-            try {
-                val dc = Trakt.deviceCode(repo.http, store)
-                menu = MenuRequest(tx(R.string.trakt_code, dc.url, dc.userCode), listOf(tx(R.string.dlg_cancel) to { traktJob?.cancel() }))
-                val ok = Trakt.awaitAuthorization(repo.http, store, dc)
-                menu = null
-                say(if (ok) tx(R.string.trakt_linked) else tx(R.string.trakt_not_linked))
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                menu = null; throw e
-            } catch (e: Exception) { menu = null; say(e.message ?: tx(R.string.trakt_conn_failed)) }
-            bump()
-        }
-    }
-
-    fun traktUnlink() { Trakt.unlink(store); say(tx(R.string.trakt_unlinked)); bump() }
-
-    /** Called once when a movie / episode is finished: marks it watched on Trakt (silently ignored on failure). */
-    private fun traktMarkWatched(c: Channel) {
-        if (!Trakt.linked(store)) return
-        val now = System.currentTimeMillis()
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching {
-                val ep = episodes.firstOrNull { it.url == c.url }
-                val show = detail?.name
-                if (ep != null && show != null) Trakt.markEpisode(repo.http, store, show, ep.season, ep.num, now)
-                else if (kindOf(c) == Kind.Movie) Trakt.markMovie(repo.http, store, c.name, now)
-            }
-        }
-    }
+    internal var traktJob: kotlinx.coroutines.Job? = null
 
     /* ───────── resume from the Android TV home screen ───────── */
-    private var pendingResume: String? = null
+    internal var pendingResume: String? = null
 
     /** Called when the user taps a "Watch Next" tile; waits for the channel list when the app is still starting. */
     /** The system killed the process while the app was in the background: put the viewer back on the same tab / title once the lists are loaded. */
-    private var pendingRestore: (() -> Unit)? = null
-    fun restoreAfterKill(tabName: String?, detailFields: Array<String>?) {
-        if (all.isNotEmpty()) return   // the ViewModel survived (rotation etc.): nothing was lost
-        pendingRestore = {
-            runCatching { tabName?.let { tab = Tab.valueOf(it) } }
-            if (detailFields != null && detailFields.size >= 4 && detailFields[1].isNotBlank())
-                open(Channel(0, detailFields[0], detailFields[1], detailFields[2].ifBlank { null }, detailFields[3]))
-        }
-    }
-
-    fun resumeFromWatchNext(url: String) {
-        if (all.isEmpty()) { pendingResume = url; return }
-        playResume(url)
-    }
-
-    private fun playResume(token: String) {
-        // token is either an opaque WatchNext key or (older tiles) the raw url
-        val h = store.historyOf(token) ?: store.history().firstOrNull { WatchNext.keyOf(it.url) == token } ?: return
-        play(histChannel(h))
-    }
-
-    fun clearHistory() { store.clearHistory(); WatchNext.clearAll(ctx); history = emptyList(); recs = emptyList(); because = null; runCatching { recsFile.delete() }; bump() }
-
-    /* ───────── recording / reminders ───────── */
-    fun record(c: Channel, p: Prog) {
-        val clash = recCtl.schedule(c, p)
-        say(recordMsg(clash != null, clash == true))
-    }
-
-    fun autoRecord(c: Channel, p: Prog) {
-        if (c.url !in favs) toggleFav(c)
-        store.autoRecordTitles = store.autoRecordTitles + p.title.lowercase()
-        Recorder.syncAuto(ctx, store, all, epg)
-        recCtl.refresh()
-        say(tx(R.string.rec_all_eps, p.title))
-    }
-
-    fun remind(c: Channel, p: Prog) { Recorder.remind(ctx, store, c, p); say(tx(R.string.remind_set)) }
-
-    fun cancelRecording(r: Recording) { recCtl.cancel(r) }
-    fun deleteRecording(r: Recording) { recCtl.delete(r) }
-    fun refreshRecordings() { recCtl.refresh() }
+    internal var pendingRestore: (() -> Unit)? = null
 
     /* ───────── health ───────── */
-    var healthStatus by mutableStateOf<String?>(null); private set
-
-    /** Throttled probe of the favourites (or the current category, capped). */
-    fun checkHealth(favoritesOnly: Boolean) {
-        if (healthStatus != null) return
-        val list = (if (favoritesOnly) liveList.filter { it.url in favs } else visible).take(150).map { it.url }
-        if (list.isEmpty()) { say(tx(R.string.check_none)); return }
-        viewModelScope.launch {
-            healthStatus = "0/${list.size}"
-            val dead = health.check(list, 3) { d, t -> healthStatus = "$d/$t" }
-            healthStatus = null; bump()
-            say(tx(R.string.check_done, dead, list.size))
-        }
-    }
-
-    fun clearHealth() { store.clearHealth(); bump() }
+    var healthStatus by mutableStateOf<String?>(null); internal set
 
     /** (healthy, total) among the links that have actually been tested. */
     val healthSummary by derivedStateOf { rev; store.healthStats() }
 
     /* ───────── multi-view ───────── */
-    var multi by mutableStateOf<List<Channel>>(emptyList()); private set
+    var multi by mutableStateOf<List<Channel>>(emptyList()); internal set
 
-    fun toggleMulti(c: Channel) {
-        multi = if (multi.any { it.url == c.url }) multi.filter { it.url != c.url }
-        else if (multi.size >= 4) { say(tx(R.string.multi_max)); multi } else multi + c
-        say(tx(R.string.multi_count, multi.size))
-    }
-
-    fun openMulti() {
-        if (multi.size < 2) { say(tx(R.string.multi_min)); return }
-        back = Screen.Main; screen = Screen.MultiView
-    }
-
-    fun closeMulti() { restoreFocus = true; screen = Screen.Main }
-    fun clearMulti() { multi = emptyList() }
-
-    /* ───────── manual EPG match ───────── */
-    /** Loads the guide now (after switching it on in Settings). */
-    fun reloadEpg() { viewModelScope.launch { epg = repo.loadEpg(all, false); bump() } }
-
-    fun setEpgOverride(c: Channel, xmlId: String) {
-        store.setEpgOverride(c.url, xmlId.ifBlank { null })
-        viewModelScope.launch { epg = repo.loadEpg(all, false); bump() }
-    }
-
-    /* ───────── context menu for a channel / title ───────── */
-    fun channelMenu(c: Channel) {
-        val k = kindOf(c)
-        val items = ArrayList<Pair<String, () -> Unit>>()
-        if (k != Kind.Live) items += tx(R.string.details) to { openDetail(c) }
-        items += (if (c.url in favs) tx(R.string.menu_fav_remove) else tx(R.string.menu_fav_add)) to { toggleFav(c) }
-        if (k != Kind.Live) items += (if (c.url in laterUrls) tx(R.string.x_later_remove) else tx(R.string.x_later_add)) to { toggleLater(c) }
-        if (k != Kind.Live && historyByUrl[c.url] != null) items += tx(R.string.menu_remove_history) to { removeFromHistory(c) }
-        if (k == Kind.Live) {
-            items += tx(R.string.menu_multi, multi.size) to { toggleMulti(c) }
-            items += tx(R.string.menu_add_group) to {
-                val names = store.customGroups().keys.toList()
-                menu = MenuRequest(tx(R.string.menu_groups),
-                    names.map { n -> n to { addToCustomGroup(n, c) } } +
-                        (tx(R.string.menu_new_group) to { prompt = PromptRequest(tx(R.string.prompt_group_name), "") { n -> if (n.isNotBlank()) addToCustomGroup(n.trim(), c) } })
-                )
-            }
-            val alts = alternativesOf(c)
-            if (alts.isNotEmpty()) items += tx(R.string.menu_alt_sources, alts.size) to {
-                menu = MenuRequest(tx(R.string.alt_sources), alts.map { a -> (a.name + " · " + health.state(a.url).name) to { play(a) } })
-            }
-            items += tx(R.string.menu_epg_match) to {
-                prompt = PromptRequest(tx(R.string.prompt_epg_id), store.epgOverrides()[c.url] ?: c.tvgId ?: "") { id -> setEpgOverride(c, id.trim()) }
-            }
-        }
-        items += tx(R.string.menu_hide) to { hideChannel(c) }
-        menu = MenuRequest(c.name, items)
-    }
-
-    fun groupMenu(g: String) {
-        if (g == GROUP_ALL || g == GROUP_FAV || g == GROUP_RECENT || g == GROUP_NEW || g == GROUP_CONT) return
-        val items = ArrayList<Pair<String, () -> Unit>>()
-        if (g.startsWith(GROUP_CUSTOM)) {
-            items += tx(R.string.menu_delete_group) to { removeCustomGroup(g.removePrefix(GROUP_CUSTOM)) }
-        } else {
-            items += (if (g in store.pinnedGroups) tx(R.string.menu_unpin) else tx(R.string.menu_pin)) to { togglePinGroup(g) }
-            items += (if (g in store.lockedGroups) tx(R.string.menu_unlock) else tx(R.string.menu_lock)) to { toggleGroupLock(g) }
-            items += tx(R.string.menu_hide_group) to { hideGroup(g) }
-        }
-        menu = MenuRequest(groupLabel(g), items)
-    }
 }
