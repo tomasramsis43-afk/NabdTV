@@ -67,7 +67,8 @@ jobs:
           gradle assembleRelease --no-daemon > release-main.log 2>&1
           rc=$?
           if [ $rc -ne 0 ]; then
-            ERR=$(grep -E "^e: |What went wrong|error:|Missing class|R8" -A3 release-main.log | head -40)
+            ERR=$(grep -vE "^WARNING|implicitly keeps|^-keep " release-main.log | grep -E "^e: |What went wrong|ERROR|Exception|Missing class|missing_rules|Execution failed|Caused by|error:" -A4 | head -45)
+            [ -z "$ERR" ] && ERR=$(tail -30 release-main.log)
             ERR="${ERR//$'\n'/%0A}"
             echo "::error::Release build failed: $ERR"
           fi
