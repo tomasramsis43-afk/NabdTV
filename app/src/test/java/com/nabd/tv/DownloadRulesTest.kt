@@ -50,4 +50,10 @@ class DownloadRulesTest {
         assertEquals(2 * b - 1, DownloadRules.blockEnd(1, 2 * b))
         assertEquals(0, DownloadRules.blockCount(0))
     }
+
+    @Test fun speedText() {
+        assertEquals("500 KB/s", DownloadRules.speedText(500L * 1024))
+        assertEquals("1.5 MB/s", DownloadRules.speedText(1536L * 1024))
+        assertEquals("0 KB/s", DownloadRules.speedText(0))
+    }
 }

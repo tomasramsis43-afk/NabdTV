@@ -34,7 +34,9 @@ data class DownloadItem(
     val bytes: Long = 0L,
     val total: Long = 0L,
     val file: String? = null,
-    val added: Long = 0L
+    val added: Long = 0L,
+    val speed: Long = 0L,   // bytes per second right now (live only, not saved)
+    val conns: Int = 0      // connections currently pulling data (live only, not saved)
 )
 
 /** Pure rules (no Android), so they can be unit-tested. */
@@ -72,6 +74,11 @@ object DownloadRules {
     fun blockEnd(i: Int, total: Long, block: Long = BLOCK_BYTES): Long = minOf(total, (i + 1) * block) - 1
 
     fun percent(bytes: Long, total: Long): Int = if (total > 0) ((bytes * 100) / total).toInt().coerceIn(0, 100) else 0
+
+    fun speedText(bytesPerSec: Long): String = when {
+        bytesPerSec >= 1024L * 1024 -> "%.1f MB/s".format(bytesPerSec / (1024.0 * 1024))
+        else -> "%d KB/s".format(bytesPerSec / 1024)
+    }
 
     fun sizeText(bytes: Long): String = when {
         bytes >= 1L shl 30 -> "%.1f GB".format(bytes / (1024.0 * 1024 * 1024))
@@ -220,6 +227,19 @@ class DownloadService : Service() {
             .setContentTitle(title).setOngoing(true).setOnlyAlertOnce(true)
             .apply { if (pct != null) setProgress(100, pct, false) else setProgress(0, 0, true) }
             .build()
+
+    /** Speed over the last ~2 seconds. */
+    private class SpeedMeter(start: Long) {
+        private var t = System.currentTimeMillis()
+        private var b = start
+        var bps = 0L
+            private set
+        fun sample(bytes: Long, now: Long): Long {
+            val dt = now - t
+            if (dt >= 2000) { bps = ((bytes - b) * 1000 / dt).coerceAtLeast(0L); t = now; b = bytes }
+            return bps
+        }
+    }
 
     private enum class Outcome { Ok, Cancelled, Interrupted }
 
@@ -409,6 +429,7 @@ class DownloadService : Service() {
         var lastSave = 0L
         var lastBytes = already
         var lastMoveAt = System.currentTimeMillis()
+        val meter = SpeedMeter(already)
         while (workers.any { it.isAlive }) {
             runCatching { Thread.sleep(500) }
             val now = System.currentTimeMillis()
@@ -435,7 +456,9 @@ class DownloadService : Service() {
 
             val save = now - lastSave > 3000
             if (save) { lastSave = now; saveSeg(seg, total, blocks) }
-            Downloads.update(this, item.id, save) { it.copy(bytes = w, total = total) }
+            val bps = meter.sample(w, now)
+            val live = workers.count { it.isAlive }
+            Downloads.update(this, item.id, save) { it.copy(bytes = w, total = total, speed = bps, conns = live) }
             runCatching {
                 (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
                     .notify(notifId, notif(item.title, DownloadRules.percent(w, total)))
@@ -521,6 +544,7 @@ class DownloadService : Service() {
             var written = have
             var lastUi = 0L
             var lastSave = 0L
+            val meter = SpeedMeter(have)
             FileOutputStream(part, resumed).use { o ->
                 body.byteStream().use { i ->
                     while (true) {
@@ -536,7 +560,8 @@ class DownloadService : Service() {
                             val save = now - lastSave > 3000
                             if (save) lastSave = now
                             val w = written
-                            Downloads.update(this, item.id, save) { it.copy(bytes = w, total = total) }
+                            val bps = meter.sample(w, now)
+                            Downloads.update(this, item.id, save) { it.copy(bytes = w, total = total, speed = bps, conns = 1) }
                             runCatching {
                                 (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
                                     .notify(notifId, notif(item.title, if (total > 0) DownloadRules.percent(w, total) else null))
