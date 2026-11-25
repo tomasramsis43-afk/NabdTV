@@ -66,4 +66,11 @@ class UpcomingTest {
         assertEquals("Sat 5 Dec 2026", Upcoming.dateLabel("2026-12-05", Locale.ENGLISH, utc))
         assertNull(Upcoming.daysUntil("soon", now, utc))
     }
+
+    @Test fun sharperRewritesOnlyTmdbSizes() {
+        assertEquals("https://image.tmdb.org/t/p/w780/abc.jpg", Upcoming.sharper("https://image.tmdb.org/t/p/w342/abc.jpg", "w780"))
+        assertEquals("https://image.tmdb.org/t/p/w1280/abc.jpg", Upcoming.sharper("https://image.tmdb.org/t/p/w780/abc.jpg", "w1280"))
+        assertEquals("https://image.tmdb.org/t/p/w500/abc.jpg", Upcoming.sharper("https://image.tmdb.org/t/p/original/abc.jpg", "w500"))
+        assertEquals("https://cdn.example.com/p/w342/abc.jpg", Upcoming.sharper("https://cdn.example.com/p/w342/abc.jpg", "w780"))
+    }
 }

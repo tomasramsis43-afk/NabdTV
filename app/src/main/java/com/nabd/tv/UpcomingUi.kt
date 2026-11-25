@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -100,23 +101,41 @@ private fun UpcomingCard(u: UpcomingItem, wide: Boolean, w: Dp, onClick: () -> U
     // Crop only when the picture has the frame's own orientation (backdrop in a wide frame, poster in a tall one);
     // a poster forced into a 16:9 frame (no backdrop yet) would lose most of its height, so show it whole instead.
     val fits = if (wide) u.backdrop != null else u.poster != null
+    // Ask TMDB for a sharper copy than the small size saved with the item (also upgrades items cached by older versions).
+    val sharp = remember(img, u.backdrop) { img?.let { Upcoming.sharper(it, if (it == u.backdrop) "w780" else "w500") } }
     val shape = RoundedCornerShape(Radius.poster)
     val days = remember(u.date) { Upcoming.daysUntil(u.date, System.currentTimeMillis()) }
+    val code = Lang.code
+    val dateText = remember(u.date, code) { Upcoming.dateLabel(u.date, Upcoming.locale(code)) }
+    val kind = tr(if (u.movie) R.string.upcoming_kind_movie else R.string.upcoming_kind_series)
+    val meta = buildString {
+        append(kind)
+        u.rating?.let { append(" · ★ ").append("%.1f".format(Locale.US, it)) }
+        if (wide) dateText?.let { append(" · ").append(it) } else if (u.date.length >= 4) append(" · ").append(u.date.take(4))
+    }
     Focusable(onClick = onClick, modifier = Modifier.width(w).semantics { contentDescription = u.title }, zoom = 1.045f, shape = shape) {
         Box(Modifier.fillMaxWidth().aspectRatio(if (wide) 16f / 9f else 2f / 3f).clip(shape).background(SurfHigh)) {
-            AsyncImage(model = img, contentDescription = null, contentScale = if (fits) ContentScale.Crop else ContentScale.Fit, modifier = Modifier.fillMaxSize())
+            AsyncImage(model = sharp, contentDescription = null, contentScale = if (fits) ContentScale.Crop else ContentScale.Fit, modifier = Modifier.fillMaxSize())
             if (days != null) {
                 Text(
                     releaseIn(days), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1,
-                    modifier = Modifier.align(Alignment.BottomStart).padding(6.dp)
+                    modifier = Modifier.align(Alignment.TopStart).padding(6.dp)
                         .clip(RoundedCornerShape(8.dp)).background(Color(0xCC05060A)).padding(horizontal = 7.dp, vertical = 3.dp)
                 )
             }
+            // Title and key facts sit on the picture itself, over a dark fade so they stay readable on any image.
+            Column(
+                Modifier.align(Alignment.BottomStart).fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xEB05060A))))
+                    .padding(start = 8.dp, end = 8.dp, top = 24.dp, bottom = 6.dp)
+            ) {
+                Text(
+                    u.title, fontSize = if (wide) 13.sp else 11.sp, fontWeight = FontWeight.Bold, color = Color.White,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis
+                )
+                Text(meta, fontSize = if (wide) 11.sp else 9.sp, color = Color(0xFFD5DAF0), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
-        Text(
-            u.title, fontSize = 12.sp, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 5.dp)
-        )
     }
 }
 
@@ -138,15 +157,28 @@ private fun UpcomingDetailDialog(vm: AppViewModel, u: UpcomingItem, onClose: () 
         Box(Modifier.fillMaxSize().background(Bg)) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(SurfHigh)) {
+                    val hero = remember(u.backdrop, u.poster) {
+                        (u.backdrop ?: u.poster)?.let { Upcoming.sharper(it, if (u.backdrop != null) "w1280" else "w780") }
+                    }
                     AsyncImage(
-                        model = u.backdrop ?: u.poster, contentDescription = null,
+                        model = hero, contentDescription = null,
                         contentScale = if (u.backdrop != null) ContentScale.Crop else ContentScale.Fit,   // never crop a poster into 16:9
                         modifier = Modifier.fillMaxSize()
                     )
+                    Column(
+                        Modifier.align(Alignment.BottomStart).fillMaxWidth()
+                            .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xF005060A))))
+                            .padding(start = 16.dp, end = 16.dp, top = 40.dp, bottom = 12.dp)
+                    ) {
+                        Text(u.title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        val line = buildString {
+                            u.rating?.let { append("★ ").append("%.1f".format(Locale.US, it)) }
+                            fullDate?.let { if (isNotEmpty()) append(" · "); append(it) }
+                        }
+                        if (line.isNotBlank()) Text(line, fontSize = 13.sp, color = Color(0xFFD5DAF0), maxLines = 1)
+                    }
                 }
                 Column(Modifier.padding(16.dp)) {
-                    Text(u.title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Ink)
-                    Spacer(Modifier.height(8.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         MetaChip(tr(if (u.movie) R.string.upcoming_kind_movie else R.string.upcoming_kind_series))
                         fullDate?.let { MetaChip("📅 $it", fg = Color(0xFFCBD3FF), bg = Color(0x336B7BFF)) }
