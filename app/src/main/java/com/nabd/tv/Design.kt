@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -45,19 +46,35 @@ import androidx.compose.ui.unit.sp
  */
 object Ui {
     var dark by mutableStateOf(true)
+    /** Index into [AccentPalettes]; the user's colour choice. */
+    var accent by mutableIntStateOf(0)
+    /** True black canvas on dark mode (saves power on OLED panels, deepest contrast). */
+    var black by mutableStateOf(false)
 }
+
+/** Accent colour choices: text/outline tone on dark, solid fill on dark (white text stays readable), and the single tone used on light. */
+class AccentPalette(val dark: Color, val fillDark: Color, val light: Color)
+val AccentPalettes = listOf(
+    AccentPalette(Color(0xFF8A93FF), Color(0xFF5C63E8), Color(0xFF4A55D6)),   // indigo (default)
+    AccentPalette(Color(0xFF4FD1C5), Color(0xFF1F8F86), Color(0xFF0F766E)),   // teal
+    AccentPalette(Color(0xFFFF8FB1), Color(0xFFD63E75), Color(0xFFC2255C)),   // rose
+    AccentPalette(Color(0xFFFFC857), Color(0xFFB4690C), Color(0xFF9A6B12)),   // amber
+    AccentPalette(Color(0xFF7EE081), Color(0xFF2F8F42), Color(0xFF2B8A3E)),   // green
+    AccentPalette(Color(0xFFFF9F68), Color(0xFFD9480F), Color(0xFFD9480F))    // orange
+)
+private val pal: AccentPalette get() = AccentPalettes[Ui.accent.coerceIn(0, AccentPalettes.lastIndex)]
 
 /* ── core palette ─────────────────────────────────────────────────────────── */
 
-val Accent: Color get() = if (Ui.dark) Color(0xFF8A93FF) else Color(0xFF4A55D6)
+val Accent: Color get() = if (Ui.dark) pal.dark else pal.light
 /** Solid variant for filled buttons/chips: white text keeps AA contrast on it. */
-val AccentFill: Color get() = if (Ui.dark) Color(0xFF5C63E8) else Color(0xFF4A55D6)
+val AccentFill: Color get() = if (Ui.dark) pal.fillDark else pal.light
 val Accent2: Color get() = if (Ui.dark) Color(0xFFE5B567) else Color(0xFF9A6B12)
 val OnAccent: Color get() = Color.White
 
-val Bg: Color get() = if (Ui.dark) Color(0xFF08090D) else Color(0xFFF5F6FA)
-val Surf: Color get() = if (Ui.dark) Color(0xFF14161D) else Color.White
-val SurfHigh: Color get() = if (Ui.dark) Color(0xFF1B1E27) else Color(0xFFEDEFF5)
+val Bg: Color get() = if (Ui.dark) (if (Ui.black) Color.Black else Color(0xFF08090D)) else Color(0xFFF5F6FA)
+val Surf: Color get() = if (Ui.dark) (if (Ui.black) Color(0xFF0C0C0F) else Color(0xFF14161D)) else Color.White
+val SurfHigh: Color get() = if (Ui.dark) (if (Ui.black) Color(0xFF151519) else Color(0xFF1B1E27)) else Color(0xFFEDEFF5)
 val Ink: Color get() = if (Ui.dark) Color(0xFFF3F5FA) else Color(0xFF14161D)
 val TextSecondary: Color get() = if (Ui.dark) Color(0xFF98A0B3) else Color(0xFF646B7C)
 val TextMuted: Color get() = if (Ui.dark) Color(0xFF6B7385) else Color(0xFF8B92A4)

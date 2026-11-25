@@ -62,6 +62,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var darkPref by mutableStateOf(store.darkMode); internal set
     private fun syncTheme() { Ui.dark = darkPref || screenState == Screen.Player || screenState == Screen.MultiView || screenState == Screen.Detail }
     fun setDark(on: Boolean) { store.darkMode = on; darkPref = on; syncTheme() }
+    init { Ui.accent = store.accentIdx; Ui.black = store.amoled }
+    fun setAccent(i: Int) { store.accentIdx = i; Ui.accent = i }
+    fun setAmoled(on: Boolean) { store.amoled = on; Ui.black = on }
 
     /* Remembered UI position, so coming back from the player / details lands exactly where you were. */
     @JvmField var restoreFocus = false

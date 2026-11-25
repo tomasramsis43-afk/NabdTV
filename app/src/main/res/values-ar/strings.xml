@@ -753,4 +753,12 @@
     <string name="merge_vod_label">دمج الأفلام والمسلسلات المكررة</string>
     <string name="versions_label">النسخ</string>
     <string name="version_n">نسخة %1$d</string>
+    <string name="accent_label">لون التطبيق</string>
+    <string name="amoled_label">أسود تام (AMOLED)</string>
+    <string name="accent_indigo">نيلي</string>
+    <string name="accent_teal">أخضر مزرق</string>
+    <string name="accent_rose">وردي</string>
+    <string name="accent_amber">كهرماني</string>
+    <string name="accent_green">أخضر</string>
+    <string name="accent_orange">برتقالي</string>
 </resources>

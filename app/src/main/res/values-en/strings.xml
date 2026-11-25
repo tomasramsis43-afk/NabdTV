@@ -753,4 +753,12 @@
     <string name="merge_vod_label">Merge duplicate movies and series</string>
     <string name="versions_label">Versions</string>
     <string name="version_n">Version %1$d</string>
+    <string name="accent_label">App color</string>
+    <string name="amoled_label">Pure black (AMOLED)</string>
+    <string name="accent_indigo">Indigo</string>
+    <string name="accent_teal">Teal</string>
+    <string name="accent_rose">Rose</string>
+    <string name="accent_amber">Amber</string>
+    <string name="accent_green">Green</string>
+    <string name="accent_orange">Orange</string>
 </resources>

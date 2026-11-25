@@ -65,6 +65,12 @@ class Store(private val ctx: Context) {
     var startSection: String
         get() = p.getString("startSection", "Home") ?: "Home"
         set(v) = p.edit().putString("startSection", v).apply()
+    var accentIdx: Int
+        get() = g.getInt("accentIdx", 0)
+        set(v) = g.edit().putInt("accentIdx", v).apply()
+    var amoled: Boolean
+        get() = g.getBoolean("amoled", false)
+        set(v) = g.edit().putBoolean("amoled", v).apply()
     var darkMode: Boolean
         get() = g.getBoolean("darkMode", true)
         set(v) = g.edit().putBoolean("darkMode", v).apply()
