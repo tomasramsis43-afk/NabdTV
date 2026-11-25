@@ -12,11 +12,12 @@ object EpgParser {
         override fun initialValue() = SimpleDateFormat("yyyyMMddHHmmss Z", Locale.US)
     }
 
-    private fun time(s: String?): Long = try {
-        var t = s!!.trim()
+    private fun time(s: String?): Long {
+        var t = s?.trim().orEmpty()
+        if (t.isEmpty()) return 0L
         if (t.length == 14) t += " +0000"
-        fmt.get()!!.parse(t)!!.time
-    } catch (e: Exception) { 0L }
+        return try { fmt.get()?.parse(t)?.time ?: 0L } catch (e: Exception) { 0L }   // malformed XMLTV date: treated as "unknown time"
+    }
 
     class ChannelIndex(val ids: Map<String, String>, val names: Map<String, String>)
 

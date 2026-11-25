@@ -161,7 +161,7 @@ class Repo(private val ctx: Context, val store: Store) {
     private fun a(x: String) = x.replace('"', '\'').replace('\n', ' ')
 
     private fun api(action: String, extra: String = ""): String {
-        val (b, u, p) = xt()!!
+        val (b, u, p) = xt() ?: error("Xtream login is not set")
         return fetch("$b/player_api.php?username=${Uri.encode(u)}&password=${Uri.encode(p)}&action=$action$extra")
     }
 
@@ -178,7 +178,7 @@ class Repo(private val ctx: Context, val store: Store) {
 
     /** Xtream player_api.php (lighter and less blocked than get.php) → M3U text, including archive info. */
     private fun loadXtream(): String {
-        val (base, user, pass) = xt()!!
+        val (base, user, pass) = xt() ?: error("Xtream login is not set")
         val names = categories("get_live_categories")
         if (names.isNotEmpty()) setGroupOrder("live", names.values)
         val streams = JSONArray(api("get_live_streams"))
