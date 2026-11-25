@@ -196,6 +196,7 @@ fun DetailScreen(vm: AppViewModel) {
                             val h = vm.store.historyOf(c.url)
                             val label = if (h != null && !h.finished && h.position > 10_000) tr(R.string.detail_resume, h.position / 60000) else tr(R.string.detail_play)
                             MBtn(label, tint = buttonTone(btnPal.primary), modifier = Modifier.focusRequester(playFocus)) { vm.play(c) }
+                            if (DownloadRules.isDownloadable(c.url)) DownloadButton(vm, c.name, c.url, info?.poster ?: c.logo, btnPal.accent)
                         }
                         MBtn(if (c.url in vm.favs) tr(R.string.detail_fav_on) else tr(R.string.detail_fav_off), filled = false, tint = btnPal.accent) { vm.toggleFav(c) }
                         MBtn((if (c.url in vm.liked) "✓ " else "") + "👍", filled = false, tint = btnPal.accent) { vm.rate(c, true) }
@@ -369,6 +370,16 @@ private fun Episodes(vm: AppViewModel, s: Channel, d: Device, edge: EdgePad) {
                 onFocused = { vm.epFocusUrl = e.url },
                 onClick = { vm.epFocusUrl = e.url; vm.playEpisode(s, e) }
             )
+        }
+    }
+    val selEp = eps.firstOrNull { it.url == vm.epFocusUrl } ?: eps.getOrNull(target)
+    if (selEp != null && DownloadRules.isDownloadable(selEp.url)) {
+        Row(Modifier.padding(start = edge.start, end = edge.end, top = 4.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            DownloadButton(
+                vm, "${s.name} · ${tr(R.string.ep_label, selEp.season, selEp.num)}", selEp.url, s.logo, Accent,
+                label = tr(R.string.dl_ep, selEp.season, selEp.num)
+            )
+            DownloadSeasonButton(vm, s, eps)
         }
     }
 }
