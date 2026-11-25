@@ -19,6 +19,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
@@ -172,6 +174,7 @@ fun Focusable(
             .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocused?.invoke() }
             .then(if (focused) Modifier.softShadow(shape, 14.dp) else Modifier)
             .glass(shape, focused = focused, selected = selected)
+            .remoteLongPress(onLongClick)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         content = content
     )
@@ -290,6 +293,7 @@ fun PosterCard(
                 .clip(shape)
                 .background(SurfHigh)
                 .semantics(mergeDescendants = true) { contentDescription = ch.name }   // screen readers announce the title
+                .remoteLongPress { vm.channelMenu(ch) }
                 .combinedClickable(onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) })
         ) {
             if (adaptive && kindOf(ch) != Kind.Live) {
@@ -399,4 +403,29 @@ fun ratingBadge(c: Channel): String? {
     val v = c.rating?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: return null
     if (v <= 0.0 || v > 10.0) return null
     return "%.1f".format(java.util.Locale.US, v)
+}
+
+
+/**
+ * Holding OK / Enter on a TV remote. Compose's long click only covers touch and mouse, so on a remote the held key (which the
+ * system repeats) is turned into the long action once, and the release that follows is swallowed so it does not also click.
+ */
+fun Modifier.remoteLongPress(onLong: (() -> Unit)?): Modifier {
+    if (onLong == null) return this
+    return composed {
+        var fired by remember { mutableStateOf(false) }
+        onPreviewKeyEvent { e ->
+            val k = e.nativeKeyEvent.keyCode
+            if (k != android.view.KeyEvent.KEYCODE_DPAD_CENTER && k != android.view.KeyEvent.KEYCODE_ENTER && k != android.view.KeyEvent.KEYCODE_NUMPAD_ENTER) return@onPreviewKeyEvent false
+            when (e.type) {
+                androidx.compose.ui.input.key.KeyEventType.KeyDown -> when {
+                    fired -> true
+                    e.nativeKeyEvent.repeatCount > 0 -> { fired = true; onLong(); true }
+                    else -> false
+                }
+                androidx.compose.ui.input.key.KeyEventType.KeyUp -> if (fired) { fired = false; true } else false
+                else -> false
+            }
+        }
+    }
 }
