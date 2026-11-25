@@ -54,6 +54,7 @@ object EpgParser {
         var stop = 0L
         var title: String? = null
         var desc = ""
+        try {
         var ev = p.eventType
         while (ev != XmlPullParser.END_DOCUMENT) {
             if (ev == XmlPullParser.START_TAG) {
@@ -76,7 +77,10 @@ object EpgParser {
             }
             ev = p.next()
         }
-        return map.mapValues { e -> e.value.sortedBy { it.start } }
+        } catch (e: org.xmlpull.v1.XmlPullParserException) {
+            // Corrupted or truncated XMLTV: keep the programmes read before the damage instead of losing the whole guide.
+        }
+        return map.mapValues { e -> e.value.sortedBy { it.start }.distinctBy { it.start to it.title } }
     }
 }
 
