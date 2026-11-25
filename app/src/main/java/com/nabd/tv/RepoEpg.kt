@@ -77,8 +77,18 @@ suspend fun Repo.loadEpg(channels: List<Channel>, force: Boolean): Map<String, L
             if ((force || stale) && epgUrl.isNotBlank()) {
                 try {
                     val req = Request.Builder().url(epgUrl).header("User-Agent", httpUa).build()
-                    http.newCall(req).execute().use { r ->
-                        if (r.isSuccessful) r.body!!.byteStream().use { i -> f.outputStream().use { o -> i.copyTo(o) } }
+                    // Download to a temp file and swap it in only when complete, so a dropped connection never
+                    // replaces a good guide with a half-written one.
+                    val part = File(f.parentFile, f.name + ".part")
+                    try {
+                        http.newCall(req).execute().use { r ->
+                            if (r.isSuccessful) {
+                                r.body!!.byteStream().use { i -> part.outputStream().use { o -> i.copyTo(o) } }
+                                if (part.length() > 0L && !part.renameTo(f)) { f.delete(); part.renameTo(f) }
+                            }
+                        }
+                    } finally {
+                        if (part.exists()) part.delete()
                     }
                 } catch (e: Exception) { Diag.note("Repo#3", e) }
             }
@@ -107,6 +117,6 @@ suspend fun Repo.loadEpg(channels: List<Channel>, force: Boolean): Map<String, L
             }
             writeEpgCache(cacheFile, sig, out)
             out
-        } catch (e: Exception) { emptyMap() }
+        } catch (e: Exception) { Diag.note("EPG load", e); emptyMap() }
     }
 

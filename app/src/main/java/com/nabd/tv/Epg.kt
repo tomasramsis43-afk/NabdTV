@@ -12,11 +12,12 @@ object EpgParser {
         override fun initialValue() = SimpleDateFormat("yyyyMMddHHmmss Z", Locale.US)
     }
 
-    private fun time(s: String?): Long = try {
-        var t = s!!.trim()
+    private fun time(s: String?): Long {
+        var t = s?.trim().orEmpty()
+        if (t.isEmpty()) return 0L
         if (t.length == 14) t += " +0000"
-        fmt.get()!!.parse(t)!!.time
-    } catch (e: Exception) { 0L }
+        return try { fmt.get()?.parse(t)?.time ?: 0L } catch (e: Exception) { 0L }   // malformed XMLTV date: treated as "unknown time"
+    }
 
     class ChannelIndex(val ids: Map<String, String>, val names: Map<String, String>)
 
@@ -53,6 +54,7 @@ object EpgParser {
         var stop = 0L
         var title: String? = null
         var desc = ""
+        try {
         var ev = p.eventType
         while (ev != XmlPullParser.END_DOCUMENT) {
             if (ev == XmlPullParser.START_TAG) {
@@ -75,7 +77,10 @@ object EpgParser {
             }
             ev = p.next()
         }
-        return map.mapValues { e -> e.value.sortedBy { it.start } }
+        } catch (e: org.xmlpull.v1.XmlPullParserException) {
+            // Corrupted or truncated XMLTV: keep the programmes read before the damage instead of losing the whole guide.
+        }
+        return map.mapValues { e -> e.value.sortedBy { it.start }.distinctBy { it.start to it.title } }
     }
 }
 

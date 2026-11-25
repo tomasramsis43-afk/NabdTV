@@ -19,7 +19,12 @@ object M3uParser {
         return ""
     }
 
-    fun parse(text: String): List<Channel> {
+    fun parse(text: String): List<Channel> = parse(text.lineSequence())
+
+    /** Reads a playlist file line by line, so a huge cached list is never held in memory as one String. */
+    fun parseFile(file: java.io.File): List<Channel> = file.useLines(Charsets.UTF_8) { parse(it) }
+
+    fun parse(lines: Sequence<String>): List<Channel> {
         val out = ArrayList<Channel>(2048)
         var name = ""
         var logo: String? = null
@@ -31,7 +36,7 @@ object M3uParser {
         var rating: String? = null
         var added = 0L
         var pending = false
-        text.lineSequence().forEach { raw ->
+        lines.forEach { raw ->
             val line = raw.trim()
             when {
                 line.startsWith("#EXTINF") -> {

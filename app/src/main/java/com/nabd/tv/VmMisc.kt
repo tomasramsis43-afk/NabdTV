@@ -65,9 +65,12 @@ fun AppViewModel.startPairing() {
         viewModelScope.launch {
             val ok = when (f["t"]) {
                 "m3u" -> f["url"].orEmpty().takeIf { it.isNotBlank() }?.also { setUrl(it) }
-                else -> if (!f["host"].isNullOrBlank() && !f["user"].isNullOrBlank() && !f["pass"].isNullOrBlank()) {
-                    setXtream(f["host"]!!, f["user"]!!, f["pass"]!!); "ok"
-                } else null
+                else -> {
+                    val host = f["host"]; val user = f["user"]; val pass = f["pass"]
+                    if (!host.isNullOrBlank() && !user.isNullOrBlank() && !pass.isNullOrBlank()) {
+                        setXtream(host, user, pass); "ok"
+                    } else null
+                }
             }
             if (ok != null) { stopPairing(); say(tx(R.string.pair_received)) } else say(tx(R.string.pair_incomplete))
         }
