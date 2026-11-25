@@ -79,7 +79,7 @@ dependencies {
     implementation("com.google.zxing:core:3.5.3")
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.8.5")
-    ksp("androidx.room:room-compiler:2.6.1")
+    ksp("androidx.room:room-compiler:2.8.5")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
