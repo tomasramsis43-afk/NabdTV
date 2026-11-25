@@ -240,6 +240,7 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
     )
     val edge = edgePad(d)
     val contItems = vm.continueItems
+    LaunchedEffect(vm.epg) { while (true) { vm.refreshMatches(); kotlinx.coroutines.delay(5 * 60_000L) } }
     Column(Modifier.fillMaxSize()) {
         // Edge to edge, starts at the very top of the screen: the floating header sits on this artwork.
         HomeHero(vm, focus, vm.homeInfo, d, palette, Modifier.fillMaxWidth().height(if (d.tv) d.oneRowHeroHeight else d.heroHeight).then(swipe))
@@ -250,7 +251,7 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
                 vm.upcomingMovies.takeIf { it.isNotEmpty() }?.let { tr(R.string.upcoming_movies) to it },
                 vm.upcomingSeries.takeIf { it.isNotEmpty() }?.let { tr(R.string.upcoming_series) to it }
             )
-            OneRowHome(vm, d, shelves, contItems, up, Modifier.weight(1f).fillMaxWidth())
+            OneRowHome(vm, d, shelves, contItems, up, vm.matches, Modifier.weight(1f).fillMaxWidth())
         } else {
         // Rows that scroll up under the hero dissolve softly instead of being cut by a hard line; at the very top nothing is faded.
         val homeState = vm.listState("home")
@@ -266,6 +267,7 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
             contentPadding = PaddingValues(bottom = 28.dp)
         ) {
             if (contItems.isNotEmpty()) item(key = "continue-row") { ContinueRow(vm, d, contItems, edge.start, edge.end) }
+            if (vm.matches.isNotEmpty()) item(key = "matches-row") { MatchesRow(vm, d, vm.matches, edge.start, edge.end) }
             items(shelves, key = { it.title }) { s ->
                 Column {
                     Row(
@@ -306,14 +308,17 @@ private fun HomeTab(vm: AppViewModel, d: Device) {
  */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun OneRowHome(vm: AppViewModel, d: Device, shelves: List<Shelf>, cont: List<ContinueItem>, up: List<Pair<String, List<UpcomingItem>>>, modifier: Modifier) {
+private fun OneRowHome(vm: AppViewModel, d: Device, shelves: List<Shelf>, cont: List<ContinueItem>, up: List<Pair<String, List<UpcomingItem>>>, matches: List<Matches.Match>, modifier: Modifier) {
     val edge = edgePad(d)
     val hasCont = cont.isNotEmpty()
-    val base = shelves.size + if (hasCont) 1 else 0      // continue + shelves; the "coming soon" rows come after them
+    val hasMatches = matches.isNotEmpty()
+    val lead = (if (hasCont) 1 else 0) + (if (hasMatches) 1 else 0)   // continue, then today's matches, then the shelves
+    val matchesIdx = if (hasCont) 1 else 0
+    val base = shelves.size + lead                        // the "coming soon" rows come after them
     val count = base + up.size
     if (count == 0) return
     val idx = vm.homeRow.coerceIn(0, count - 1)
-    fun shelfAt(i: Int): Shelf? = shelves.getOrNull(if (hasCont) i - 1 else i)
+    fun shelfAt(i: Int): Shelf? = if (i < lead) null else shelves.getOrNull(i - lead)
     fun firstKeyOf(i: Int): String? = shelfAt(i)?.let { sh -> sh.items.firstOrNull()?.let { sh.title + "|" + it.url + it.id } }
 
     val rowFocus = remember { FocusRequester() }
@@ -365,6 +370,8 @@ private fun OneRowHome(vm: AppViewModel, d: Device, shelves: List<Shelf>, cont: 
             if (s >= base) {
                 val (upTitle, upList) = up[s - base]
                 Column(Modifier.padding(top = 8.dp)) { UpcomingRow(vm, d, upTitle, upList, edge.start, edge.end, cardW) }
+            } else if (hasMatches && s == matchesIdx) {
+                Column(Modifier.padding(top = 8.dp)) { MatchesRow(vm, d, matches, edge.start, edge.end, cardW) }
             } else if (shelf == null) {
                 ContinueRow(vm, d, cont, edge.start, edge.end, Modifier.padding(top = 8.dp))
             } else {

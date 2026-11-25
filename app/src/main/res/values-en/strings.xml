@@ -766,4 +766,7 @@
     <string name="rated_up_msg">You\'ll see more like this</string>
     <string name="rated_down_msg">You\'ll see less like this</string>
     <string name="rating_cleared_msg">Rating removed</string>
+    <string name="matches_today">Today\'s matches</string>
+    <string name="matches_live_now">Live now</string>
+    <string name="matches_channels">%1$d channels</string>
 </resources>

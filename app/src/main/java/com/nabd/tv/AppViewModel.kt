@@ -313,6 +313,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         out
     }
 
+    /** Fixtures found in the guide (see [Matches]); refreshed when the guide changes and every few minutes. */
+    var matches by mutableStateOf<List<Matches.Match>>(emptyList()); internal set
+
     /** Upcoming (not yet released) titles from TMDB; the rows below hide whatever the library already has. */
     var upcomingRaw by mutableStateOf<List<UpcomingItem>>(emptyList()); internal set
     internal var upcomingAt = 0L

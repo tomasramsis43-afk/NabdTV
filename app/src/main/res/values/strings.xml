@@ -766,4 +766,7 @@
     <string name="rated_up_msg">سيظهر لك المزيد مما يشبهه</string>
     <string name="rated_down_msg">سيقل ظهور ما يشبهه</string>
     <string name="rating_cleared_msg">أُلغي التقييم</string>
+    <string name="matches_today">مباريات اليوم</string>
+    <string name="matches_live_now">الآن</string>
+    <string name="matches_channels">%1$d قنوات</string>
 </resources>

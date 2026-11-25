@@ -62,6 +62,15 @@ suspend fun AppViewModel.artworkFor(c: Channel, kind: Kind): Pair<String?, Strin
  * one is computed in the background. Only plain values are read off the main thread (raw lists + a snapshot of
  * history / favourites), never derived Compose state.
  */
+internal fun AppViewModel.refreshMatches() {
+    val e = epg; val l = liveList
+    if (e.isEmpty() || l.isEmpty()) { if (matches.isNotEmpty()) matches = emptyList(); return }
+    viewModelScope.launch {
+        val r = withContext(Dispatchers.Default) { runCatching { Matches.detect(e, l, System.currentTimeMillis()) }.getOrDefault(emptyList()) }
+        matches = r
+    }
+}
+
 internal fun AppViewModel.refreshRecs() {
     val a = all; val m = movies; val sr = series
     val h = history; val f = favs; val lk = liked; val dl = disliked
