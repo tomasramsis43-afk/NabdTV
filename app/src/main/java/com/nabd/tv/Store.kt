@@ -347,8 +347,10 @@ class Store(private val ctx: Context) {
     var epgEnabled: Boolean
         get() = g.getBoolean("epgEnabled", true)
         set(v) = g.edit().putBoolean("epgEnabled", v).apply()
+    // Fixed, built-in key (baked in at compile time from the TMDB_API_KEY GitHub Secret — see app/build.gradle.kts).
+    // There is no Settings entry for it: the user never sees or sets this value.
     var tmdbKey: String
-        get() = Secret.dec(g.getString("tmdbKey", "") ?: "")
+        get() = Secret.dec(g.getString("tmdbKey", "") ?: "").ifBlank { BuildConfig.TMDB_API_KEY }
         set(v) {
             val e = Secret.encOrNull(v.trim()) ?: run { Diag.note("Store.tmdbKey", Secret.SecretException("encrypt failed")); return }
             g.edit().putString("tmdbKey", e).apply()

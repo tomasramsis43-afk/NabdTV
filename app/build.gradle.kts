@@ -16,6 +16,9 @@ android {
         val run = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
         versionCode = run
         versionName = "2.0.$run"
+        // The TMDB key lives only in GitHub Secrets (TMDB_API_KEY), baked in at build time.
+        // Nothing secret is stored in the repo, and there is no Settings field for it.
+        buildConfigField("String", "TMDB_API_KEY", "\"${System.getenv("TMDB_API_KEY") ?: ""}\"")
     }
     // One fixed key for every build (CI would otherwise generate a new debug key each run,
     // and Android refuses to update an app signed with a different key).
@@ -48,7 +51,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
 }
 
 dependencies {

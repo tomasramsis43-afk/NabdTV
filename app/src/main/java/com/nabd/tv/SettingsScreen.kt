@@ -549,9 +549,7 @@ private fun AccountPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
     }
     Group(S(R.string.a_37b75114)) {
         Row2(S(R.string.prov_check)) { vm.providerCheck() }
-        Row2(S(R.string.a_e9f10589), if (s.tmdbKey.isBlank()) "—" else "••••") {
-            vm.prompt = PromptRequest(S(R.string.a_32f8a730), s.tmdbKey, secret = true) { v -> upd { s.tmdbKey = v }; vm.refreshTmdbCharts(true); vm.refreshUpcoming(true) }
-        }
+        // TMDB key is now a fixed, built-in value (GitHub Secret, baked in at build time) — no Settings row for it anymore.
         Toggle(S(R.string.epg_toggle), s.epgEnabled) { upd { s.epgEnabled = it; if (it) vm.reloadEpg() } }
     }
     Group(S(R.string.a_d244a8a4)) {
