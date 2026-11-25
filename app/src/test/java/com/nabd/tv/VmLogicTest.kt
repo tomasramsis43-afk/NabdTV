@@ -60,6 +60,14 @@ class VmLogicListsTest {
         val r = VmLogic.dedupeSources(l) { 0 }
         assertEquals(listOf("u1", "u3", "u4"), r.map { it.url })
     }
+
+    @Test fun dedupeVodKeepsFirstCopyCountsCopiesAndKeepsRemakesApart() {
+        val l = listOf(ch(1, "Dune 2021 4K"), ch(2, "Dune (2021)"), ch(3, "Dune 1984"), ch(4, "Aladdin"), ch(5, "Dune 2021 HD"))
+        val counts = HashMap<String, Int>()
+        val r = VmLogic.dedupeVod(l, counts)
+        assertEquals(listOf("u1", "u3", "u4"), r.map { it.url })
+        assertEquals(mapOf("u1" to 3), counts)
+    }
 }
 
 class VmLogicTimeTest {
@@ -99,13 +107,5 @@ class VmLogicProblemTest {
     @Test fun deadAndSlowLines() {
         assertEquals("X — " + stub(R.string.vm_prob_dead) + " · 3 " + stub(R.string.vm_prob_fails), VmLogic.problemLine("X", true, 3, ::stub))
         assertEquals("Y — " + stub(R.string.vm_prob_slow) + " · 1 " + stub(R.string.vm_prob_fails), VmLogic.problemLine("Y", false, 1, ::stub))
-    }
-
-    @Test fun dedupeVodKeepsFirstCopyCountsCopiesAndKeepsRemakesApart() {
-        val l = listOf(ch(1, "Dune 2021 4K"), ch(2, "Dune (2021)"), ch(3, "Dune 1984"), ch(4, "Aladdin"), ch(5, "Dune 2021 HD"))
-        val counts = HashMap<String, Int>()
-        val r = VmLogic.dedupeVod(l, counts)
-        assertEquals(listOf("u1", "u3", "u4"), r.map { it.url })
-        assertEquals(mapOf("u1" to 3), counts)
     }
 }
