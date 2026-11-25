@@ -536,16 +536,30 @@ private fun AccountPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
         Row2(S(R.string.a_b20500e6)) { vm.openSetup() }
     }
     val sources = vm.savedSources()
-    if (sources.size > 1) Group(S(R.string.sources_title)) {
+    Group(S(R.string.sources_title)) {
         val cur = vm.currentSourceId()
         sources.forEach { src ->
-            Row2(src.name, if (src.id == cur) S(R.string.sources_active) else "") {
-                vm.menu = MenuRequest(src.name, listOf(
+            Row2(src.label, if (src.id == cur) S(R.string.sources_active) else "") {
+                vm.menu = MenuRequest(src.label, listOf(
                     S(R.string.sources_switch) to { upd { vm.switchSource(src) } },
+                    S(R.string.sources_rename) to {
+                        vm.prompt = PromptRequest(S(R.string.sources_rename), src.name) { n -> upd { vm.editSource(src, n, src.icon, src.color) } }
+                    },
+                    S(R.string.sources_icon) to {
+                        vm.menu = MenuRequest(S(R.string.sources_icon), (listOf("") + SOURCE_ICONS).map { ic ->
+                            (ic.ifEmpty { S(R.string.sources_none) }) to { upd { vm.editSource(src, src.name, ic, src.color) } }
+                        })
+                    },
+                    S(R.string.sources_color) to {
+                        vm.menu = MenuRequest(S(R.string.sources_color), SOURCE_DOTS.mapIndexed { i, d ->
+                            d to { upd { vm.editSource(src, src.name, src.icon, i) } }
+                        })
+                    },
                     S(R.string.sources_delete) to { upd { vm.forgetSource(src) } }
                 ))
             }
         }
+        Row2(S(R.string.sources_add)) { vm.openSetup() }
     }
     Group(S(R.string.a_37b75114)) {
         Row2(S(R.string.prov_check)) { vm.providerCheck() }

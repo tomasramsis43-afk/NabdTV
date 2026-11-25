@@ -30,7 +30,14 @@ data class Channel(
 }
 
 /** A provider login kept so the viewer can switch between providers. kind = "xtream" (address = host) or "m3u" (address = playlist URL). */
-data class SavedSource(val id: String, val name: String, val kind: String, val address: String, val user: String = "", val pass: String = "")
+/** [icon] (an emoji, "" = none) and [color] (index into [SOURCE_DOTS], 0 = default) are the provider's own look in the switcher. */
+data class SavedSource(val id: String, val name: String, val kind: String, val address: String, val user: String = "", val pass: String = "", val icon: String = "", val color: Int = 0)
+
+val SOURCE_ICONS = listOf("📺", "🎬", "⚽", "🌍", "⭐", "🏠", "👨‍👩‍👧", "🎮")
+val SOURCE_DOTS = listOf("⚪", "🔴", "🔵", "🟢", "🟠", "🟣")
+
+/** Name with the provider's own icon and colour mark in front, for lists and menus. */
+val SavedSource.label: String get() = listOfNotNull(SOURCE_DOTS.getOrNull(color)?.takeIf { color > 0 }, icon.ifEmpty { null }, name).joinToString(" ")
 
 data class Prog(val start: Long, val stop: Long, val title: String, val desc: String = "")
 

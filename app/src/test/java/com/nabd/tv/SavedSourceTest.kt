@@ -9,6 +9,13 @@ class SavedSourceTest {
     }
 }
 
+class SourceLabelTest {
+    private val base = SavedSource("a", "host · u", "xtream", "http://h", "u", "p")
+    @Test fun plainSourceShowsOnlyItsName() = assertEquals("host · u", base.label)
+    @Test fun iconAndColourMarkAreShownBeforeTheName() = assertEquals("🔴 ⭐ host · u", base.copy(icon = "⭐", color = 1).label)
+    @Test fun unknownColourIndexIsIgnored() = assertEquals("host · u", base.copy(color = 99).label)
+}
+
 class SearchSlotTest {
     @Test fun sourcesWithDifferentLoginsHaveDifferentCacheSlots() {
         // The slot id is a hash of kind + address + user: two logins on one host must not share a cache.

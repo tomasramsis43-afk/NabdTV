@@ -28,27 +28,33 @@ fun Repo.savedSources(): List<SavedSource> {
         val a = org.json.JSONArray(raw)
         (0 until a.length()).map { i ->
             val o = a.getJSONObject(i)
-            SavedSource(o.getString("id"), o.getString("name"), o.getString("kind"), o.getString("a"), o.optString("user"), o.optString("pass"))
+            SavedSource(o.getString("id"), o.getString("name"), o.getString("kind"), o.getString("a"), o.optString("user"), o.optString("pass"), o.optString("icon"), o.optInt("color", 0))
         }
     }.getOrDefault(emptyList())
 }
 
 private fun Repo.writeSources(list: List<SavedSource>) {
     val a = org.json.JSONArray()
-    list.forEach { a.put(org.json.JSONObject().put("id", it.id).put("name", it.name).put("kind", it.kind).put("a", it.address).put("user", it.user).put("pass", it.pass)) }
+    list.forEach { a.put(org.json.JSONObject().put("id", it.id).put("name", it.name).put("kind", it.kind).put("a", it.address).put("user", it.user).put("pass", it.pass).put("icon", it.icon).put("color", it.color)) }
     val e = Secret.encOrNull(a.toString()) ?: run { Diag.note("RepoSources.writeSources", Secret.SecretException("encrypt failed")); return }
     prefs.edit().putString("sources", e).apply()
 }
 
-/** Adds (or refreshes) a source in the saved list. [address] is the Xtream host or the playlist URL. */
+/** Adds (or refreshes) a source in the saved list. [address] is the Xtream host or the playlist URL. A source already saved keeps the name, icon and colour the viewer gave it. */
 fun Repo.rememberSource(kind: String, address: String, user: String = "", pass: String = "") {
     if (address.isBlank()) return
     val host = runCatching { java.net.URI(address).host }.getOrNull()?.takeIf { it.isNotBlank() } ?: address.take(40)
-    val src = SavedSource(sourceId(kind, address, user), if (kind == "xtream" && user.isNotBlank()) "$host · $user" else host, kind, address, user, pass)
+    val id = sourceId(kind, address, user)
+    val old = savedSources().firstOrNull { it.id == id }
+    val src = SavedSource(id, old?.name ?: if (kind == "xtream" && user.isNotBlank()) "$host · $user" else host, kind, address, user, pass, old?.icon ?: "", old?.color ?: 0)
     writeSources(listOf(src) + savedSources().filter { it.id != src.id })
 }
 
-fun Repo.forgetSource(id: String) = writeSources(savedSources().filter { it.id != id })
+/** Renames a provider and sets its icon / colour (the order of the list is kept). A blank [name] keeps the current one. */
+fun Repo.editSource(id: String, name: String, icon: String, color: Int) =
+    writeSources(savedSources().map { if (it.id == id) it.copy(name = name.trim().ifEmpty { it.name }, icon = icon, color = color.coerceIn(0, SOURCE_DOTS.size - 1)) else it })
+
+fun Repo.forgetSource(id: String) { writeSources(savedSources().filter { it.id != id }); store.dropSourceData(id) }
 
 /** The login currently in use as a saved source (older installs never saved theirs). */
 fun Repo.currentSourceId(): String? {

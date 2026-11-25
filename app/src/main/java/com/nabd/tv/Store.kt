@@ -10,11 +10,44 @@ import java.security.SecureRandom
 class Store(private val ctx: Context) {
     /** Global data shared by every profile (provider-level state, PIN, recordings, health…). */
     private val g = ctx.getSharedPreferences("nabd2", Context.MODE_PRIVATE)
-    /** Per-profile data. The "main" profile keeps using the original file, so nothing is lost on upgrade. */
+    /** Which provider's data is open ("" = the provider that was in use before per-provider data existed, so nothing is lost on upgrade). */
+    @Volatile private var scope: String = g.getString("scopeId", "") ?: ""
+    /** Per-profile data. The "main" profile of the first provider keeps using the original file, so nothing is lost on upgrade. */
     private var p = prefsFor(g.getString("profileId", "main") ?: "main")
 
-    private fun prefsFor(id: String) =
-        if (id == "main") g else ctx.getSharedPreferences("nabd2_p_$id", Context.MODE_PRIVATE)
+    private fun prefsName(id: String, sc: String) = "nabd2_p_$id" + if (sc.isEmpty()) "" else "_s_$sc"
+
+    /** Data of a profile (a person) inside the open provider: every provider keeps its own favourites, history and settings. */
+    private fun prefsFor(id: String, sc: String = scope) =
+        if (id == "main" && sc.isEmpty()) g else ctx.getSharedPreferences(prefsName(id, sc), Context.MODE_PRIVATE)
+
+    private fun scopeFor(sourceId: String): String = if (sourceId == g.getString("legacyScopeSrc", null)) "" else sourceId
+
+    /**
+     * Opens the data of the provider [sourceId]. The first provider ever seen owns the pre-existing data. Returns true when it changed.
+     * Call it whenever the active provider changes (and once at start).
+     */
+    fun useSource(sourceId: String): Boolean {
+        if (g.getString("legacyScopeSrc", null) == null) g.edit().putString("legacyScopeSrc", sourceId).apply()
+        val sc = scopeFor(sourceId)
+        if (sc.isNotEmpty() && sc !in scopes()) g.edit().putStringSet("scopeList", scopes() + sc).apply()
+        if (sc == scope) return false
+        scope = sc
+        g.edit().putString("scopeId", sc).apply()
+        p = prefsFor(g.getString("profileId", "main") ?: "main")
+        setCache.clear(); histCache = null; epMetaCache = null; cursorCache = null
+        return true
+    }
+
+    private fun scopes(): Set<String> = g.getStringSet("scopeList", emptySet())!!.toSet()
+
+    /** The provider was removed from the saved list: its favourites, history and settings go with it (the legacy provider's data stays). */
+    fun dropSourceData(sourceId: String) {
+        val sc = scopeFor(sourceId)
+        if (sc.isEmpty() || sc == scope) return
+        for (pr in profiles()) runCatching { ctx.deleteSharedPreferences(prefsName(pr.id, sc)) }
+        g.edit().putStringSet("scopeList", scopes() - sc).apply()
+    }
 
     data class Profile(val id: String, val name: String, val kids: Boolean)
 
@@ -52,7 +85,7 @@ class Store(private val ctx: Context) {
     fun deleteProfile(id: String) {
         if (id == "main") return
         saveProfiles(profiles().filter { it.id != id })
-        runCatching { ctx.deleteSharedPreferences("nabd2_p_$id") }
+        for (sc in scopes() + "") runCatching { ctx.deleteSharedPreferences(prefsName(id, sc)) }
         if (g.getString("profileId", "main") == id) switchProfile("main")
     }
 

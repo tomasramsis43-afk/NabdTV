@@ -726,6 +726,11 @@
     <string name="sources_switch">Switch to this source</string>
     <string name="sources_delete">Remove from the list</string>
     <string name="sources_active">Current</string>
+    <string name="sources_rename">Rename</string>
+    <string name="sources_icon">Icon</string>
+    <string name="sources_color">Colour</string>
+    <string name="sources_none">None</string>
+    <string name="sources_add">Add another provider</string>
     <string name="next_ep_label_ep">Next: episode %1$d</string>
     <string name="next_ep_label_se">Next: S%2$d · E%1$d</string>
     <string name="next_ep_in_days">in %1$d days</string>
