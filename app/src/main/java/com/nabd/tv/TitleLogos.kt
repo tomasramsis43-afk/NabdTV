@@ -79,6 +79,10 @@ object Logos {
 
     private fun resolve(d: File, k: String, title: String, kind: Kind, year: Int?): File? {
         ensureLoaded(d)
+        if (mem.size > 1000) mem.clear()
+        if (synchronized(index) { index.length() } > 5000) synchronized(index) {
+            val keys = index.keys().asSequence().toList(); keys.forEach { index.remove(it) }
+        }
         manual(d, title)?.let { mem[k] = it; return it }
         synchronized(index) { index.optJSONObject(k) }?.let { e ->
             if (e.optString("s") == "ok") {
@@ -109,8 +113,8 @@ object Logos {
                     }
                 }
             }
-        } catch (_: IOException) { null }          // offline / timeout: do not cache a negative answer
-          catch (_: Exception) { null }
+        } catch (e: IOException) { null }          // offline / timeout: do not cache a negative answer
+          catch (e: Exception) { Diag.note("TitleLogos.resolve", e); null }
     }
 
     /**

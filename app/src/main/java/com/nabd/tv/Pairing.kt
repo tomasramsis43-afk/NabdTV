@@ -29,7 +29,7 @@ import java.security.SecureRandom
 class PairingServer(private val onReceived: (Map<String, String>) -> Unit) {
     @Volatile private var badRequests = 0
     @Volatile private var server: ServerSocket? = null
-    private val token = SecureRandom().let { r -> (1..8).map { "abcdefghjkmnpqrstuvwxyz23456789"[r.nextInt(31)] }.joinToString("") }
+    private val token = SecureRandom().let { r -> (1..12).map { "abcdefghjkmnpqrstuvwxyz23456789"[r.nextInt(31)] }.joinToString("") }
 
     /** Address the phone should open, or null when the device has no LAN address. */
     var url: String? = null; private set
@@ -95,7 +95,7 @@ class PairingServer(private val onReceived: (Map<String, String>) -> Unit) {
         if (path != "/$token") {
             send("404 Not Found", "404")
             // The token is the only secret: stop listening after too many wrong guesses.
-            if (++badRequests >= 30) stop()
+            if (++badRequests >= 10) stop()
             return
         }
         if (parts[0] == "POST") {

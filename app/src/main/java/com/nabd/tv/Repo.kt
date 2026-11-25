@@ -91,17 +91,26 @@ class Repo(private val ctx: Context, val store: Store) {
         // One-time upgrade: re-save legacy plain-text login details in encrypted form.
         for (k in listOf("url", "epg", "xt")) {
             val v = prefs.getString(k, "") ?: ""
-            if (v.isNotEmpty() && !Secret.isEncrypted(v)) { val e = Secret.enc(v); if (e != v) prefs.edit().putString(k, e).apply() }
+            if (v.isNotEmpty() && !Secret.isEncrypted(v)) {
+                val e = Secret.encOrNull(v) ?: continue
+                if (e != v) prefs.edit().putString(k, e).apply()
+            }
         }
     }
 
     var playlistUrl: String
         get() = Secret.dec(prefs.getString("url", "") ?: "")
-        set(v) { slotKey = null; prefs.edit().putString("url", Secret.enc(v)).apply() }
+        set(v) {
+            val e = Secret.encOrNull(v) ?: run { Diag.note("Repo.playlistUrl", Secret.SecretException("encrypt failed")); return }
+            slotKey = null; prefs.edit().putString("url", e).apply()
+        }
 
     var epgUrl: String
         get() = Secret.dec(prefs.getString("epg", "") ?: "")
-        set(v) = prefs.edit().putString("epg", Secret.enc(v)).apply()
+        set(v) {
+            val e = Secret.encOrNull(v) ?: run { Diag.note("Repo.epgUrl", Secret.SecretException("encrypt failed")); return }
+            prefs.edit().putString("epg", e).apply()
+        }
 
     var epgManual: Boolean
         get() = prefs.getBoolean("epgManual", false)
@@ -109,7 +118,10 @@ class Repo(private val ctx: Context, val store: Store) {
 
     var xtream: String
         get() = Secret.dec(prefs.getString("xt", "") ?: "")
-        set(v) { slotKey = null; prefs.edit().putString("xt", Secret.enc(v)).apply() }
+        set(v) {
+            val e = Secret.encOrNull(v) ?: run { Diag.note("Repo.xtream", Secret.SecretException("encrypt failed")); return }
+            slotKey = null; prefs.edit().putString("xt", e).apply()
+        }
 
     var liveExt: String
         get() = prefs.getString("liveExt", "ts") ?: "ts"

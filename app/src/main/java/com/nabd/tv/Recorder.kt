@@ -242,6 +242,7 @@ class RecordService : Service() {
                         val n = i.read(buf)
                         if (n < 0) break
                         o.write(buf, 0, n)
+                        if (out.length() > 2L * 1024 * 1024 * 1024) break   // cap recording size
                         val now = System.currentTimeMillis()
                         if (now - lastCheck > 3000) { lastCheck = now; if (timedOut || cancelled(store, rec.id)) break }
                     }

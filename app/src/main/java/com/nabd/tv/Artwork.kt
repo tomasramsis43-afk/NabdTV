@@ -70,6 +70,11 @@ object Artwork {
 
     private fun resolve(d: File, k: String, type: String, title: String, kind: Kind, year: Int?): Art? {
         ensureLoaded(d)
+        if (mem.size > 1000) mem.clear()
+        // Bound the in-memory/persisted index so it cannot grow without limit across thousands of titles.
+        if (synchronized(index) { index.length() } > 5000) synchronized(index) {
+            val keys = index.keys().asSequence().toList(); keys.forEach { index.remove(it) }
+        }
         synchronized(index) { index.optJSONObject(k) }?.let { e ->
             if (e.optString("s") == "ok") {
                 val a = Art(e.optString("u"), e.optString("src"), e.optString("lic")); mem[k] = a; return a
@@ -84,8 +89,8 @@ object Artwork {
             }
             save(d)
             art?.also { mem[k] = it }
-        } catch (_: IOException) { null }        // offline: not cached
-          catch (_: Exception) { null }
+        } catch (e: IOException) { null }        // offline: not cached
+          catch (e: Exception) { Diag.note("Artwork.resolve", e); null }
     }
 
     /** Cast (with photos) and a YouTube trailer id for a verified TMDB match; null without a key or match. */

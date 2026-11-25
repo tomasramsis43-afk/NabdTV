@@ -29,7 +29,7 @@ object Classifier {
         val key = "$group|$name"
         cache[key]?.let { return it }
         val g = detect(group.lowercase(Locale.ROOT)) ?: detect(name.lowercase(Locale.ROOT)) ?: Genre.General
-        if (cache.size > 200_000) cache.clear()
+        if (cache.size > 50_000) cache.clear()
         cache[key] = g
         return g
     }

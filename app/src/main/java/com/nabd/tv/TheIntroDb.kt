@@ -31,6 +31,9 @@ object TheIntroDb {
     ): List<AniIntro> = withContext(Dispatchers.IO) {
         val none = emptyList<AniIntro>()
         runCatching {
+            if (idCache.size > 500) idCache.clear()
+            if (introCache.size > 500) introCache.clear()
+            if (missCache.size > 500) missCache.clear()
             if (tmdbKey.isBlank()) return@runCatching none
             if (series && ((season ?: 0) <= 0 || (episode ?: 0) <= 0)) return@runCatching none
             val clean = title.replace(Regex("[\\[(].*?[\\])]"), " ").replace(Regex("\\s+"), " ").trim()

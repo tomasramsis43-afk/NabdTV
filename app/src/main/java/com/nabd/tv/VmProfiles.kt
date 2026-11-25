@@ -60,7 +60,10 @@ fun AppViewModel.requirePin(title: String, go: () -> Unit) {
     if (!store.hasPin || parental.unlocked) go() else pin = PinRequest(title) { go() }
 }
 
-fun AppViewModel.setPin(code: String) { store.setPin(code); bump() }
+fun AppViewModel.setPin(code: String) {
+    try { store.setPin(code); bump() }
+    catch (e: Secret.SecretException) { Diag.note("AppViewModel.setPin", e); say(tx(R.string.x_err_unknown)) }
+}
 
 fun AppViewModel.clearPin() { requirePin(tx(R.string.pin_clear)) { store.clearPin(); parental.lock(); bump() } }
 

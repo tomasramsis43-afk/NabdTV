@@ -57,6 +57,9 @@ object AniSkip {
     suspend fun segments(http: OkHttpClient, ctx: Context, seriesName: String, season: Int?, episode: Int?): List<AniIntro> =
         withContext(Dispatchers.IO) {
             runCatching {
+                if (introCache.size > 500) introCache.clear()
+                if (missCache.size > 500) missCache.clear()
+                if (malCache.size > 500) malCache.clear()
                 val ep = episode?.takeIf { it > 0 } ?: return@runCatching emptyList<AniIntro>()
                 val sn = (season ?: 1).coerceAtLeast(1)
                 val base = cleanName(seriesName)

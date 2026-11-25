@@ -36,7 +36,8 @@ fun Repo.savedSources(): List<SavedSource> {
 private fun Repo.writeSources(list: List<SavedSource>) {
     val a = org.json.JSONArray()
     list.forEach { a.put(org.json.JSONObject().put("id", it.id).put("name", it.name).put("kind", it.kind).put("a", it.address).put("user", it.user).put("pass", it.pass)) }
-    prefs.edit().putString("sources", Secret.enc(a.toString())).apply()
+    val e = Secret.encOrNull(a.toString()) ?: run { Diag.note("RepoSources.writeSources", Secret.SecretException("encrypt failed")); return }
+    prefs.edit().putString("sources", e).apply()
 }
 
 /** Adds (or refreshes) a source in the saved list. [address] is the Xtream host or the playlist URL. */

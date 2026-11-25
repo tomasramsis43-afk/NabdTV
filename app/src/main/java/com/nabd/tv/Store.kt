@@ -19,9 +19,10 @@ class Store(private val ctx: Context) {
     data class Profile(val id: String, val name: String, val kids: Boolean)
 
     // profiles() / parentalLevel are read once PER CHANNEL when lists are filtered (tens of thousands of times): parse only when the stored text changed.
+    private val storeLock = Any()
     @Volatile private var profBox: Pair<String, List<Profile>>? = null   // one object: readers on other threads never see a half-updated pair
 
-    fun profiles(): List<Profile> {
+    fun profiles(): List<Profile> = synchronized(storeLock) {
         val raw = g.getString("profiles", "[]") ?: "[]"
         profBox?.let { if (it.first == raw) return it.second }
         val out = ArrayList<Profile>()
@@ -31,7 +32,7 @@ class Store(private val ctx: Context) {
         }
         if (out.none { it.id == "main" }) out.add(0, Profile("main", "الرئيسي", false))
         profBox = raw to out
-        return out
+        out
     }
 
     private fun saveProfiles(l: List<Profile>) {
@@ -58,7 +59,7 @@ class Store(private val ctx: Context) {
     fun switchProfile(id: String) {
         g.edit().putString("profileId", id).apply()
         p = prefsFor(id)
-        setCache.clear(); histCache = null
+        setCache.clear(); histCache = null; epMetaCache = null; cursorCache = null
     }
 
     /* ---------- simple settings ---------- */
@@ -306,13 +307,22 @@ class Store(private val ctx: Context) {
         set(v) = g.edit().putString("traktId", v.trim()).apply()
     var traktSecret: String
         get() = Secret.dec(g.getString("traktSecret", "") ?: "")
-        set(v) = g.edit().putString("traktSecret", Secret.enc(v.trim())).apply()
+        set(v) {
+            val e = Secret.encOrNull(v.trim()) ?: run { Diag.note("Store.traktSecret", Secret.SecretException("encrypt failed")); return }
+            g.edit().putString("traktSecret", e).apply()
+        }
     var traktAccess: String
         get() = Secret.dec(g.getString("traktAccess", "") ?: "")
-        set(v) = g.edit().putString("traktAccess", Secret.enc(v)).apply()
+        set(v) {
+            val e = Secret.encOrNull(v) ?: run { Diag.note("Store.traktAccess", Secret.SecretException("encrypt failed")); return }
+            g.edit().putString("traktAccess", e).apply()
+        }
     var traktRefresh: String
         get() = Secret.dec(g.getString("traktRefresh", "") ?: "")
-        set(v) = g.edit().putString("traktRefresh", Secret.enc(v)).apply()
+        set(v) {
+            val e = Secret.encOrNull(v) ?: run { Diag.note("Store.traktRefresh", Secret.SecretException("encrypt failed")); return }
+            g.edit().putString("traktRefresh", e).apply()
+        }
     var traktExpiresAt: Long
         get() = g.getLong("traktExpires", 0L)
         set(v) = g.edit().putLong("traktExpires", v).apply()
@@ -320,20 +330,29 @@ class Store(private val ctx: Context) {
     /* OpenSubtitles.com (online subtitle search): the user's own API key + account. */
     var osKey: String
         get() = Secret.dec(g.getString("osKey", "") ?: "")   // legacy plain values still read fine, and are re-saved encrypted on next edit
-        set(v) = g.edit().putString("osKey", Secret.enc(v.trim())).apply()
+        set(v) {
+            val e = Secret.encOrNull(v.trim()) ?: run { Diag.note("Store.osKey", Secret.SecretException("encrypt failed")); return }
+            g.edit().putString("osKey", e).apply()
+        }
     var osUser: String
         get() = g.getString("osUser", "") ?: ""
         set(v) = g.edit().putString("osUser", v.trim()).apply()
     var osPass: String
         get() = Secret.dec(g.getString("osPass", "") ?: "")
-        set(v) = g.edit().putString("osPass", Secret.enc(v.trim())).apply()
+        set(v) {
+            val e = Secret.encOrNull(v.trim()) ?: run { Diag.note("Store.osPass", Secret.SecretException("encrypt failed")); return }
+            g.edit().putString("osPass", e).apply()
+        }
     /** Download and parse the TV guide (EPG). Off = no guide data; saves battery / heat if you only watch movies and series. */
     var epgEnabled: Boolean
         get() = g.getBoolean("epgEnabled", true)
         set(v) = g.edit().putBoolean("epgEnabled", v).apply()
     var tmdbKey: String
         get() = Secret.dec(g.getString("tmdbKey", "") ?: "")
-        set(v) = g.edit().putString("tmdbKey", Secret.enc(v.trim())).apply()
+        set(v) {
+            val e = Secret.encOrNull(v.trim()) ?: run { Diag.note("Store.tmdbKey", Secret.SecretException("encrypt failed")); return }
+            g.edit().putString("tmdbKey", e).apply()
+        }
     var filterWords: String
         get() = g.getString("filterWords", "") ?: ""
         set(v) = g.edit().putString("filterWords", v).apply()
@@ -424,7 +443,7 @@ class Store(private val ctx: Context) {
         val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
         val algo = pbkdfAlgo()
         // The digest is also wrapped with the Android Keystore key, so a copied prefs file alone cannot be brute-forced.
-        val h = Secret.enc(PinHash.hash(pin, salt, PinHash.ITERATIONS, algo))
+        val h = Secret.enc(PinHash.hash(pin, salt, PinHash.ITERATIONS, algo))   // throws if keystore unavailable; caller handles
         g.edit().putString("pinSalt", salt).putString("pinHash2", h)
             .putString("pinAlgo", algo).putInt("pinIter", PinHash.ITERATIONS).remove("pinHash").apply()
     }
@@ -475,33 +494,37 @@ class Store(private val ctx: Context) {
     fun setSeriesSubLang(seriesKey: String, lang: String) = p.edit().putString("sSub_$seriesKey", lang).apply()
 
     /* ---------- watch history ---------- */
-    private var histCache: LinkedHashMap<String, HistoryEntry>? = null
+    @Volatile private var histCache: LinkedHashMap<String, HistoryEntry>? = null
 
     private fun hist(): LinkedHashMap<String, HistoryEntry> {
-        histCache?.let { return it }
-        val m = LinkedHashMap<String, HistoryEntry>()
-        runCatching {
-            val a = JSONArray(p.getString("history", "[]"))
-            for (i in 0 until a.length()) {
-                val o = a.getJSONObject(i)
-                m[o.getString("u")] = HistoryEntry(
-                    o.getString("u"), o.optString("n"), o.optString("l").ifEmpty { null }, o.optString("g"),
-                    runCatching { Kind.valueOf(o.optString("k")) }.getOrDefault(Kind.Live),
-                    o.optLong("p"), o.optLong("d"), o.optLong("t"), o.optInt("c", 1)
-                )
+        synchronized(storeLock) {
+            histCache?.let { return it }
+            val m = LinkedHashMap<String, HistoryEntry>()
+            runCatching {
+                val a = JSONArray(p.getString("history", "[]"))
+                for (i in 0 until a.length()) {
+                    val o = a.getJSONObject(i)
+                    m[o.getString("u")] = HistoryEntry(
+                        o.getString("u"), o.optString("n"), o.optString("l").ifEmpty { null }, o.optString("g"),
+                        runCatching { Kind.valueOf(o.optString("k")) }.getOrDefault(Kind.Live),
+                        o.optLong("p"), o.optLong("d"), o.optLong("t"), o.optInt("c", 1)
+                    )
+                }
             }
+            histCache = m
+            return m
         }
-        histCache = m
-        return m
     }
 
     private fun saveHist() {
-        val a = JSONArray()
-        hist().values.sortedByDescending { it.last }.take(400).forEach { e ->
-            a.put(JSONObject().put("u", e.url).put("n", e.name).put("l", e.logo ?: "").put("g", e.group)
-                .put("k", e.kind.name).put("p", e.position).put("d", e.duration).put("t", e.last).put("c", e.count))
+        synchronized(storeLock) {
+            val a = JSONArray()
+            hist().values.sortedByDescending { it.last }.take(400).forEach { e ->
+                a.put(JSONObject().put("u", e.url).put("n", e.name).put("l", e.logo ?: "").put("g", e.group)
+                    .put("k", e.kind.name).put("p", e.position).put("d", e.duration).put("t", e.last).put("c", e.count))
+            }
+            p.edit().putString("history", a.toString()).apply()
         }
-        p.edit().putString("history", a.toString()).apply()
     }
 
     fun history(): List<HistoryEntry> = hist().values.sortedByDescending { it.last }
@@ -535,28 +558,32 @@ class Store(private val ctx: Context) {
     }
 
     /* ---------- episode metadata + current episode per series (Continue watching) ---------- */
-    private var epMetaCache: LinkedHashMap<String, EpMeta>? = null
+    @Volatile private var epMetaCache: LinkedHashMap<String, EpMeta>? = null
 
     private fun epMetas(): LinkedHashMap<String, EpMeta> {
-        epMetaCache?.let { return it }
-        val m = LinkedHashMap<String, EpMeta>()
-        runCatching {
-            val o = JSONObject(p.getString("epmeta", "{}"))
-            for (k in o.keys()) {
-                val j = o.getJSONObject(k)
-                m[k] = EpMeta(j.optString("s"), j.optString("n"), j.optInt("se"), j.optInt("e"), j.optString("t"), j.optString("i").ifEmpty { null })
+        synchronized(storeLock) {
+            epMetaCache?.let { return it }
+            val m = LinkedHashMap<String, EpMeta>()
+            runCatching {
+                val o = JSONObject(p.getString("epmeta", "{}") ?: "{}")
+                for (k in o.keys()) {
+                    val j = o.getJSONObject(k)
+                    m[k] = EpMeta(j.optString("s"), j.optString("n"), j.optInt("se"), j.optInt("e"), j.optString("t"), j.optString("i").ifEmpty { null })
+                }
             }
+            epMetaCache = m
+            return m
         }
-        epMetaCache = m
-        return m
     }
 
     private fun saveEpMetas() {
-        val o = JSONObject()
-        epMetas().forEach { (k, e) ->
-            o.put(k, JSONObject().put("s", e.seriesUrl).put("n", e.seriesName).put("se", e.season).put("e", e.num).put("t", e.title).put("i", e.image ?: ""))
+        synchronized(storeLock) {
+            val o = JSONObject()
+            epMetas().forEach { (k, e) ->
+                o.put(k, JSONObject().put("s", e.seriesUrl).put("n", e.seriesName).put("se", e.season).put("e", e.num).put("t", e.title).put("i", e.image ?: ""))
+            }
+            p.edit().putString("epmeta", o.toString()).apply()
         }
-        p.edit().putString("epmeta", o.toString()).apply()
     }
 
     fun epMeta(url: String): EpMeta? = epMetas()[url]
@@ -568,23 +595,27 @@ class Store(private val ctx: Context) {
         saveEpMetas()
     }
 
-    private var cursorCache: LinkedHashMap<String, Pair<String, Long>>? = null
+    @Volatile private var cursorCache: LinkedHashMap<String, Pair<String, Long>>? = null
 
     private fun cursors(): LinkedHashMap<String, Pair<String, Long>> {
-        cursorCache?.let { return it }
-        val m = LinkedHashMap<String, Pair<String, Long>>()
-        runCatching {
-            val o = JSONObject(p.getString("contcursor", "{}"))
-            for (k in o.keys()) { val j = o.getJSONObject(k); m[k] = j.optString("u") to j.optLong("t") }
+        synchronized(storeLock) {
+            cursorCache?.let { return it }
+            val m = LinkedHashMap<String, Pair<String, Long>>()
+            runCatching {
+                val o = JSONObject(p.getString("contcursor", "{}") ?: "{}")
+                for (k in o.keys()) { val j = o.getJSONObject(k); m[k] = j.optString("u") to j.optLong("t") }
+            }
+            cursorCache = m
+            return m
         }
-        cursorCache = m
-        return m
     }
 
     private fun saveCursors() {
-        val o = JSONObject()
-        cursors().forEach { (k, v) -> o.put(k, JSONObject().put("u", v.first).put("t", v.second)) }
-        p.edit().putString("contcursor", o.toString()).apply()
+        synchronized(storeLock) {
+            val o = JSONObject()
+            cursors().forEach { (k, v) -> o.put(k, JSONObject().put("u", v.first).put("t", v.second)) }
+            p.edit().putString("contcursor", o.toString()).apply()
+        }
     }
 
     /** The episode Continue watching currently shows for a series (last played, or picked with the prev/next arrows). */
@@ -603,7 +634,7 @@ class Store(private val ctx: Context) {
         healthCache?.let { return it }
         val m = java.util.concurrent.ConcurrentHashMap<String, HealthRecord>()
         runCatching {
-            val o = JSONObject(g.getString("health", "{}"))
+            val o = JSONObject(g.getString("health", "{}") ?: "{}")
             for (k in o.keys()) {
                 val r = o.getJSONObject(k)
                 m[k] = HealthRecord(
@@ -736,6 +767,7 @@ class Store(private val ctx: Context) {
 
     /** Merges a backup produced by [exportBackup]. Returns false when the text is not a valid backup. */
     fun importBackup(text: String): Boolean = runCatching {
+        if (text.length > 5_000_000) return false
         val o = JSONObject(text)
         if (o.optInt("v", 0) !in 1..2) return false
         fun set(k: String): Set<String> {
@@ -761,7 +793,7 @@ class Store(private val ctx: Context) {
         }
         o.optJSONArray("history")?.let { a ->
             val m = hist()
-            for (i in 0 until a.length()) {
+            for (i in 0 until minOf(a.length(), 400)) {
                 val j = a.getJSONObject(i)
                 val url = j.getString("u")
                 val kind = runCatching { Kind.valueOf(j.getString("k")) }.getOrDefault(Kind.Movie)
