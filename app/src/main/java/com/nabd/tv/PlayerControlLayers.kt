@@ -124,7 +124,7 @@ internal fun BoxScope.PlayerControlLayers(
         }
     }
 
-    // Movies / series: slim remaining-time bar while the controls are hidden.
+    // Movies / series: time left (counting down) while the controls are hidden.
     if (vod && !ui.overlay && !vm.inPip && ui.sheet == null && ui.error == null && ui.resumeAt <= 0L &&
         !ui.showJump && ui.nextEp == null && !ui.ended && ui.duration > 0L
     ) {
@@ -235,15 +235,14 @@ internal fun BoxScope.PlayerControlLayers(
     }
 }
 
-/** Thin progress line (no numbers) shown at the bottom when the full controls are hidden: filled = watched, empty = remaining. */
+/** Only the time left, counting down, at the bottom when the full controls are hidden (no bar, no label). */
+@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun BoxScope.VodMiniBar(position: Long, duration: Long, tv: Boolean) {
-    val pct = (position.toFloat() / duration).coerceIn(0f, 1f)
-    Box(
-        Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-            .padding(horizontal = if (tv) 48.dp else 12.dp, vertical = if (tv) 14.dp else 8.dp)
-            .height(4.dp).clip(RoundedCornerShape(2.dp)).background(Color(0x55FFFFFF))
-    ) {
-        Box(Modifier.fillMaxHeight().fillMaxWidth(pct).background(Accent))
-    }
+    Text(
+        fmtTime((duration - position).coerceAtLeast(0L)),
+        color = Color(0xE6FFFFFF), fontSize = if (tv) 18.sp else 14.sp, fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = if (tv) 18.dp else 10.dp)
+            .clip(RoundedCornerShape(8.dp)).background(Color(0x73000000)).padding(horizontal = 12.dp, vertical = 4.dp)
+    )
 }
