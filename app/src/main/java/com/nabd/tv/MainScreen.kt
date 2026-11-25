@@ -157,6 +157,7 @@ private fun Content(vm: AppViewModel, d: Device, barH: androidx.compose.ui.unit.
                         "search" -> SearchResults(vm, d)
                         Tab.Guide.name -> GuideTab(vm)
                         Tab.Recordings.name -> RecordingsTab(vm)
+                        Tab.Downloads.name -> DownloadsTab(vm)
                         else -> BrowseTab(vm, d)
                     }
                 }

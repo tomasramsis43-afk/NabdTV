@@ -695,6 +695,32 @@ class Store(private val ctx: Context) {
         g.edit().putString("recordings", a.toString()).apply()
     }
 
+    /* ---------- downloads ---------- */
+    fun downloads(): List<DownloadItem> {
+        val out = ArrayList<DownloadItem>()
+        runCatching {
+            val a = JSONArray(g.getString("downloads", "[]"))
+            for (i in 0 until a.length()) {
+                val o = a.getJSONObject(i)
+                out += DownloadItem(
+                    o.getString("id"), o.optString("t"), o.optString("u"), o.optString("p").ifEmpty { null },
+                    runCatching { DlStatus.valueOf(o.optString("st")) }.getOrDefault(DlStatus.Failed),
+                    o.optLong("b"), o.optLong("n"), o.optString("f").ifEmpty { null }, o.optLong("a")
+                )
+            }
+        }
+        return out
+    }
+
+    fun saveDownloads(list: List<DownloadItem>) {
+        val a = JSONArray()
+        list.forEach { d ->
+            a.put(JSONObject().put("id", d.id).put("t", d.title).put("u", d.url).put("p", d.poster ?: "")
+                .put("st", d.status.name).put("b", d.bytes).put("n", d.total).put("f", d.file ?: "").put("a", d.added))
+        }
+        g.edit().putString("downloads", a.toString()).apply()
+    }
+
     /* ---------- reminders ---------- */
     fun reminders(): List<Reminder> {
         val out = ArrayList<Reminder>()

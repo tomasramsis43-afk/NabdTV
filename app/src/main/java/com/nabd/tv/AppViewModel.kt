@@ -15,7 +15,7 @@ import kotlinx.coroutines.withContext
 
 enum class Screen { Setup, Profiles, Main, Player, Detail, MultiView, Settings }
 enum class Tab(@androidx.annotation.StringRes val labelRes: Int) {
-    Home(R.string.tab_home), Live(R.string.tab_live), Movies(R.string.tab_movies), Series(R.string.tab_series), Guide(R.string.tab_guide), Recordings(R.string.tab_recordings)
+    Home(R.string.tab_home), Live(R.string.tab_live), Movies(R.string.tab_movies), Series(R.string.tab_series), Guide(R.string.tab_guide), Recordings(R.string.tab_recordings), Downloads(R.string.tab_downloads)
 }
 enum class PlayMode { Live, Vod, Catchup, Recording }
 
