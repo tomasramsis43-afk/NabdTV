@@ -235,14 +235,14 @@ internal fun BoxScope.PlayerControlLayers(
     }
 }
 
-/** Only the time left, counting down, at the bottom when the full controls are hidden (no bar, no label). */
+/** Only the time left, counting down, in the bottom corner when the full controls are hidden (no bar, no label). */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun BoxScope.VodMiniBar(position: Long, duration: Long, tv: Boolean) {
     Text(
         fmtTime((duration - position).coerceAtLeast(0L)),
         color = Color(0xE6FFFFFF), fontSize = if (tv) 18.sp else 14.sp, fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = if (tv) 18.dp else 10.dp)
+        modifier = Modifier.align(Alignment.BottomEnd).padding(end = if (tv) 48.dp else 14.dp, bottom = if (tv) 18.dp else 10.dp)
             .clip(RoundedCornerShape(8.dp)).background(Color(0x73000000)).padding(horizontal = 12.dp, vertical = 4.dp)
     )
 }
