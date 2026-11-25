@@ -8,8 +8,8 @@
 | Media Player | 10 | 7 | Partially Verified |
 | Security | 10 | 7 | Partially Verified |
 | UI/UX | 10 | 0 | Not Tested |
-| Testing | 5 | 2 | Partially Verified |
+| Testing | 5 | 3 | Partially Verified (unit tests passed on CI) |
 | Android TV | 5 | 0 | Not Tested |
-| Build & CI/CD | 5 | 3 | Partially Verified |
-| **Total** | 100 | **51** | provisional |
+| Build & CI/CD | 5 | 4 | Partially Verified (unit tests + debug build passed on CI) |
+| **Total** | 100 | **53** | provisional |
 Untested areas get no credit until CI/device results exist.
