@@ -735,7 +735,7 @@
     <string name="next_ep_tomorrow">تنزل غداً</string>
     <string name="next_ep_out_now">نزلت الآن</string>
     <string name="x_about_disclaimer">jolo مشغّل وسائط فقط؛ لا يوفّر ولا يستضيف ولا يبيع أي قنوات أو أفلام أو مسلسلات. المحتوى يأتي من المزوّد الذي تضيفه أنت، وأنت المسؤول عن امتلاك حق مشاهدته.</string>
-    <string name="x_about_privacy">بياناتك (بيانات الدخول والمفضلة وسجل المشاهدة) تُحفظ على جهازك فقط، وبيانات الدخول مشفّرة. لا يوجد سيرفر لـ jolo. التطبيق يتصل مباشرةً بمزوّدك وبخدمات الأفلام (TMDB وTVmaze وAniList وغيرها) وTrakt وOpenSubtitles عند تفعيلها. تقارير الأعطال لا تُرسل إلا إذا أدخلت عنوان Sentry بنفسك. التفاصيل الكاملة في PRIVACY.md على صفحة المشروع في GitHub.</string>
+    <string name="x_about_privacy">بياناتك (بيانات الدخول والمفضلة وسجل المشاهدة) تُحفظ على جهازك فقط، وبيانات الدخول مشفّرة. لا يوجد حساب لـ jolo. التطبيق يتصل مباشرةً بمزوّدك وبخدمات الأفلام (TMDB وTVmaze وAniList وغيرها) وTrakt وOpenSubtitles عند تفعيلها. مرة عند أول تشغيل ومرة كل أسبوع يرسل التطبيق عدّاً مجهولاً واحداً (بدون أي معرّف أو معلومات عن الجهاز) ليعرف المطوّر كم جهازاً يستخدمه، ويمكن إيقافه من الإعدادات. تقارير الأعطال لا تُرسل إلا إذا أدخلت عنوان Sentry بنفسك. التفاصيل الكاملة في PRIVACY.md على صفحة المشروع في GitHub.</string>
     <string name="x_about_tmdb">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
     <string name="upcoming_movies">قريباً · أفلام</string>
     <string name="upcoming_series">قريباً · مسلسلات</string>
@@ -769,4 +769,5 @@
     <string name="matches_today">مباريات اليوم</string>
     <string name="matches_live_now">الآن</string>
     <string name="matches_channels">%1$d قنوات</string>
+    <string name="usage_count_label">إرسال عدّ مجهول للاستخدام</string>
 </resources>

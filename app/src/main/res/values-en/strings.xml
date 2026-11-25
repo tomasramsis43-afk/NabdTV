@@ -735,7 +735,7 @@
     <string name="next_ep_tomorrow">Airs tomorrow</string>
     <string name="next_ep_out_now">Out now</string>
     <string name="x_about_disclaimer">jolo is a media player only. It does not provide, host or sell any channels, movies or series. All content comes from the provider you add yourself, and you are responsible for having the right to watch it.</string>
-    <string name="x_about_privacy">Your data (login details, favourites, watch history) stays on your device only, and login details are encrypted. There is no jolo server. The app talks directly to your provider, to metadata services (TMDB, TVmaze, AniList and others), and to Trakt and OpenSubtitles when you turn them on. Crash reports are sent only if you enter a Sentry address yourself. Full details are in PRIVACY.md on the project GitHub page.</string>
+    <string name="x_about_privacy">Your data (login details, favourites, watch history) stays on your device only, and login details are encrypted. There is no jolo account. The app talks directly to your provider, to metadata services (TMDB, TVmaze, AniList and others), and to Trakt and OpenSubtitles when you turn them on. Once on first run and once a week the app sends one anonymous count (no identifier, no device details) so the developer can see how many devices use it; you can turn it off in Settings. Crash reports are sent only if you enter a Sentry address yourself. Full details are in PRIVACY.md on the project GitHub page.</string>
     <string name="x_about_tmdb">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
     <string name="upcoming_movies">Coming soon · Movies</string>
     <string name="upcoming_series">Coming soon · Series</string>
@@ -769,4 +769,5 @@
     <string name="matches_today">Today\'s matches</string>
     <string name="matches_live_now">Live now</string>
     <string name="matches_channels">%1$d channels</string>
+    <string name="usage_count_label">Send an anonymous usage count</string>
 </resources>

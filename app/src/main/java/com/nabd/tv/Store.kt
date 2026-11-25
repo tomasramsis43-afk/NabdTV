@@ -285,6 +285,17 @@ class Store(private val ctx: Context) {
         get() = g.getInt("catchupOffset", 0)
         set(v) = g.edit().putInt("catchupOffset", v).apply()
     /** Optional Sentry DSN: when set, the last crash log is sent there once, at the next launch. Empty = never sent anywhere. */
+    /** Anonymous device count (see [UsageCount]); on by default, can be switched off in Settings. */
+    var usageCount: Boolean
+        get() = g.getBoolean("usageCount", true)
+        set(v) = g.edit().putBoolean("usageCount", v).apply()
+    var countedInstall: Boolean
+        get() = g.getBoolean("countedInstall", false)
+        set(v) = g.edit().putBoolean("countedInstall", v).apply()
+    var countedWeek: String
+        get() = g.getString("countedWeek", "") ?: ""
+        set(v) = g.edit().putString("countedWeek", v).apply()
+
     var sentryDsn: String
         get() = g.getString("sentryDsn", "") ?: ""
         set(v) = g.edit().putString("sentryDsn", v.trim()).apply()
