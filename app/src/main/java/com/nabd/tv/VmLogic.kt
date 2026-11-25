@@ -111,6 +111,22 @@ object VmLogic {
         return l.filter { val k = Classifier.normalize(it.name); k.isBlank() || best[k]?.url == it.url }
     }
 
+    /**
+     * One entry per title (quality tags and punctuation ignored; a year in the name keeps remakes apart): the first copy in list order
+     * is kept so cards do not jump around. [counts] receives the number of copies for every kept entry that has more than one.
+     */
+    fun dedupeVod(l: List<Channel>, counts: MutableMap<String, Int>): List<Channel> {
+        val first = HashMap<String, Channel>(); val size = HashMap<String, Int>()
+        for (c in l) {
+            val k = Classifier.normalize(c.name)
+            if (k.isBlank()) continue
+            if (k !in first) first[k] = c
+            size[k] = (size[k] ?: 0) + 1
+        }
+        for ((k, n) in size) if (n > 1) first[k]?.let { counts[it.url] = n }
+        return l.filter { val k = Classifier.normalize(it.name); k.isBlank() || first[k]?.url == it.url }
+    }
+
     /** Programme airing at [now] and the one after it; (null, null) when nothing is airing. */
     fun nowNext(progs: List<Prog>?, now: Long): Pair<Prog?, Prog?> {
         val l = progs ?: return null to null

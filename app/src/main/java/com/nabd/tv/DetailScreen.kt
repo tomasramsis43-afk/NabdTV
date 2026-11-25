@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -198,12 +200,17 @@ fun DetailScreen(vm: AppViewModel) {
                         MBtn(if (c.url in vm.favs) tr(R.string.detail_fav_on) else tr(R.string.detail_fav_off), filled = false, tint = btnPal.accent) { vm.toggleFav(c) }
                         val trailerId = info?.trailer.orEmpty()
                         MBtn(if (trailerId.isNotBlank()) tr(R.string.detail_trailer) else tr(R.string.detail_trailer_search), filled = false, tint = btnPal.accent) {
-                            val url = if (trailerId.isNotBlank()) "https://www.youtube.com/watch?v=$trailerId"
+                            val url = if (trailerId.isNotBlank()) "https://www.youtube.com/watch?v=" + android.net.Uri.encode(trailerId)
                             else "https://www.youtube.com/results?search_query=" + android.net.Uri.encode(c.name + " trailer")
                             try {
                                 ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
                             } catch (_: Exception) { vm.say(S(R.string.detail_no_viewer)) }
                         }
+                    }
+                    val versions by produceState(emptyList<Channel>(), c.url) { value = withContext(Dispatchers.Default) { vm.versionsOf(c) } }
+                    if (versions.isNotEmpty()) {
+                        Spacer(Modifier.height(10.dp))
+                        VersionChips(vm, c, versions)
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.Start), verticalAlignment = Alignment.CenterVertically) {
@@ -419,6 +426,30 @@ private fun EpisodeCard(
         }
         if (e.plot.isNotBlank() && d.heightDp >= 500) {
             Text(e.plot, fontSize = 11.5.sp, lineHeight = 15.sp, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/** The other copies of this title: the one on screen (ticked) and the rest. A movie starts playing; a series opens its own page. */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun VersionChips(vm: AppViewModel, c: Channel, versions: List<Channel>) {
+    val all = listOf(c) + versions
+    val labels = all.mapIndexed { i, v ->
+        val g = v.group.trim()
+        if (g.isNotEmpty() && all.count { it.group.trim() == g } == 1) g else tr(R.string.version_n, i + 1)
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(tr(R.string.versions_label), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0x99FFFFFF))
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            all.forEachIndexed { i, v ->
+                Focusable(selected = i == 0, onClick = { if (i > 0) { if (kindOf(v) == Kind.Movie) vm.play(v) else vm.openDetail(v) } }) {
+                    Text(
+                        (if (i == 0) "✓ " else "") + labels[i], fontSize = 14.sp, color = Ink, maxLines = 1,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp)
+                    )
+                }
+            }
         }
     }
 }

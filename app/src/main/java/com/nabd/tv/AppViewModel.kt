@@ -151,7 +151,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val l = src.filter { ok(it, true, h) }
         return if (store.mergeDuplicates) dedupeSources(l) else l
     }
-    private fun computeVod(src: List<Channel>): List<Channel> { val h = store.hiddenChannels; return src.filter { ok(it, false, h) } }
+    /** Copies per kept movie / series card (only entries with more than one), filled when the lists are built. */
+    internal val versionCounts = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    private fun computeVod(src: List<Channel>): List<Channel> {
+        val h = store.hiddenChannels
+        val l = src.filter { ok(it, false, h) }
+        return if (store.mergeVodDuplicates) VmLogic.dedupeVod(l, versionCounts) else l
+    }
 
     suspend fun warmLists() {
         val r = rev; val a = all; val m = movies; val sr = series

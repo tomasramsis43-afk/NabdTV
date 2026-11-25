@@ -750,4 +750,7 @@
     <string name="menu_external">Open with an external app</string>
     <string name="fav_added_msg">Added to favorites</string>
     <string name="fav_removed_msg">Removed from favorites</string>
+    <string name="merge_vod_label">دمج الأفلام والمسلسلات المكررة</string>
+    <string name="versions_label">النسخ</string>
+    <string name="version_n">نسخة %1$d</string>
 </resources>

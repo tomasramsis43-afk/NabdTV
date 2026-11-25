@@ -34,7 +34,11 @@ fun TitleMenu(vm: AppViewModel, c: Channel) {
     val info by produceState(vm.repo.cachedInfo(c, kind), c.url) {
         if (value == null) value = runCatching { vm.repo.vodInfo(c, kind) }.getOrNull()
     }
-    val alts = remember(c.url, vm.rev) { vm.alternativesOf(c) }
+    val alts by produceState(emptyList<Channel>(), c.url) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            if (kind == Kind.Live) vm.alternativesOf(c) else vm.versionsOf(c)
+        }
+    }
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
 

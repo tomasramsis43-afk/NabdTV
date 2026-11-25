@@ -224,6 +224,15 @@ fun AppViewModel.switchTo(c: Channel) {
 /** Same channel from another source (HD/FHD/SD duplicates), used by manual switch and auto-failover. */
 fun AppViewModel.alternativesOf(c: Channel): List<Channel> = health.alternatives(c, all)
 
+/** Other copies of the same movie / series in the library (other sources, qualities, languages), in library order. Scans the list: call off the main thread. */
+fun AppViewModel.versionsOf(c: Channel): List<Channel> {
+    val key = Classifier.normalize(c.name)
+    if (key.isEmpty()) return emptyList()
+    val src = when (kindOf(c)) { Kind.Movie -> movies; Kind.Series -> series; else -> return emptyList() }
+    val h = store.hiddenChannels
+    return src.asSequence().filter { it.url != c.url && it.url !in h && Classifier.normalize(it.name) == key }.take(8).toList()
+}
+
 fun AppViewModel.failover(): Boolean {
     val c = current ?: return false
     val next = alternativesOf(c).firstOrNull { it.url !in tried } ?: return false

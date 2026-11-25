@@ -316,6 +316,9 @@ fun PosterCard(
                 if (ch.url in vm.favs) Text("★", fontSize = 12.sp, color = Accent2)
                 if (locked) Text("🔒", fontSize = 12.sp)
             }
+            vm.versionCounts[ch.url]?.takeIf { it > 1 && kindOf(ch) != Kind.Live }?.let { n ->
+                MetaChip("×$n", modifier = Modifier.align(Alignment.BottomEnd).padding(start = 6.dp, end = 6.dp, bottom = if (progress > 0.02f) 9.dp else 6.dp))
+            }
             if (progress > 0.02f) {
                 Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color(0x66000000))) {
                     Box(Modifier.fillMaxHeight().fillMaxWidth(progress).background(Accent))

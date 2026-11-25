@@ -195,6 +195,11 @@ class Store(private val ctx: Context) {
         get() = p.getBoolean("mergeDup", false)
         set(v) = p.edit().putBoolean("mergeDup", v).apply()
 
+    /** Shows one card per movie / series when the library holds several copies of it (other sources, qualities, languages). */
+    var mergeVodDuplicates: Boolean
+        get() = p.getBoolean("mergeVod", true)
+        set(v) = p.edit().putBoolean("mergeVod", v).apply()
+
     var audioBoost: Boolean
         get() = p.getBoolean("pl_boost", false)
         set(v) = p.edit().putBoolean("pl_boost", v).apply()

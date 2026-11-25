@@ -513,6 +513,7 @@ private fun NetworkPage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit) {
     Group(S(R.string.a_df75cf66)) {
         Toggle(S(R.string.a_6a5e5b61), s.hideDead) { upd { s.hideDead = it; vm.clearHealth() } }
         Toggle(S(R.string.a_9f355a70), s.mergeDuplicates) { upd { s.mergeDuplicates = it; vm.listsChanged() } }
+        Toggle(S(R.string.merge_vod_label), s.mergeVodDuplicates) { upd { s.mergeVodDuplicates = it; vm.listsChanged() } }
         Row2(vm.healthStatus?.let { S(R.string.x_checking, it) } ?: S(R.string.a_ba526b66)) { vm.checkHealth(true) }
         Row2(S(R.string.a_0bd6ec14)) { vm.checkHealth(false) }
         Row2(S(R.string.a_a7ab598d)) { vm.clearHealth(); upd {} }
