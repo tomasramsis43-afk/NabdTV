@@ -88,7 +88,11 @@ fun DownloadsTab(vm: AppViewModel) {
                             Text(d.title, fontSize = 15.sp, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                             val label = when (d.status) {
                                 DlStatus.Queued -> S(R.string.dl_queued)
-                                DlStatus.Downloading -> "${DownloadRules.percent(d.bytes, d.total)}%"
+                                DlStatus.Downloading -> buildString {
+                                    append(DownloadRules.percent(d.bytes, d.total)).append('%')
+                                    if (d.conns > 0) append(" · ").append(d.conns).append('×')
+                                    if (d.speed > 0) append(" · ").append(DownloadRules.speedText(d.speed))
+                                }
                                 DlStatus.Done -> DownloadRules.sizeText(d.bytes)
                                 else -> S(R.string.dl_retry)
                             }
