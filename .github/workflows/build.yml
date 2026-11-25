@@ -123,6 +123,15 @@ jobs:
             echo "::warning::Release build failed: $ERR"
           fi
           exit $rc
+      - name: Publish the signed release-type APK as pre-release (multi-provider branch only; never touches main or "latest")
+        if: github.ref == 'refs/heads/feature/multi-provider'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK=$(ls app/build/outputs/apk/release/*.apk 2>/dev/null | head -1)
+          [ -z "$APK" ] && { echo "::error::No release APK was built (see the R8 step above)"; exit 1; }
+          cp "$APK" jolo-release-preview.apk
+          gh release create "preview-multiprovider-${{ github.run_number }}" jolo-release-preview.apk --prerelease --target "${{ github.sha }}" --title "jolo preview (release build): multi-provider #${{ github.run_number }}" --notes "Release-type (R8, signed when the secrets exist) build from branch feature/multi-provider. Not the stable release."
       - name: Upload R8 mapping and release log
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
