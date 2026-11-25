@@ -96,6 +96,8 @@ class Repo(private val ctx: Context, val store: Store) {
                 if (e != v) prefs.edit().putString(k, e).apply()
             }
         }
+        // Per-provider data (favourites, history, player settings): the provider in use at upgrade time keeps the existing data.
+        currentSourceId()?.let { store.useSource(it) }
     }
 
     var playlistUrl: String

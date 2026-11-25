@@ -726,6 +726,11 @@
     <string name="sources_switch">التبديل إلى هذا المصدر</string>
     <string name="sources_delete">حذف من القائمة</string>
     <string name="sources_active">الحالي</string>
+    <string name="sources_rename">تعديل الاسم</string>
+    <string name="sources_icon">الأيقونة</string>
+    <string name="sources_color">اللون</string>
+    <string name="sources_none">بدون</string>
+    <string name="sources_add">إضافة مزود جديد</string>
     <string name="next_ep_label_ep">الحلقة %1$d القادمة</string>
     <string name="next_ep_label_se">الحلقة %1$d القادمة · الموسم %2$d</string>
     <string name="next_ep_in_days">بعد %1$d يوم</string>

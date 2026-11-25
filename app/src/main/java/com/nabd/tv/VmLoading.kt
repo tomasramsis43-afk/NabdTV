@@ -152,6 +152,7 @@ internal fun AppViewModel.resetVod(dropCache: Boolean = true) {
 fun AppViewModel.setUrl(url: String, cached: Boolean = false) {
     repo.epgManual = false; repo.xtream = ""; repo.playlistUrl = url.trim()
     repo.rememberSource("m3u", url.trim())
+    enterSourceData()
     resetVod(!cached); load(!cached)
 }
 
@@ -165,8 +166,17 @@ fun AppViewModel.setXtream(host: String, user: String, pass: String, cached: Boo
     repo.epgUrl = "$b/xmltv.php?$q"
     repo.playlistUrl = "$b/get.php?$q&type=m3u_plus&output=ts"
     repo.rememberSource("xtream", b, user.trim(), pass.trim())
+    enterSourceData()
     resetVod(!cached); load(!cached)
 }
+
+/** Each provider has its own favourites, history and settings: opens the data of the provider now in use and refreshes the screens. */
+internal fun AppViewModel.enterSourceData() {
+    val id = repo.currentSourceId() ?: return
+    if (store.useSource(id)) reloadProfileState()
+}
+
+fun AppViewModel.editSource(s: SavedSource, name: String, icon: String, color: Int) = repo.editSource(s.id, name, icon, color)
 
 fun AppViewModel.savedSources(): List<SavedSource> { repo.ensureCurrentSaved(); return repo.savedSources() }
 
