@@ -92,7 +92,7 @@ object Upcoming {
                 if (n.isNotEmpty()) a.names.add(n)
             }
             a.titles[lang] = o.s(tf); a.overviews[lang] = o.s("overview")
-            if (a.poster == null) o.s("poster_path").takeIf { it.isNotBlank() }?.let { a.poster = "https://image.tmdb.org/t/p/w342$it" }
+            if (a.poster == null) o.s("poster_path").takeIf { it.isNotBlank() }?.let { a.poster = "https://image.tmdb.org/t/p/w500$it" }
             if (a.backdrop == null) o.s("backdrop_path").takeIf { it.isNotBlank() }?.let { a.backdrop = "https://image.tmdb.org/t/p/w780$it" }
             a.pop = maxOf(a.pop, o.optDouble("popularity", 0.0))
             // An unreleased title has almost no votes: a rating from a handful of them would be noise.
@@ -141,6 +141,12 @@ object Upcoming {
     }
 
     /* ---------------- dates ---------------- */
+
+    private val TMDB_SIZE = Regex("/t/p/(?:w\\d+|h\\d+|original)/")
+
+    /** Same TMDB picture at another size (e.g. "w780"); any other URL is returned unchanged. */
+    internal fun sharper(url: String, size: String): String =
+        if ("image.tmdb.org/t/p/" in url) TMDB_SIZE.replace(url, "/t/p/$size/") else url
 
     internal fun locale(code: String): Locale = if (code == "ar") Locale.forLanguageTag("ar-u-nu-latn") else Locale.ENGLISH
 

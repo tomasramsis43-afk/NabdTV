@@ -30,7 +30,7 @@ class UpcomingTest {
         assertEquals("فيلم تجريبي", u.title)             // app language first
         assertEquals("A plot", u.overview)              // Arabic summary was empty: falls back to English
         assertTrue(LogoMatch.norm("Test Movie") in u.names && LogoMatch.norm("فيلم تجريبي") in u.names)
-        assertEquals("https://image.tmdb.org/t/p/w342/p.jpg", u.poster)
+        assertEquals("https://image.tmdb.org/t/p/w500/p.jpg", u.poster)
         assertEquals("https://image.tmdb.org/t/p/w780/b.jpg", u.backdrop)
         assertEquals(50.5, u.popularity, 0.001)
         assertEquals(7.8, u.rating!!, 0.001)            // the 3-vote rating is ignored
@@ -65,5 +65,12 @@ class UpcomingTest {
         assertEquals(4, Upcoming.daysUntil("2026-12-05", now, utc))
         assertEquals("Sat 5 Dec 2026", Upcoming.dateLabel("2026-12-05", Locale.ENGLISH, utc))
         assertNull(Upcoming.daysUntil("soon", now, utc))
+    }
+
+    @Test fun sharperRewritesOnlyTmdbSizes() {
+        assertEquals("https://image.tmdb.org/t/p/w780/abc.jpg", Upcoming.sharper("https://image.tmdb.org/t/p/w342/abc.jpg", "w780"))
+        assertEquals("https://image.tmdb.org/t/p/w1280/abc.jpg", Upcoming.sharper("https://image.tmdb.org/t/p/w780/abc.jpg", "w1280"))
+        assertEquals("https://image.tmdb.org/t/p/w500/abc.jpg", Upcoming.sharper("https://image.tmdb.org/t/p/original/abc.jpg", "w500"))
+        assertEquals("https://cdn.example.com/p/w342/abc.jpg", Upcoming.sharper("https://cdn.example.com/p/w342/abc.jpg", "w780"))
     }
 }
