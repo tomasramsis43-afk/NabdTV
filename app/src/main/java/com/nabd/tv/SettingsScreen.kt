@@ -763,7 +763,7 @@ private fun AboutPage(vm: AppViewModel, upd: (() -> Unit) -> Unit) {
         }
     }
     Group(S(R.string.a_2c4cac88)) {
-        Toggle(S(R.string.usage_count_label), s.usageCount) { upd { s.usageCount = it } }
+        Toggle(S(R.string.usage_count_label), vm.store.usageCount) { upd { vm.store.usageCount = it } }
         Row2(S(R.string.a_1717b495), if (vm.store.sentryDsn.isBlank()) S(R.string.a_bafc4458) else S(R.string.a_a41566d2)) {
             vm.prompt = PromptRequest(S(R.string.a_d7a85b68), vm.store.sentryDsn) { v -> upd { vm.store.sentryDsn = v } }
         }
