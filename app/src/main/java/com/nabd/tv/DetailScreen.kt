@@ -374,11 +374,12 @@ private fun Episodes(vm: AppViewModel, s: Channel, d: Device, edge: EdgePad) {
     }
     val selEp = eps.firstOrNull { it.url == vm.epFocusUrl } ?: eps.getOrNull(target)
     if (selEp != null && DownloadRules.isDownloadable(selEp.url)) {
-        Box(Modifier.padding(start = edge.start, end = edge.end, top = 4.dp)) {
+        Row(Modifier.padding(start = edge.start, end = edge.end, top = 4.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
             DownloadButton(
                 vm, "${s.name} · ${tr(R.string.ep_label, selEp.season, selEp.num)}", selEp.url, s.logo, Accent,
                 label = tr(R.string.dl_ep, selEp.season, selEp.num)
             )
+            DownloadSeasonButton(vm, s, eps)
         }
     }
 }

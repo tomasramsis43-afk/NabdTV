@@ -787,5 +787,7 @@
     <string name="dl_delete">Delete</string>
     <string name="dl_missing">File not found, delete it and download again</string>
     <string name="dl_channel">Downloads</string>
+    <string name="dl_season">⬇ Download season %1$d (%2$d episodes)</string>
+    <string name="dl_season_started">Started downloading %1$d episodes</string>
     <string name="dl_notif_title">Downloading…</string>
 </resources>

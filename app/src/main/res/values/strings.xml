@@ -787,5 +787,7 @@
     <string name="dl_delete">حذف</string>
     <string name="dl_missing">الملف غير موجود، احذفه وحمّله من جديد</string>
     <string name="dl_channel">التحميلات</string>
+    <string name="dl_season">⬇ تحميل الموسم %1$d (%2$d حلقة)</string>
+    <string name="dl_season_started">بدأ تحميل %1$d حلقة</string>
     <string name="dl_notif_title">جاري التحميل…</string>
 </resources>

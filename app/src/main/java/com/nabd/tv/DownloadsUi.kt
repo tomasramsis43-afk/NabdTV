@@ -41,6 +41,22 @@ fun DownloadButton(vm: AppViewModel, title: String, url: String, poster: String?
     }
 }
 
+/** Queues every episode of the shown season that is not already downloaded or downloading. */
+@Composable
+fun DownloadSeasonButton(vm: AppViewModel, s: Channel, eps: List<Episode>) {
+    val ctx = LocalContext.current
+    val list by Downloads.items.collectAsState()
+    val todo = eps.filter { e ->
+        DownloadRules.isDownloadable(e.url) && list.none { it.id == DownloadRules.idFor(e.url) && it.status != DlStatus.Failed && it.status != DlStatus.Cancelled }
+    }
+    if (todo.isEmpty()) return
+    val season = todo.first().season
+    MBtn(tr(R.string.dl_season, season, todo.size), filled = false, tint = Accent) {
+        todo.forEach { e -> Downloads.enqueue(ctx, "${s.name} · ${S(R.string.ep_label, e.season, e.num)}", e.url, s.logo) }
+        vm.say(vm.tx(R.string.dl_season_started, todo.size))
+    }
+}
+
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun DownloadsTab(vm: AppViewModel) {
