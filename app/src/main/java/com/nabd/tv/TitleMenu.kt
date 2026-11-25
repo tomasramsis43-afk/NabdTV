@@ -39,7 +39,7 @@ fun TitleMenu(vm: AppViewModel, c: Channel) {
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
 
     androidx.compose.ui.window.Dialog(onDismissRequest = { close() }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        BoxWithConstraints(Modifier.fillMaxSize().background(Color(0xEB07080C))) {
+        BoxWithConstraints(Modifier.fillMaxSize().background(Color(0xEB07080C)).ignoreHeldOk()) {
             val wide = maxWidth >= 720.dp
             val about: @Composable (Modifier) -> Unit = { m ->
                 Column(m, verticalArrangement = Arrangement.spacedBy(10.dp)) {

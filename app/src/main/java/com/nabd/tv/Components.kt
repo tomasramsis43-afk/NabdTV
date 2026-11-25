@@ -387,7 +387,7 @@ fun GlassDialog(title: String, onDismiss: () -> Unit, content: @Composable Colum
     val shape = RoundedCornerShape(26.dp)
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Column(
-            Modifier.softShadow(shape, 24.dp).clip(shape)
+            Modifier.ignoreHeldOk().softShadow(shape, 24.dp).clip(shape)
                 .background(Brush.verticalGradient(if (Ui.dark) listOf(Color(0xF2171A23), Color(0xF20D0F15)) else listOf(Color(0xFAFFFFFF), Color(0xFAF1F2FD))))
                 .border(1.dp, GlassBorder, shape).padding(22.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -427,6 +427,24 @@ fun Modifier.remoteLongPress(onLong: (() -> Unit)?): Modifier {
                 androidx.compose.ui.input.key.KeyEventType.KeyUp -> if (fired) { fired = false; true } else false
                 else -> false
             }
+        }
+    }
+}
+
+
+/**
+ * For a menu opened by holding OK: the key is still down when the menu appears, and its repeats and its release would activate
+ * the first button. Until the key is released (or pressed again fresh) OK / Enter events are swallowed.
+ */
+fun Modifier.ignoreHeldOk(): Modifier = composed {
+    var armed by remember { mutableStateOf(false) }
+    onPreviewKeyEvent { e ->
+        val k = e.nativeKeyEvent.keyCode
+        if (armed || (k != android.view.KeyEvent.KEYCODE_DPAD_CENTER && k != android.view.KeyEvent.KEYCODE_ENTER && k != android.view.KeyEvent.KEYCODE_NUMPAD_ENTER)) return@onPreviewKeyEvent false
+        when {
+            e.type == androidx.compose.ui.input.key.KeyEventType.KeyUp -> { armed = true; true }
+            e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && e.nativeKeyEvent.repeatCount == 0 -> { armed = true; false }
+            else -> true
         }
     }
 }
