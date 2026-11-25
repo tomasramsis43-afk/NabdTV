@@ -50,6 +50,7 @@ jobs:
           exit $rc
         env:
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
       - name: Require the signing secrets (main = official release)
         if: github.ref == 'refs/heads/main'
         env:
@@ -76,6 +77,7 @@ jobs:
         env:
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
           KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
       - name: Publish the release APK as the GitHub Release
         if: github.ref == 'refs/heads/main'
         env:
@@ -110,6 +112,7 @@ jobs:
         continue-on-error: true
         env:
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: |
           set +e
           gradle assembleRelease --no-daemon > release.log 2>&1
