@@ -748,4 +748,6 @@
     <string name="upcoming_runtime">%1$d دقيقة</string>
     <string name="upcoming_no_overview">لا يوجد ملخص بعد</string>
     <string name="menu_external">فتح بتطبيق خارجي</string>
+    <string name="fav_added_msg">أضيف إلى المفضلة</string>
+    <string name="fav_removed_msg">أزيل من المفضلة</string>
 </resources>

@@ -295,6 +295,7 @@ fun PosterCard(
                 .background(SurfHigh)
                 .semantics(mergeDescendants = true) { contentDescription = ch.name }   // screen readers announce the title
                 .remoteLongPress { vm.channelMenu(ch) }
+                .colorKeys(vm, ch)
                 .combinedClickable(onClick = { vm.open(ch) }, onLongClick = { vm.channelMenu(ch) })
         ) {
             if (adaptive && kindOf(ch) != Kind.Live) {
@@ -446,5 +447,25 @@ fun Modifier.ignoreHeldOk(): Modifier = composed {
             e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && e.nativeKeyEvent.repeatCount == 0 -> { armed = true; false }
             else -> true
         }
+    }
+}
+
+
+/**
+ * Remote colour buttons on the focused card: red = favourite, green = watch later (movies / series), yellow = hide,
+ * blue = details (movies / series). Each one answers with a short message so the press is never silent.
+ */
+fun Modifier.colorKeys(vm: AppViewModel, ch: Channel): Modifier = onPreviewKeyEvent { e ->
+    if (e.type != androidx.compose.ui.input.key.KeyEventType.KeyDown || e.nativeKeyEvent.repeatCount > 0) return@onPreviewKeyEvent false
+    val vod = kindOf(ch) != Kind.Live
+    when (e.nativeKeyEvent.keyCode) {
+        android.view.KeyEvent.KEYCODE_PROG_RED -> {
+            val had = ch.url in vm.favs
+            vm.toggleFav(ch); vm.say(vm.tx(if (had) R.string.fav_removed_msg else R.string.fav_added_msg)); true
+        }
+        android.view.KeyEvent.KEYCODE_PROG_GREEN -> if (vod) { vm.toggleLater(ch); true } else false
+        android.view.KeyEvent.KEYCODE_PROG_YELLOW -> { vm.hideChannel(ch); true }
+        android.view.KeyEvent.KEYCODE_PROG_BLUE -> if (vod) { vm.openDetail(ch); true } else false
+        else -> false
     }
 }
