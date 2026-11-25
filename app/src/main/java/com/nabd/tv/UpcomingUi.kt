@@ -97,11 +97,14 @@ fun UpcomingRow(vm: AppViewModel, d: Device, title: String, list: List<UpcomingI
 @Composable
 private fun UpcomingCard(u: UpcomingItem, wide: Boolean, w: Dp, onClick: () -> Unit) {
     val img = if (wide) (u.backdrop ?: u.poster) else (u.poster ?: u.backdrop)
+    // Crop only when the picture has the frame's own orientation (backdrop in a wide frame, poster in a tall one);
+    // a poster forced into a 16:9 frame (no backdrop yet) would lose most of its height, so show it whole instead.
+    val fits = if (wide) u.backdrop != null else u.poster != null
     val shape = RoundedCornerShape(Radius.poster)
     val days = remember(u.date) { Upcoming.daysUntil(u.date, System.currentTimeMillis()) }
     Focusable(onClick = onClick, modifier = Modifier.width(w).semantics { contentDescription = u.title }, zoom = 1.045f, shape = shape) {
         Box(Modifier.fillMaxWidth().aspectRatio(if (wide) 16f / 9f else 2f / 3f).clip(shape).background(SurfHigh)) {
-            AsyncImage(model = img, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            AsyncImage(model = img, contentDescription = null, contentScale = if (fits) ContentScale.Crop else ContentScale.Fit, modifier = Modifier.fillMaxSize())
             if (days != null) {
                 Text(
                     releaseIn(days), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1,
@@ -135,7 +138,11 @@ private fun UpcomingDetailDialog(vm: AppViewModel, u: UpcomingItem, onClose: () 
         Box(Modifier.fillMaxSize().background(Bg)) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(SurfHigh)) {
-                    AsyncImage(model = u.backdrop ?: u.poster, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    AsyncImage(
+                        model = u.backdrop ?: u.poster, contentDescription = null,
+                        contentScale = if (u.backdrop != null) ContentScale.Crop else ContentScale.Fit,   // never crop a poster into 16:9
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
                 Column(Modifier.padding(16.dp)) {
                     Text(u.title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Ink)
