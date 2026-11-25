@@ -94,6 +94,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var message by mutableStateOf<String?>(null)
     var pin by mutableStateOf<PinRequest?>(null)
     var menu by mutableStateOf<MenuRequest?>(null)
+    var titleMenu by mutableStateOf<Channel?>(null)   // long press on a movie / series card
     var prompt by mutableStateOf<PromptRequest?>(null)
 
     /* ───────── content ───────── */

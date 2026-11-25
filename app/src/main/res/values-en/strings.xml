@@ -747,4 +747,5 @@
     <string name="upcoming_cast">Cast: %1$s</string>
     <string name="upcoming_runtime">%1$d min</string>
     <string name="upcoming_no_overview">No summary yet</string>
+    <string name="menu_external">Open with an external app</string>
 </resources>

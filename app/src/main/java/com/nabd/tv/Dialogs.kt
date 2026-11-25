@@ -35,6 +35,7 @@ fun Overlays(vm: AppViewModel) {
             }
         }
     }
+    vm.titleMenu?.let { TitleMenu(vm, it) }
     vm.prompt?.let { pr ->
         var text by remember(pr) { mutableStateOf(pr.initial) }
         GlassDialog(pr.title, onDismiss = { vm.prompt = null }) {

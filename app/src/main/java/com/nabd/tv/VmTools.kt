@@ -76,6 +76,7 @@ fun AppViewModel.setEpgOverride(c: Channel, xmlId: String) {
 /* ───────── context menu for a channel / title ───────── */
 fun AppViewModel.channelMenu(c: Channel) {
     val k = kindOf(c)
+    if (k != Kind.Live) { titleMenu = c; return }
     val items = ArrayList<Pair<String, () -> Unit>>()
     if (k != Kind.Live) items += tx(R.string.details) to { openDetail(c) }
     items += (if (c.url in favs) tx(R.string.menu_fav_remove) else tx(R.string.menu_fav_add)) to { toggleFav(c) }
