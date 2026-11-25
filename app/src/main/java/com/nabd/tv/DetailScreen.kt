@@ -86,6 +86,13 @@ fun DetailScreen(vm: AppViewModel) {
     // One logo: it travels from the middle of the artwork to the empty slot beside the buttons while the page scrolls, then rides with the page.
     var heroC by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     var slotC by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    // Sizes of the hero logo and of the empty slot it travels to: a long title / wide logo is scaled down to fit the slot instead of spilling off the screen.
+    var heroSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    var slotSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    fun fitScale(): Float {
+        if (heroSize.width <= 0 || heroSize.height <= 0 || slotSize.width <= 0 || slotSize.height <= 0) return 1f
+        return minOf(1f, slotSize.width.toFloat() / heroSize.width, slotSize.height.toFloat() / heroSize.height)
+    }
     fun centre(c: androidx.compose.ui.layout.LayoutCoordinates) = c.positionInRoot() + androidx.compose.ui.geometry.Offset(c.size.width / 2f, c.size.height / 2f)
     fun logoProgress(): Float = (scroll.value / (heroPx * 0.45f)).coerceIn(0f, 1f)
     val titleLogo: @Composable () -> Unit = {
@@ -97,7 +104,9 @@ fun DetailScreen(vm: AppViewModel) {
             Text(
                 c.name, style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.65f), Offset(0f, 3f), 14f)), fontSize = if (narrow) 18.sp else if (d.tv) 26.sp else 22.sp,
                 lineHeight = if (d.tv) 32.sp else 28.sp,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                // Same width cap as a logo, so a long title wraps to two lines instead of becoming one very wide line.
+                modifier = Modifier.widthIn(max = if (d.tv) 380.dp else 280.dp)
             )
         }
     }
@@ -152,8 +161,14 @@ fun DetailScreen(vm: AppViewModel) {
                 // The logo / title scrolls away with the page (it is no longer pinned).
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.onGloballyPositioned { heroC = centre(it) }
-                        .graphicsLayer { val pr = logoProgress(); translationX = (slotC.x - heroC.x) * pr; translationY = (slotC.y - heroC.y) * pr }
+                    modifier = Modifier.onGloballyPositioned { heroC = centre(it); heroSize = it.size }
+                        .graphicsLayer {
+                            val pr = logoProgress()
+                            translationX = (slotC.x - heroC.x) * pr; translationY = (slotC.y - heroC.y) * pr
+                            // Shrink towards the slot's size while travelling (both are centred, so scaling about the centre keeps it inside the slot).
+                            val sc = 1f + (fitScale() - 1f) * pr
+                            scaleX = sc; scaleY = sc
+                        }
                 ) { titleLogo() }
                 Spacer(Modifier.height(if (d.tv) 150.dp else 110.dp))   // lifts the logo / title a little higher on the artwork
             }
@@ -165,7 +180,7 @@ fun DetailScreen(vm: AppViewModel) {
             CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = maxOf(edge.start, edge.end)), verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-                    if (narrow) Box(Modifier.fillMaxWidth().padding(bottom = 10.dp).height(logoH).onGloballyPositioned { slotC = centre(it) })
+                    if (narrow) Box(Modifier.fillMaxWidth().padding(bottom = 10.dp).height(logoH).onGloballyPositioned { slotC = centre(it); slotSize = it.size })
                     FlowRow(
                         Modifier.onPreviewKeyEvent { e ->
                             // Up from the buttons: back to the artwork (nothing focused), so the next Down reveals the buttons again.
@@ -225,7 +240,7 @@ fun DetailScreen(vm: AppViewModel) {
                     }
                 }
                 // Wide screens: empty slot on the right, beside the buttons and the synopsis; the logo travels here as the page scrolls.
-                if (!narrow) Box(Modifier.width(if (d.tv) 300.dp else 240.dp).padding(start = 16.dp).height(logoH).onGloballyPositioned { slotC = centre(it) })
+                if (!narrow) Box(Modifier.width(if (d.tv) 300.dp else 240.dp).padding(start = 16.dp).height(logoH).onGloballyPositioned { slotC = centre(it); slotSize = it.size })
                 }
             }
             Spacer(Modifier.height(10.dp))
