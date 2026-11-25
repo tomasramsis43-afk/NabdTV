@@ -30,7 +30,7 @@ class UpcomingTest {
         assertEquals("فيلم تجريبي", u.title)             // app language first
         assertEquals("A plot", u.overview)              // Arabic summary was empty: falls back to English
         assertTrue(LogoMatch.norm("Test Movie") in u.names && LogoMatch.norm("فيلم تجريبي") in u.names)
-        assertEquals("https://image.tmdb.org/t/p/w342/p.jpg", u.poster)
+        assertEquals("https://image.tmdb.org/t/p/w500/p.jpg", u.poster)
         assertEquals("https://image.tmdb.org/t/p/w780/b.jpg", u.backdrop)
         assertEquals(50.5, u.popularity, 0.001)
         assertEquals(7.8, u.rating!!, 0.001)            // the 3-vote rating is ignored
