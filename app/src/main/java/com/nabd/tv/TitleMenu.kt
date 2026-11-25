@@ -74,6 +74,8 @@ fun TitleMenu(vm: AppViewModel, c: Channel) {
                     row(tr(R.string.watch), Modifier.focusRequester(first)) { vm.open(c) }
                     if (kind == Kind.Movie) row(tr(R.string.details)) { vm.openDetail(c) }
                     row(if (c.url in vm.laterUrls) tr(R.string.x_later_remove) else tr(R.string.x_later_add)) { vm.toggleLater(c) }
+                    row((if (c.url in vm.liked) "✓ " else "") + tr(R.string.like_label)) { vm.rate(c, true) }
+                    row((if (c.url in vm.disliked) "✓ " else "") + tr(R.string.dislike_label)) { vm.rate(c, false) }
                     row(if (c.url in vm.favs) tr(R.string.menu_fav_remove) else tr(R.string.menu_fav_add)) { vm.toggleFav(c) }
                     if (vm.historyByUrl[c.url] != null) row(tr(R.string.menu_remove_history)) { vm.removeFromHistory(c) }
                     row(tr(R.string.menu_hide)) { vm.hideChannel(c) }

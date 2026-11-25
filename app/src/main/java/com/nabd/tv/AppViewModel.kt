@@ -110,6 +110,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var error by mutableStateOf<String?>(null); internal set
 
     var favs by mutableStateOf(store.favorites); internal set
+    var liked by mutableStateOf(store.liked); internal set
+    var disliked by mutableStateOf(store.disliked); internal set
     var history by mutableStateOf(store.history()); internal set
     /** url → history entry, rebuilt only when history changes (cards look progress up here instead of scanning the list). */
     val historyByUrl: Map<String, HistoryEntry> by derivedStateOf { history.associateBy { it.url } }

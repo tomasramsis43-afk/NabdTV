@@ -761,4 +761,9 @@
     <string name="accent_amber">كهرماني</string>
     <string name="accent_green">أخضر</string>
     <string name="accent_orange">برتقالي</string>
+    <string name="like_label">👍 أعجبني</string>
+    <string name="dislike_label">👎 لا يعجبني</string>
+    <string name="rated_up_msg">سيظهر لك المزيد مما يشبهه</string>
+    <string name="rated_down_msg">سيقل ظهور ما يشبهه</string>
+    <string name="rating_cleared_msg">أُلغي التقييم</string>
 </resources>

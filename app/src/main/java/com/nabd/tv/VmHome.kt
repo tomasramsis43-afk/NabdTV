@@ -64,7 +64,7 @@ suspend fun AppViewModel.artworkFor(c: Channel, kind: Kind): Pair<String?, Strin
  */
 internal fun AppViewModel.refreshRecs() {
     val a = all; val m = movies; val sr = series
-    val h = history; val f = favs
+    val h = history; val f = favs; val lk = liked; val dl = disliked
     viewModelScope.launch {
         val file = recsFile
         if (recs.isEmpty() && because == null) {
@@ -73,7 +73,7 @@ internal fun AppViewModel.refreshRecs() {
         }
         val (r, b) = withContext(Dispatchers.Default) {
             val pool = (a + m + sr).filter { parental.visible(it) }
-            Recommender.recommend(pool, h, f, 24) to Recommender.becauseYouWatched(pool, h, 20)
+            Recommender.recommend(pool, h, f, 24, liked = lk, disliked = dl) to Recommender.becauseYouWatched(pool, h, 20)
         }
         recs = r; because = b
         withContext(Dispatchers.IO) { runCatching { writeRecsSnapshot(file, r, b) } }

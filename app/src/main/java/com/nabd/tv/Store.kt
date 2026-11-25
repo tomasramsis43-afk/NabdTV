@@ -348,6 +348,13 @@ class Store(private val ctx: Context) {
     var favorites: Set<String>
         get() = strSet("fav")
         set(v) = putStrSet("fav", v)
+    /** Thumbs up / thumbs down per title, per profile; they steer the recommendations. */
+    var liked: Set<String>
+        get() = strSet("liked")
+        set(v) = putStrSet("liked", v)
+    var disliked: Set<String>
+        get() = strSet("disliked")
+        set(v) = putStrSet("disliked", v)
     var pinnedGroups: Set<String>
         get() = strSet("pinnedGroups")
         set(v) = putStrSet("pinnedGroups", v)

@@ -761,4 +761,9 @@
     <string name="accent_amber">Amber</string>
     <string name="accent_green">Green</string>
     <string name="accent_orange">Orange</string>
+    <string name="like_label">👍 Like</string>
+    <string name="dislike_label">👎 Dislike</string>
+    <string name="rated_up_msg">You'll see more like this</string>
+    <string name="rated_down_msg">You'll see less like this</string>
+    <string name="rating_cleared_msg">Rating removed</string>
 </resources>

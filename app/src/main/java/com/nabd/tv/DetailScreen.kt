@@ -198,6 +198,8 @@ fun DetailScreen(vm: AppViewModel) {
                             MBtn(label, tint = buttonTone(btnPal.primary), modifier = Modifier.focusRequester(playFocus)) { vm.play(c) }
                         }
                         MBtn(if (c.url in vm.favs) tr(R.string.detail_fav_on) else tr(R.string.detail_fav_off), filled = false, tint = btnPal.accent) { vm.toggleFav(c) }
+                        MBtn((if (c.url in vm.liked) "✓ " else "") + "👍", filled = false, tint = btnPal.accent) { vm.rate(c, true) }
+                        MBtn((if (c.url in vm.disliked) "✓ " else "") + "👎", filled = false, tint = btnPal.accent) { vm.rate(c, false) }
                         val trailerId = info?.trailer.orEmpty()
                         MBtn(if (trailerId.isNotBlank()) tr(R.string.detail_trailer) else tr(R.string.detail_trailer_search), filled = false, tint = btnPal.accent) {
                             val url = if (trailerId.isNotBlank()) "https://www.youtube.com/watch?v=" + android.net.Uri.encode(trailerId)

@@ -16,7 +16,7 @@ import kotlinx.coroutines.withContext
 /** Functions of [AppViewModel] (moved out of AppViewModel.kt unchanged in behaviour; the state they use stays in the ViewModel). */
 internal fun AppViewModel.reloadProfileState() {
     profile = store.currentProfile; profileList = store.profiles()
-    favs = store.favorites; history = store.history()
+    favs = store.favorites; liked = store.liked; disliked = store.disliked; history = store.history()
     tab = runCatching { Tab.valueOf(store.startSection) }.getOrDefault(Tab.Home)
     group = GROUP_ALL; query = ""
     parental.lock(); bump(); refreshRecs()
@@ -97,6 +97,16 @@ fun AppViewModel.toggleLater(c: Channel) {
 /** Leaves the list once the title has been started (series) or finished (movie). */
 internal fun AppViewModel.dropLater(url: String) {
     if (url in laterUrls) { store.removeWatchLater(url); laterUrls = store.watchLater }
+}
+
+/** Thumbs up ([up] = true) or down. Pressing the same one again clears it. */
+fun AppViewModel.rate(c: Channel, up: Boolean) {
+    val had = if (up) c.url in liked else c.url in disliked
+    liked = liked - c.url; disliked = disliked - c.url
+    if (!had) { if (up) liked = liked + c.url else disliked = disliked + c.url }
+    store.liked = liked; store.disliked = disliked
+    refreshRecs()
+    say(tx(if (had) R.string.rating_cleared_msg else if (up) R.string.rated_up_msg else R.string.rated_down_msg))
 }
 
 fun AppViewModel.toggleFav(c: Channel) {
