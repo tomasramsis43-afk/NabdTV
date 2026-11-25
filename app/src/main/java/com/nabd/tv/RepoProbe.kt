@@ -82,7 +82,7 @@ suspend fun Repo.diagnose(): String = withContext(Dispatchers.IO) {
             sb.append(S(R.string.x_diag_cons, str(ui, "active_cons"), str(ui, "max_connections")))
         }
     } catch (e: Exception) { sb.append(S(R.string.x_diag_acct_failed, e.message ?: "")) }
-    val live = cacheFile.takeIf { it.exists() }?.let { M3uParser.parse(it.readText()).firstOrNull()?.url }
+    val live = cacheFile.takeIf { it.exists() }?.let { M3uParser.parseFile(it).firstOrNull()?.url }
     if (live == null) sb.append(S(R.string.a_ee94ac8e)) else {
         val stem = live.removeSuffix(".m3u8").removeSuffix(".ts")
         val ts = probeStream("$stem.ts")

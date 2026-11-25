@@ -208,7 +208,7 @@ class Repo(private val ctx: Context, val store: Store) {
             if (rows.isNotEmpty()) return@withContext rows.map { it.toChannel() }
             // The single-file cache belongs to whichever provider was used before the per-provider cache: never offer it to another one.
             if (cacheFile.exists() && savedSources().size <= 1) {   // first run after upgrading from the file cache
-                val l = M3uParser.parse(cacheFile.readText())
+                val l = M3uParser.parseFile(cacheFile)
                 if (l.isNotEmpty()) { store(l, "live"); return@withContext l }
             }
         }

@@ -18,9 +18,11 @@ Gradle build, unit tests, Lint, profiling and device tests were NOT run (no Andr
 3. VmMisc.kt: pairing no longer uses `!!` after null checks.
 4. Epg.kt: date parsing without `!!` chain; bad dates still become 0.
 
+5. M3u.kt: added `parse(Sequence)` and `parseFile(File)`; the cached playlist (Repo.kt, RepoProbe.kt) is now read line by line instead of `readText()`. Tests added in M3uParserFileTest (Arabic, malformed lines, 50,000 synthetic channels, empty/garbage file). Not Tested (not run yet).
+
 ## Open findings (not fixed yet)
-- Repo.kt: whole cached M3U read with readText() and parsed in memory (large lists -> memory pressure).
-- Repo.kt: `body!!` after retry loop; several `r.body!!` on HTTP responses (null body -> NPE).
+- Correction: `r.body!!` on responses from OkHttp `execute()` is non-null by OkHttp's contract, so it is a style issue, not a crash risk. Left unchanged.
+- Remaining memory cost: network responses (`fetch`) and Xtream JSON are still read as whole Strings; true streaming of those needs a larger refactor.
 - Room: exportSchema=false, so no schema history for future migrations.
 - Lint workflow runs only on push to main (not on PRs).
 - Large files: PlayerScreen 1169, Store 817, SettingsScreen 790 lines.
