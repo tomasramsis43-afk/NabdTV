@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
@@ -56,7 +57,7 @@ private fun tabIcon(t: Tab): Ic = when (t) {
  * Optional TV navigation: a vertical menu on the start edge instead of the tab bar on top. Icons only while the remote is
  * on the page; it opens to show the names while the remote is on the menu, over the content (nothing is pushed around).
  */
-@OptIn(ExperimentalTvMaterial3Api::class)
+@OptIn(ExperimentalTvMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 internal fun SideRail(vm: AppViewModel, onSearch: () -> Unit, modifier: Modifier = Modifier) {
     val tabs = visibleTabs(vm)
