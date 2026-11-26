@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -139,7 +140,10 @@ private fun UpcomingCard(u: UpcomingItem, wide: Boolean, w: Dp, onClick: () -> U
     }
 }
 
-/** Full-screen card: backdrop, trailer button, release date + countdown, rating, genres, summary, cast. Back closes it. */
+/**
+ * Full-screen card: picture with title/kind/rating/date on it, trailer button, countdown, genres, summary, cast. Back closes it.
+ * On TV the picture sits beside the text, whole and at its own 16:9 shape, so nothing has to scroll the picture out of view.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun UpcomingDetailDialog(vm: AppViewModel, u: UpcomingItem, onClose: () -> Unit) {
@@ -148,72 +152,104 @@ private fun UpcomingDetailDialog(vm: AppViewModel, u: UpcomingItem, onClose: () 
     var det by remember(u.id) { mutableStateOf<UpcomingDetail?>(null) }
     LaunchedEffect(u.id, code) { det = Upcoming.detail(vm.store.tmdbKey, u, code) }
     val loc = remember(code) { Upcoming.locale(code) }
-    val days = remember(u.date) { Upcoming.daysUntil(u.date, System.currentTimeMillis()) }
     val fullDate = remember(u.date, code) { Upcoming.dateLabel(u.date, loc) }
-    val overview = det?.overview?.takeIf { it.isNotBlank() } ?: u.overview
-    val trailerId = det?.trailerId.orEmpty()
+    val tv = remember(ctx) { isTelevision(ctx) }
 
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().background(Bg)) {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(SurfHigh)) {
-                    val hero = remember(u.backdrop, u.poster) {
-                        (u.backdrop ?: u.poster)?.let { Upcoming.sharper(it, if (u.backdrop != null) "w1280" else "w780") }
+            if (tv) {
+                Row(
+                    Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(28.dp)
+                ) {
+                    Box(Modifier.weight(0.46f).align(Alignment.CenterVertically)) {
+                        UpcomingHero(u, fullDate, Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(Radius.poster)))
                     }
-                    AsyncImage(
-                        model = hero, contentDescription = null,
-                        contentScale = if (u.backdrop != null) ContentScale.Crop else ContentScale.Fit,   // never crop a poster into 16:9
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    Column(
-                        Modifier.align(Alignment.BottomStart).fillMaxWidth()
-                            .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xF005060A))))
-                            .padding(start = 16.dp, end = 16.dp, top = 40.dp, bottom = 12.dp)
-                    ) {
-                        Text(u.title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        val line = buildString {
-                            u.rating?.let { append("★ ").append("%.1f".format(Locale.US, it)) }
-                            fullDate?.let { if (isNotEmpty()) append(" · "); append(it) }
-                        }
-                        if (line.isNotBlank()) Text(line, fontSize = 13.sp, color = Color(0xFFD5DAF0), maxLines = 1)
+                    Column(Modifier.weight(0.54f).fillMaxHeight().verticalScroll(rememberScrollState())) {
+                        UpcomingInfo(vm, u, det, code, onClose)
+                        Spacer(Modifier.height(16.dp))
                     }
                 }
-                Column(Modifier.padding(16.dp)) {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        MetaChip(tr(if (u.movie) R.string.upcoming_kind_movie else R.string.upcoming_kind_series))
-                        fullDate?.let { MetaChip("📅 $it", fg = Color(0xFFCBD3FF), bg = Color(0x336B7BFF)) }
-                        days?.let { MetaChip("⏰ " + releaseIn(it), fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D)) }
-                        u.rating?.let { MetaChip("★ " + "%.1f".format(Locale.US, it)) }
-                        det?.runtimeMin?.let { MetaChip(tr(R.string.upcoming_runtime, it)) }
-                        det?.genres?.forEach { MetaChip(it) }
+            } else {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    UpcomingHero(u, fullDate, Modifier.fillMaxWidth().aspectRatio(16f / 9f))
+                    Column(Modifier.padding(16.dp)) {
+                        UpcomingInfo(vm, u, det, code, onClose)
+                        Spacer(Modifier.height(24.dp))
                     }
-                    Spacer(Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        MBtn(if (trailerId.isNotBlank()) tr(R.string.detail_trailer) else tr(R.string.detail_trailer_search)) {
-                            val url = if (trailerId.isNotBlank()) "https://www.youtube.com/watch?v=" + android.net.Uri.encode(trailerId)
-                            else "https://www.youtube.com/results?search_query=" + android.net.Uri.encode(u.title + " trailer")
-                            try {
-                                ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
-                            } catch (_: Exception) { vm.say(S(R.string.detail_no_viewer)) }
-                        }
-                        MBtn(tr(R.string.upcoming_close), filled = false, onClick = onClose)
-                    }
-                    det?.tagline?.takeIf { it.isNotBlank() }?.let {
-                        Spacer(Modifier.height(12.dp))
-                        Text(it, fontSize = 13.sp, color = TextMuted)
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        overview.ifBlank { tr(R.string.upcoming_no_overview) },
-                        fontSize = 14.sp, color = if (overview.isBlank()) TextMuted else Ink
-                    )
-                    det?.cast?.takeIf { it.isNotEmpty() }?.let { cast ->
-                        Spacer(Modifier.height(12.dp))
-                        Text(tr(R.string.upcoming_cast, cast.joinToString(if (code == "ar") "، " else ", ")), fontSize = 13.sp, color = TextMuted)
-                    }
-                    Spacer(Modifier.height(24.dp))
                 }
             }
+        }
+    }
+}
+
+/** The big picture of the detail card, with the title and key facts drawn on it. */
+@Composable
+private fun UpcomingHero(u: UpcomingItem, fullDate: String?, modifier: Modifier) {
+    val kind = tr(if (u.movie) R.string.upcoming_kind_movie else R.string.upcoming_kind_series)
+    Box(modifier.background(SurfHigh)) {
+        val hero = remember(u.backdrop, u.poster) {
+            (u.backdrop ?: u.poster)?.let { Upcoming.sharper(it, if (u.backdrop != null) "w1280" else "w780") }
+        }
+        AsyncImage(
+            model = hero, contentDescription = null,
+            contentScale = if (u.backdrop != null) ContentScale.Crop else ContentScale.Fit,   // never crop a poster into 16:9
+            modifier = Modifier.fillMaxSize()
+        )
+        Column(
+            Modifier.align(Alignment.BottomStart).fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xF005060A))))
+                .padding(start = 16.dp, end = 16.dp, top = 40.dp, bottom = 12.dp)
+        ) {
+            Text(u.title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            val line = buildString {
+                append(kind)
+                u.rating?.let { append(" · ★ ").append("%.1f".format(Locale.US, it)) }
+                fullDate?.let { append(" · ").append(it) }
+            }
+            Text(line, fontSize = 13.sp, color = Color(0xFFD5DAF0), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/** Everything under/beside the picture: countdown, runtime, genres, trailer + close buttons, tagline, summary, cast. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun UpcomingInfo(vm: AppViewModel, u: UpcomingItem, det: UpcomingDetail?, code: String, onClose: () -> Unit) {
+    val ctx = LocalContext.current
+    val days = remember(u.date) { Upcoming.daysUntil(u.date, System.currentTimeMillis()) }
+    val overview = det?.overview?.takeIf { it.isNotBlank() } ?: u.overview
+    val trailerId = det?.trailerId.orEmpty()
+    Column {
+        // kind, rating and release date are already on the picture, so they are not repeated here
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            days?.let { MetaChip("⏰ " + releaseIn(it), fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D)) }
+            det?.runtimeMin?.let { MetaChip(tr(R.string.upcoming_runtime, it)) }
+            det?.genres?.forEach { MetaChip(it) }
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            MBtn(if (trailerId.isNotBlank()) tr(R.string.detail_trailer) else tr(R.string.detail_trailer_search)) {
+                val url = if (trailerId.isNotBlank()) "https://www.youtube.com/watch?v=" + android.net.Uri.encode(trailerId)
+                else "https://www.youtube.com/results?search_query=" + android.net.Uri.encode(u.title + " trailer")
+                try {
+                    ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                } catch (_: Exception) { vm.say(S(R.string.detail_no_viewer)) }
+            }
+            MBtn(tr(R.string.upcoming_close), filled = false, onClick = onClose)
+        }
+        det?.tagline?.takeIf { it.isNotBlank() }?.let {
+            Spacer(Modifier.height(12.dp))
+            Text(it, fontSize = 13.sp, color = TextMuted)
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            overview.ifBlank { tr(R.string.upcoming_no_overview) },
+            fontSize = 14.sp, color = if (overview.isBlank()) TextMuted else Ink
+        )
+        det?.cast?.takeIf { it.isNotEmpty() }?.let { cast ->
+            Spacer(Modifier.height(12.dp))
+            Text(tr(R.string.upcoming_cast, cast.joinToString(if (code == "ar") "، " else ", ")), fontSize = 13.sp, color = TextMuted)
         }
     }
 }
