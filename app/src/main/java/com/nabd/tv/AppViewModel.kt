@@ -132,6 +132,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Observable copy of the "hide names under posters" option, so every poster updates the moment it is switched. */
     var hidePosterTitles by mutableStateOf(store.hidePosterTitles); internal set
     fun applyHidePosterTitles(v: Boolean) { hidePosterTitles = v; store.hidePosterTitles = v }
+    var sideNavOn by mutableStateOf(store.sideNav); internal set
+    fun applySideNav(v: Boolean) { sideNavOn = v; store.sideNav = v }
     var heroRotate by mutableStateOf(store.heroRotate); internal set
     fun applyHeroRotate(v: Boolean) { heroRotate = v; store.heroRotate = v }
 

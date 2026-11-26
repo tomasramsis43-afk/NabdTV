@@ -356,6 +356,7 @@ private fun AppearancePage(vm: AppViewModel, s: Store, upd: (() -> Unit) -> Unit
     Group(S(R.string.a_768ba958)) {
         Toggle(S(R.string.a_3318a3c3), vm.darkPref) { vm.setDark(it) }
         Toggle(S(R.string.amoled_label), vm.store.amoled) { vm.setAmoled(it); upd {} }
+        if (LocalDevice.current.tv) Toggle(S(R.string.side_nav_label), vm.sideNavOn) { vm.applySideNav(it); upd {} }
         val accentNames = listOf(R.string.accent_indigo, R.string.accent_teal, R.string.accent_rose, R.string.accent_amber, R.string.accent_green, R.string.accent_orange)
         Row2(S(R.string.accent_label), S(accentNames[Ui.accent.coerceIn(0, accentNames.lastIndex)])) {
             vm.menu = MenuRequest(S(R.string.accent_label), accentNames.mapIndexed { i, n -> Lang.str(cx, n) to { vm.setAccent(i); upd {} } })
