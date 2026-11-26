@@ -94,14 +94,33 @@ fun MainScreen(vm: AppViewModel) {
     val onHome = vm.tab == Tab.Home && vm.query.isBlank()
     val density = androidx.compose.ui.platform.LocalDensity.current
     var barH by remember { mutableStateOf(0.dp) }
+    val sideNav = d.tv && vm.sideNavOn          // optional TV layout: vertical menu on the start edge instead of the top bar
+    var searchOpen by remember { mutableStateOf(false) }
+    var searchTick by remember { mutableStateOf(0) }
+    val searchReq = remember { androidx.compose.ui.focus.FocusRequester() }
     Box(Modifier.fillMaxSize()) {
-        Content(vm, d, barH, Modifier.fillMaxSize())
-        Column(
-            Modifier.align(Alignment.TopCenter).fillMaxWidth()
-                .onSizeChanged { barH = with(density) { it.height.toDp() } }
-        ) {
-            AppBar(vm, d, onArt = onHome)
-            StatusStrip(vm, d)
+        if (sideNav) {
+            Content(vm, d, 12.dp, Modifier.fillMaxSize().padding(start = RAIL_W))
+            Column(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(start = RAIL_W)) {
+                if (searchOpen || vm.query.isNotEmpty()) {
+                    val edge = edgePad(d)
+                    Box(Modifier.padding(start = edge.start, end = edge.end, top = 10.dp)) {
+                        SearchField(vm.query, { vm.query = it }, Modifier.focusRequester(searchReq))
+                    }
+                    LaunchedEffect(searchTick) { if (searchTick > 0) { delay(150); runCatching { searchReq.requestFocus() } } }
+                }
+                StatusStrip(vm, d)
+            }
+            SideRail(vm, onSearch = { searchOpen = true; searchTick++ }, modifier = Modifier.align(Alignment.CenterStart))
+        } else {
+            Content(vm, d, barH, Modifier.fillMaxSize())
+            Column(
+                Modifier.align(Alignment.TopCenter).fillMaxWidth()
+                    .onSizeChanged { barH = with(density) { it.height.toDp() } }
+            ) {
+                AppBar(vm, d, onArt = onHome)
+                StatusStrip(vm, d)
+            }
         }
     }
 }

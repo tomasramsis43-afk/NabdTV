@@ -121,6 +121,9 @@ class Store(private val ctx: Context) {
         get() = g.getBoolean("hidePosterTitles", false)
         set(v) = g.edit().putBoolean("hidePosterTitles", v).apply()
     /** The home poster changes by itself while nobody touches the screen. */
+    var sideNav: Boolean
+        get() = g.getBoolean("sideNav", false)
+        set(v) = g.edit().putBoolean("sideNav", v).apply()
     var heroRotate: Boolean
         get() = g.getBoolean("heroRotate", true)
         set(v) = g.edit().putBoolean("heroRotate", v).apply()

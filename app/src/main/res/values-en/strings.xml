@@ -795,4 +795,9 @@
     <string name="dl_season">⬇ Download season %1$d (%2$d episodes)</string>
     <string name="dl_season_started">Started downloading %1$d episodes</string>
     <string name="dl_notif_title">Downloading…</string>
+    <string name="rail_search">Search</string>
+    <string name="rail_refresh">Refresh</string>
+    <string name="rail_settings">Settings</string>
+    <string name="rail_profiles">Profiles</string>
+    <string name="side_nav_label">Side menu on TV</string>
 </resources>

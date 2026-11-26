@@ -795,4 +795,9 @@
     <string name="dl_season">⬇ تحميل الموسم %1$d (%2$d حلقة)</string>
     <string name="dl_season_started">بدأ تحميل %1$d حلقة</string>
     <string name="dl_notif_title">جاري التحميل…</string>
+    <string name="rail_search">بحث</string>
+    <string name="rail_refresh">تحديث</string>
+    <string name="rail_settings">الإعدادات</string>
+    <string name="rail_profiles">الملفات الشخصية</string>
+    <string name="side_nav_label">قائمة جانبية على التلفزيون</string>
 </resources>
