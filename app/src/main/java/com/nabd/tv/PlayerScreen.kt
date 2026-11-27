@@ -1014,9 +1014,10 @@ fun PlayerScreen(vm: AppViewModel) {
                 Key.DirectionLeft -> { scrub(-1); ui.ping++; return true }
                 Key.DirectionRight -> { scrub(1); ui.ping++; return true }
                 Key.DirectionUp, Key.DirectionDown -> { ui.overlay = true; ui.ping++; return true }
+                // OK only toggles play/pause (or skips intro); the controls stay hidden.
                 Key.DirectionCenter, Key.Enter -> {
                     if (showSkip) { doSkip() } else actions.togglePlay()
-                    ui.overlay = true; ui.ping++; return true
+                    ui.ping++; return true
                 }
                 else -> {}
             }
