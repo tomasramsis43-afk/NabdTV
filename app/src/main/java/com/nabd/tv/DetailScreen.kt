@@ -414,7 +414,7 @@ private fun EpisodeCard(
         // Clean 16:9 still: no number, no icon, no overlay — only a focus ring + glow when selected.
         Box(
             Modifier.fillMaxWidth().aspectRatio(16f / 9f)
-                .softShadow(shape, if (focused) 18.dp else 6.dp, if (focused) Color.White else Color.Black)
+                .softShadow(shape, 6.dp, Color.Black)   // focus is the white ring only: no white glow spilling over the title and the icons
                 .clip(shape).background(SurfHigh)
                 .border(if (focused) 2.5.dp else 0.dp, Color.White, shape)
         ) {
