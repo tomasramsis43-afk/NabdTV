@@ -674,6 +674,8 @@
     <string name="x_logos_toggle">Official title logos (Wikimedia)</string>
     <string name="detail_trailer">Trailer</string>
     <string name="detail_trailer_search">Search trailer</string>
+    <string name="detail_more">Show all ▸</string>
+    <string name="detail_director">Director: %1$s</string>
     <string name="detail_cast_title">Cast</string>
     <string name="detail_no_viewer">No app available to open the video on this device</string>
     <string name="detail_cast_works">More with the cast</string>

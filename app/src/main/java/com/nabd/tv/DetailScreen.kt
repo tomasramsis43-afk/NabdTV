@@ -42,6 +42,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.focusable
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,6 +61,16 @@ fun DetailScreen(vm: AppViewModel) {
     val isSeries = kindOf(c) == Kind.Series
     val info = vm.info
     BackHandler { vm.closeDetail() }
+    // Full-page details: opened by pressing the synopsis box; Back closes it (registered later, so it wins over closeDetail).
+    var showFull by remember { mutableStateOf(false) }
+    BackHandler(enabled = showFull) { showFull = false }
+    val synopsisFocus = remember { FocusRequester() }
+    val fullFocus = remember { FocusRequester() }
+    var fullWasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(showFull) {
+        if (showFull) { fullWasOpen = true; runCatching { fullFocus.requestFocus() } }
+        else if (fullWasOpen) { fullWasOpen = false; runCatching { synopsisFocus.requestFocus() } }
+    }
     val playFocus = remember { FocusRequester() }
     val favFocus = remember { FocusRequester() }   // first button of a series page (no Play button there)
     val d = LocalDevice.current
@@ -233,16 +245,29 @@ fun DetailScreen(vm: AppViewModel) {
                     if (info != null && info.plot.isNotBlank() && !(isSeries && shortScreen)) {
                         Spacer(Modifier.height(10.dp))
                         val boxShape = RoundedCornerShape(14.dp)
-                        // Synopsis in its own box, under the buttons.
+                        // Synopsis in its own box, under the buttons. Pressing it opens the full details page.
+                        var synFocused by remember { mutableStateOf(false) }
+                        var synCut by remember { mutableStateOf(false) }
                         Box(
                             Modifier.fillMaxWidth(if (narrow) 1f else 0.62f).widthIn(max = 620.dp)
-                                .clip(boxShape).background(Color.Black.copy(alpha = 0.38f)).border(1.dp, Color.White.copy(alpha = 0.12f), boxShape)
+                                .focusRequester(synopsisFocus)
+                                .onFocusChanged { synFocused = it.isFocused }
+                                .clip(boxShape).background(Color.Black.copy(alpha = 0.38f))
+                                .border(if (synFocused) 2.dp else 1.dp, if (synFocused) Color.White else Color.White.copy(alpha = 0.12f), boxShape)
+                                .clickable { showFull = true }
                                 .padding(horizontal = 14.dp, vertical = 11.dp)
                         ) {
-                            Text(
-                                info.plot, textAlign = androidx.compose.ui.text.style.TextAlign.Left, fontSize = if (narrow) 12.sp else 13.sp, lineHeight = 19.sp,
-                                color = Color(0xFFE3E6F0), maxLines = if (narrow) 4 else 5, overflow = TextOverflow.Ellipsis
-                            )
+                            Column {
+                                Text(
+                                    info.plot, textAlign = androidx.compose.ui.text.style.TextAlign.Left, fontSize = if (narrow) 12.sp else 13.sp, lineHeight = 19.sp,
+                                    color = Color(0xFFE3E6F0), maxLines = if (narrow) 4 else 5, overflow = TextOverflow.Ellipsis,
+                                    onTextLayout = { synCut = it.hasVisualOverflow }
+                                )
+                                if (synCut) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(tr(R.string.detail_more), fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = btnPal.accent, textAlign = androidx.compose.ui.text.style.TextAlign.Left)
+                                }
+                            }
                         }
                     }
                     if (info != null && info.cast.isNotBlank() && !shortScreen) {
@@ -274,6 +299,59 @@ fun DetailScreen(vm: AppViewModel) {
             WorksRow(vm, edge)
             WorksRow(vm, edge, vm.similarWorks, R.string.detail_similar, "sim|")
             Spacer(Modifier.height(24.dp))
+        }
+        if (showFull && info != null) FullDetails(c.name, typeLabel, info, fullFocus, edge, narrow) { showFull = false }
+    }
+}
+
+/** Full-page details (complete synopsis, director, cast, genre): opened from the synopsis box. D-pad Up/Down scroll, OK / Back close. */
+@OptIn(ExperimentalTvMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun FullDetails(name: String, typeLabel: String, info: VodInfo, focus: FocusRequester, edge: EdgePad, narrow: Boolean, onClose: () -> Unit) {
+    val st = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val step = with(androidx.compose.ui.platform.LocalDensity.current) { 140.dp.toPx() }
+    Box(
+        Modifier.fillMaxSize().background(Scrim.copy(alpha = 0.97f))
+            .pointerInput(Unit) { detectTapGestures { } }   // swallow touches so nothing behind reacts
+            .focusRequester(focus).focusable()
+            .onPreviewKeyEvent { e ->
+                if (e.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (e.key) {
+                    androidx.compose.ui.input.key.Key.DirectionDown -> { scope.launch { st.animateScrollBy(step) }; true }
+                    androidx.compose.ui.input.key.Key.DirectionUp -> { scope.launch { st.animateScrollBy(-step) }; true }
+                    androidx.compose.ui.input.key.Key.DirectionCenter, androidx.compose.ui.input.key.Key.Enter -> { onClose(); true }
+                    androidx.compose.ui.input.key.Key.DirectionLeft, androidx.compose.ui.input.key.Key.DirectionRight -> true
+                    else -> false
+                }
+            }
+    ) {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(st)
+                .padding(start = maxOf(edge.start, 20.dp), end = maxOf(edge.end, 20.dp), top = 18.dp, bottom = 28.dp)
+                .widthIn(max = 860.dp).align(Alignment.TopCenter)
+        ) {
+            Text(name, fontSize = if (narrow) 20.sp else 26.sp, lineHeight = if (narrow) 26.sp else 32.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+            Spacer(Modifier.height(10.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                MetaChip(typeLabel)
+                info.rating.takeIf { it.isNotBlank() }?.let { MetaChip("★ $it", fg = Color(0xFFFFD27A), bg = Color(0x33FFB74D)) }
+                info.year.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
+                info.duration.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
+                info.genre.split(',', '،', '/').map { it.trim() }.filter { it.isNotEmpty() }.forEach { MetaChip(it) }
+            }
+            Spacer(Modifier.height(16.dp))
+            Text(info.plot, fontSize = if (narrow) 14.sp else 16.sp, lineHeight = if (narrow) 23.sp else 27.sp, color = Color(0xFFE9ECF5))
+            if (info.director.isNotBlank()) {
+                Spacer(Modifier.height(16.dp))
+                Text(tr(R.string.detail_director, info.director), fontSize = 13.sp, lineHeight = 20.sp, color = Color(0xFFC3C8D8))
+            }
+            if (info.cast.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(tr(R.string.detail_cast, info.cast), fontSize = 13.sp, lineHeight = 20.sp, color = Color(0xFFC3C8D8))
+            }
+            Spacer(Modifier.height(20.dp))
+            MBtn(tr(R.string.detail_back), filled = false) { onClose() }
         }
     }
 }
