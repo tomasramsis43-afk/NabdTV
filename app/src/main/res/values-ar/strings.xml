@@ -680,6 +680,7 @@
     <string name="detail_no_viewer">لا يوجد تطبيق لفتح الفيديو على هذا الجهاز</string>
     <string name="detail_cast_works">أعمال أخرى لأبطال العمل</string>
     <string name="detail_similar">قد يعجبك أيضاً</string>
+    <string name="detail_franchise">سلسلة الأفلام: %1$s (%2$d من %3$d)</string>
     <string name="prov_check">فحص بيانات المزوّد</string>
     <string name="prov_check_title">بيانات المزوّد</string>
     <string name="prov_none">%1$s: لا يوجد عمل للفحص</string>

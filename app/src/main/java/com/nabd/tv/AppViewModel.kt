@@ -410,6 +410,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Other titles from the library featuring the lead actors of the open title (needs TMDB). */
     var castWorks by mutableStateOf<List<Channel>>(emptyList()); internal set
     var similarWorks by mutableStateOf<List<Channel>>(emptyList()); internal set
+    /** The other films of the same franchise (TMDB collection) that are in the library, in release order; empty when there are fewer than two. */
+    var franchiseWorks by mutableStateOf<List<Channel>>(emptyList()); internal set
+    var franchiseName by mutableStateOf(""); internal set
+    var franchiseTotal by mutableIntStateOf(0); internal set
     /** Next episode of the open series (air date / time), null when unknown or the series has ended. */
     var nextAir by mutableStateOf<NextAir?>(null); internal set
     /** Episode last focused / started in the gallery, so returning from playback lands on the same card. */
