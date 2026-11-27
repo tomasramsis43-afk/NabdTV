@@ -241,6 +241,20 @@ fun AppViewModel.failover(): Boolean {
     return true
 }
 
+/** True when another source of what is playing is left to try (used to fail over quickly instead of retrying a bad link for long). */
+fun AppViewModel.hasFailoverCandidate(): Boolean {
+    val c = current ?: return false
+    return when (playMode) {
+        PlayMode.Live -> alternativesOf(c).any { it.url !in tried }
+        PlayMode.Vod -> {
+            val meta = store.epMeta(c.url)
+            if (meta == null) kindOf(c) == Kind.Movie && movies.any { it.url != c.url && it.url !in tried && health.state(it.url) != Health.Dead && VmLogic.sameTitle(it.name, c.name) }
+            else series.any { it.url != meta.seriesUrl && VmLogic.sameTitle(it.name, meta.seriesName) }
+        }
+        else -> false
+    }
+}
+
 fun AppViewModel.useAlternative(c: Channel) { tried += c.url; current = c }
 
 /**

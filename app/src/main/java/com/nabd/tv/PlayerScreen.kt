@@ -121,6 +121,12 @@ fun PlayerScreen(vm: AppViewModel) {
     var view by remember { mutableStateOf<PlayerView?>(null) }
     var retries by remember { mutableIntStateOf(0) }
     var altUsed by remember { mutableStateOf(false) }
+    // Seamless failover: the position to continue from on the next source, and a watchdog for links that hang instead of failing.
+    var failoverPos by remember { mutableLongStateOf(-1L) }
+    var failoverStamp by remember { mutableLongStateOf(0L) }
+    var everReady by remember { mutableStateOf(false) }
+    val stallHandler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
+    val stallRef = remember { arrayOfNulls<Runnable>(1) }
     var volAcc by remember { mutableFloatStateOf(0f) }
     var notedFor by remember { mutableStateOf("") }
     var startedAt by remember { mutableLongStateOf(0L) }
@@ -577,14 +583,17 @@ fun PlayerScreen(vm: AppViewModel) {
                     url.endsWith(".m3u8") -> url.removeSuffix(".m3u8") + ".ts"
                     else -> null
                 }
+                val stalled = error.message == "Stalled"                 // the link hung (no data for a long time): do not retry it, switch
+                val hasAlt = vm.hasFailoverCandidate()
                 when {
                     error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW -> {
                         player.seekToDefaultPosition(); player.prepare()
                     }
-                    retries < 2 && (code == null || code >= 500) -> {
+                    // With another source available one quick retry is enough; a stalled link is not retried at all.
+                    !stalled && retries < (if (hasAlt) 1 else 2) && (code == null || code >= 500) -> {
                         retries++
                         // Retrying at once hammers a provider that is already refusing (503 / connection limit): back off.
-                        val wait = if (code != null) retries * 2_000L else 0L
+                        val wait = if (code != null) (if (hasAlt) 1_000L else retries * 2_000L) else 0L
                         if (wait > 0) ui.status = S(R.string.a_1e15c4e2)
                         retryHandler.postDelayed({ runCatching { player.prepare() } }, wait)
                     }
@@ -595,7 +604,10 @@ fun PlayerScreen(vm: AppViewModel) {
                     }
                     else -> {
                         vm.health.markFailure(url)
+                        // Continue the movie / episode from where it stopped on the other source instead of from the start.
+                        if (!live && player.currentPosition > 5_000L) { failoverPos = player.currentPosition; failoverStamp = System.currentTimeMillis() }
                         val showError = {
+                            failoverPos = -1L
                             ui.error = S(R.string.a_ade6c5da)
                             if (code == 503 || code == 429) ui.error = S(R.string.a_8ebc053f)
                             ui.errorDetail = (code?.let { "HTTP $it" } ?: error.errorCodeName) +
@@ -610,9 +622,20 @@ fun PlayerScreen(vm: AppViewModel) {
             }
 
             override fun onPlaybackStateChanged(state: Int) {
+                stallRef[0]?.let { stallHandler.removeCallbacks(it) }
+                if (state == Player.STATE_BUFFERING) {
+                    // A link that neither plays nor fails: after 20 s at the start (30 s once it has played) switch to another source.
+                    val r = Runnable {
+                        if (player.playbackState == Player.STATE_BUFFERING && ui.error == null && vm.hasFailoverCandidate())
+                            onPlayerError(PlaybackException("Stalled", null, PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT))
+                    }
+                    stallRef[0] = r
+                    stallHandler.postDelayed(r, if (everReady) 30_000L else 20_000L)
+                }
                 when (state) {
                     Player.STATE_BUFFERING -> ui.status = STATUS_LOADING
                     Player.STATE_READY -> {
+                        everReady = true
                         ui.status = ""
                         retries = 0
                         if (pendingResume > 0) {
@@ -657,7 +680,7 @@ fun PlayerScreen(vm: AppViewModel) {
             }
         }
         player.addListener(listener)
-        onDispose { retryHandler.removeCallbacksAndMessages(null); player.removeListener(listener) }
+        onDispose { retryHandler.removeCallbacksAndMessages(null); stallHandler.removeCallbacksAndMessages(null); player.removeListener(listener) }
     }
 
     // Each engine rebuild creates a new ExoPlayer; the old one must be released (audio focus, decoder, network).
@@ -678,20 +701,25 @@ fun PlayerScreen(vm: AppViewModel) {
     }
 
     LaunchedEffect(ch.url, player) {
-        retries = 0; altUsed = false
+        retries = 0; altUsed = false; everReady = false
+        stallRef[0]?.let { stallHandler.removeCallbacks(it) }
         ui.error = null; ui.errorDetail = ""; ui.nextEp = null; ui.ended = false
         ui.hudText = ""; ui.resumeAt = -1L; ui.status = STATUS_LOADING
         pendingResume = -1L
         startedAt = System.currentTimeMillis()
 
         val mode = vm.playMode
+        // Failover to another source of the same title: continue from where the failed one stopped.
+        val foPos = if (mode == PlayMode.Vod && failoverPos > 5_000L && System.currentTimeMillis() - failoverStamp < 20_000L) failoverPos else -1L
+        failoverPos = -1L
         val resume = when {
+            foPos > 0L -> foPos
             pendingAt >= 0L -> pendingAt
             mode == PlayMode.Vod && store.rememberPosition &&
                 ResumeMode.of(store.resumeMode) == ResumeMode.Always && vm.resumeAt > 5_000L -> vm.resumeAt
             else -> 0L
         }
-        if (pendingAt < 0L && mode == PlayMode.Vod && store.rememberPosition &&
+        if (foPos < 0L && pendingAt < 0L && mode == PlayMode.Vod && store.rememberPosition &&
             ResumeMode.of(store.resumeMode) == ResumeMode.Ask && vm.resumeAt > 5_000L
         ) pendingResume = vm.resumeAt
         pendingAt = -1L
