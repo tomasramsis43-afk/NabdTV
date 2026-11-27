@@ -199,7 +199,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val pinned = store.pinnedGroups
         val order = repo.groupOrder(when (tab) { Tab.Movies -> "movie"; Tab.Series -> "series"; else -> "live" })
         val pos = HashMap<String, Int>().also { m -> order.forEachIndexed { i, n -> m[n] = i } }
-        val seen = base.map { it.group }.distinct()
+        val seen = LinkedHashSet<String>().also { s -> for (c in base) s.add(c.group) }.toList()   // same order as distinct(), without a 50k-item intermediate list
         // Provider order; before the first refresh (no saved order yet) use the order the list arrived in.
         val names = if (order.isEmpty()) seen else seen.sortedWith(compareBy({ pos[it] ?: Int.MAX_VALUE }, { it }))
         val ordered = names.filter { it in pinned } + names.filter { it !in pinned }
@@ -227,6 +227,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val custom = if (group.startsWith(GROUP_CUSTOM)) store.customGroups()[group.removePrefix(GROUP_CUSTOM)]?.toSet() ?: emptySet() else emptySet()
         val recent = if (group == GROUP_RECENT) history.filter { it.kind == Kind.Live }.map { it.url }.toSet() else emptySet()
         val src = if (group == GROUP_NEW) base.filter { it.added > 0 }.sortedByDescending { it.added }.take(NEW_LIMIT) else base
+        if (group == GROUP_ALL && query.isBlank()) return@derivedStateOf src   // nothing to filter: skip copying the whole list on the UI thread
         src.filter {
             val g = when {
                 group == GROUP_ALL || group == GROUP_NEW -> true
