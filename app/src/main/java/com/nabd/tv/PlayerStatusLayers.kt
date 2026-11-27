@@ -10,6 +10,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,6 +60,18 @@ internal fun BoxScope.PlayerStatusLayers(
     }
 
     GestureHud(feedback, Modifier.align(Alignment.Center))
+    if (ui.seekHud.isNotEmpty() && !vm.inPip && !ui.locked) {
+        // Forward = physical right, backward = physical left, in both LTR and RTL layouts.
+        val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+        Text(
+            ui.seekHud, fontSize = 40.sp, color = Color.White, fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .align(if (ui.seekHudForward != rtl) Alignment.CenterEnd else Alignment.CenterStart)
+                .padding(horizontal = 48.dp)
+                .background(Color(0x99000000), RoundedCornerShape(14.dp))
+                .padding(horizontal = 22.dp, vertical = 10.dp)
+        )
+    }
     if (ui.hudText.isNotEmpty() && !feedback.active && !vm.inPip) {
         Text(
             ui.hudText, fontSize = 20.sp, color = Color.White, fontWeight = FontWeight.Bold,

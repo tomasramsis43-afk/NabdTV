@@ -153,6 +153,17 @@ fun PlayerScreen(vm: AppViewModel) {
         ui.ping++
     }
 
+    /** Shows the seconds just skipped ("+30" / "-30"), summed over rapid presses; direction change restarts the sum. */
+    fun showSeekHud(deltaMs: Long) {
+        val sec = (deltaMs / 1000L).toInt()
+        if (sec == 0) return
+        if (ui.seekHud.isEmpty() || (sec > 0) != (ui.seekHudAcc > 0)) ui.seekHudAcc = 0
+        ui.seekHudAcc += sec
+        ui.seekHudForward = ui.seekHudAcc > 0
+        ui.seekHud = if (ui.seekHudAcc > 0) "+${ui.seekHudAcc}" else "${ui.seekHudAcc}"
+        ui.seekHudRev++
+    }
+
     /** Jumps over the window the skip button is showing (manual intro end, or an automatic intro / recap / credits window). */
     fun doSkip() {
         if (skipTarget <= 0L) return
@@ -838,6 +849,13 @@ fun PlayerScreen(vm: AppViewModel) {
         }
     }
 
+    LaunchedEffect(ui.seekHudRev) {
+        if (ui.seekHud.isNotEmpty()) {
+            delay(900)
+            ui.seekHud = ""; ui.seekHudAcc = 0
+        }
+    }
+
     LaunchedEffect(ui.hudText) {
         if (ui.hudText.isNotEmpty()) {
             delay(1_100)
@@ -945,8 +963,8 @@ fun PlayerScreen(vm: AppViewModel) {
             Key.MediaPlayPause -> { actions.togglePlay(); return true }
             Key.MediaPlay -> { actions.play(); return true }
             Key.MediaPause -> { actions.pause(); return true }
-            Key.MediaFastForward -> { actions.seekBy(30_000L); return true }
-            Key.MediaRewind -> { actions.seekBy(-30_000L); return true }
+            Key.MediaFastForward -> { actions.seekBy(30_000L); showSeekHud(30_000L); return true }
+            Key.MediaRewind -> { actions.seekBy(-30_000L); showSeekHud(-30_000L); return true }
             Key.MediaNext -> { actions.nextVideo(); return true }
             Key.MediaPrevious -> { actions.prevVideo(); return true }
         }
@@ -984,14 +1002,17 @@ fun PlayerScreen(vm: AppViewModel) {
                 ev.nativeKeyEvent.repeatCount < 30 -> 6
                 else -> 12
             }
-            actions.seekBy(direction * base * multiplier)
+            val delta = direction * base * multiplier
+            actions.seekBy(delta)
+            showSeekHud(delta)
         }
 
         if (vod) {
             // Controls hidden: ANY arrow brings up the timeline (Left/Right also move through the film).
             when (ev.key) {
-                Key.DirectionLeft -> { scrub(-1); ui.overlay = true; ui.ping++; return true }
-                Key.DirectionRight -> { scrub(1); ui.overlay = true; ui.ping++; return true }
+                // Left/Right only seek and show the seconds beside the video; the controls stay hidden.
+                Key.DirectionLeft -> { scrub(-1); ui.ping++; return true }
+                Key.DirectionRight -> { scrub(1); ui.ping++; return true }
                 Key.DirectionUp, Key.DirectionDown -> { ui.overlay = true; ui.ping++; return true }
                 Key.DirectionCenter, Key.Enter -> {
                     if (showSkip) { doSkip() } else actions.togglePlay()
