@@ -108,4 +108,16 @@ class VmLogicProblemTest {
         assertEquals("X — " + stub(R.string.vm_prob_dead) + " · 3 " + stub(R.string.vm_prob_fails), VmLogic.problemLine("X", true, 3, ::stub))
         assertEquals("Y — " + stub(R.string.vm_prob_slow) + " · 1 " + stub(R.string.vm_prob_fails), VmLogic.problemLine("Y", false, 1, ::stub))
     }
+
+    @Test fun finishedSeasonsCountsOnlyWholeSeasonsAndIgnoresSpecials() {
+        fun ep(s: Int, n: Int) = Episode(s, n, "", "u$s-$n")
+        val eps = listOf(ep(0, 1), ep(1, 1), ep(1, 2), ep(2, 1), ep(2, 2))
+        val watched = setOf("u1-1", "u1-2", "u2-1")
+        val (done, total) = VmLogic.finishedSeasons(eps) { it in watched }
+        assertEquals(listOf(1), done)
+        assertEquals(2, total)
+        val all = VmLogic.finishedSeasons(eps) { it != "u0-1" }
+        assertEquals(listOf(1, 2), all.first)
+        assertEquals(emptyList<Int>(), VmLogic.finishedSeasons(emptyList()) { true }.first)
+    }
 }

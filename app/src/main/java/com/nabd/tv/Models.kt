@@ -114,4 +114,5 @@ data class ContinueItem(
     val season: Int, val num: Int, val group: String, val last: Long, val poster: String?
 )
 
-data class Shelf(val title: String, val items: List<Channel>, val ranked: Boolean = false, val art: Map<String, TmdbArt> = emptyMap())
+/** [badges] = small text drawn on a card, by item url (e.g. which seasons of a series are finished). */
+data class Shelf(val title: String, val items: List<Channel>, val ranked: Boolean = false, val art: Map<String, TmdbArt> = emptyMap(), val badges: Map<String, String> = emptyMap())

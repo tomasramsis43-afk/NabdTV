@@ -654,6 +654,7 @@
 
     <string name="x_shelf_fav">My favorites</string>
     <string name="x_shelf_recent">Recently watched</string>
+    <string name="done_seasons">Season %1$s</string>
     <string name="vm_err_host">Could not reach the server (wrong name or no internet)</string>
     <string name="vm_err_timeout">The server connection timed out</string>
     <string name="vm_err_refused">The server refused the connection, check the address and port</string>

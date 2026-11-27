@@ -311,8 +311,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (laterItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_later), laterItems)
         }
         if (favItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_fav), favItems)
-        val doneItems = history.filter { it.kind != Kind.Live && it.finished && parental.visible(histChannel(it)) }.take(20).map { histChannel(it) }
-        if (doneItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_recent), doneItems)
+        // Finished movies, and per series ONE card once a whole season (or the whole series) is finished: never one card per episode.
+        val (doneItems, doneBadges) = recentlyWatched()
+        if (doneItems.isNotEmpty()) out += Shelf(tx(R.string.x_shelf_recent), doneItems, badges = doneBadges)
         out
     }
 
@@ -437,6 +438,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /* ---------- Continue watching (movies + series episodes) ---------- */
     /** Episode lists already fetched, newest used last; capped so a long session cannot keep every series in memory. Safe to call from any thread. */
+    /** Series whose episode list was already requested for "Recently watched" (a failed request is removed again so it can be retried). */
+    internal val doneListsTried = HashSet<String>()
+
     internal val epListCache: MutableMap<String, List<Episode>> = java.util.Collections.synchronizedMap(
         object : LinkedHashMap<String, List<Episode>>(32, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Episode>>?) = size > 60

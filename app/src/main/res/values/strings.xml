@@ -654,6 +654,7 @@
 
     <string name="x_shelf_fav">المفضلة</string>
     <string name="x_shelf_recent">شاهدتها مؤخراً</string>
+    <string name="done_seasons">الموسم %1$s</string>
     <string name="vm_err_host">تعذّر الوصول للسيرفر (الاسم غير صحيح أو لا يوجد إنترنت)</string>
     <string name="vm_err_timeout">انتهت مهلة الاتصال بالسيرفر</string>
     <string name="vm_err_refused">السيرفر رفض الاتصال، تأكد من العنوان والبورت</string>

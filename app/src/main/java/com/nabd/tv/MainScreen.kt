@@ -193,6 +193,8 @@ private fun Content(vm: AppViewModel, d: Device, barH: androidx.compose.ui.unit.
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun HomeTab(vm: AppViewModel, d: Device) {
+    // "Recently watched" needs each watched series' episode list to tell a finished season from a few finished episodes.
+    LaunchedEffect(vm.history) { vm.loadFinishedSeriesLists() }
     val shelves = vm.shelves
     if (shelves.isEmpty() && vm.loading) { SkeletonGrid(d); return }
     if (shelves.isEmpty()) {
@@ -505,7 +507,8 @@ private fun HomeCard(vm: AppViewModel, d: Device, s: Shelf, ch: Channel, rank: I
             onFocusExtra = { vm.homeFocus = ch; onFocused(key) },
             tmdbArt = art,
             adaptive = true,
-            rank = if (s.ranked) rank else null
+            rank = if (s.ranked) rank else null,
+            badge = s.badges[ch.url]
         )
     }
 }

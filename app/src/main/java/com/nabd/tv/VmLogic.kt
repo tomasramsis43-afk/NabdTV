@@ -8,6 +8,17 @@ object VmLogic {
         return if (i >= 0) episodes.getOrNull(i + 1) else null
     }
 
+    /**
+     * Which seasons of a series are completely watched. [finished] says whether an episode URL was watched to the end.
+     * Season 0 (specials) is ignored, so a series is not "unfinished" forever because of its extras.
+     * Returns the finished season numbers (ascending) and the number of seasons the series has.
+     */
+    fun finishedSeasons(episodes: List<Episode>, finished: (String) -> Boolean): Pair<List<Int>, Int> {
+        val bySeason = episodes.filter { it.season > 0 }.groupBy { it.season }
+        val done = bySeason.filterValues { l -> l.all { finished(it.url) } }.keys.sorted()
+        return done to bySeason.size
+    }
+
     private val EP_NAME = Regex("^(.*?)\\s·\\s(?:\\u0645(\\d+)\\s\\u062D(\\d+)|S(\\d+)\\sE(\\d+))$")
 
     /**
