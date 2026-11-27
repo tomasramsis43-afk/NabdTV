@@ -92,6 +92,11 @@ class PlayerUiState {
     var ended by mutableStateOf(false)
     var digits by mutableStateOf("")
     var hudText by mutableStateOf("")
+    /** Remote seek indicator: only the seconds ("+30" / "-30"), shown beside the video without opening the controls. */
+    var seekHud by mutableStateOf("")
+    var seekHudForward by mutableStateOf(true)
+    var seekHudAcc by mutableIntStateOf(0)
+    var seekHudRev by mutableIntStateOf(0)
 
     var brightness by mutableFloatStateOf(0.5f)
     var volume by mutableIntStateOf(0)
