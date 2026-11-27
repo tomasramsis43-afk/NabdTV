@@ -58,7 +58,11 @@ data class VodInfo(
     /** Poster the provider sends with the details (usually sharper than the list thumbnail). */
     val poster: String? = null,
     /** Cast with photos when TMDB is available; otherwise built from the [cast] text without photos. */
-    val people: List<Person> = emptyList()
+    val people: List<Person> = emptyList(),
+    /** Original language: ISO 639-1 code from TMDB (shown by name in the app language), blank when unknown. */
+    val language: String = "",
+    /** Country of origin: ISO 3166 code from TMDB, or the provider's own text; blank when unknown. */
+    val country: String = ""
 )
 
 data class Person(val name: String, val photo: String? = null, val role: String = "", val id: Int = 0)

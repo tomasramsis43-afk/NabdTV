@@ -369,7 +369,8 @@ class Repo(private val ctx: Context, val store: Store) {
         backdrop = firstOf(i, "backdrop_path"),
         duration = str(i, "duration"),
         trailer = youtubeId(str(i, "youtube_trailer").ifBlank { str(i, "trailer") }),
-        poster = str(i, "cover_big").ifBlank { str(i, "movie_image") }.ifBlank { str(i, "cover") }.ifBlank { null }
+        poster = str(i, "cover_big").ifBlank { str(i, "movie_image") }.ifBlank { str(i, "cover") }.ifBlank { null },
+        country = str(i, "country")
     )
 
     /** Providers send either a bare YouTube id or a full URL. */
@@ -386,7 +387,7 @@ class Repo(private val ctx: Context, val store: Store) {
     }
     private val INFO_TTL = 7L * 24 * 3600 * 1000
     private val infoDir by lazy { File(ctx.cacheDir, "vodinfo").also { it.mkdirs() } }
-    private fun infoKey(c: Channel, kind: Kind) = "v4|${kind.name}|${c.url}|" + store.tmdbKey.isNotBlank()
+    private fun infoKey(c: Channel, kind: Kind) = "v5|${kind.name}|${c.url}|" + store.tmdbKey.isNotBlank()
     private fun infoFile(k: String) =
         File(infoDir, java.security.MessageDigest.getInstance("SHA-1").digest(k.toByteArray()).joinToString("") { "%02x".format(it) }.take(24) + ".json")
 
@@ -426,7 +427,7 @@ class Repo(private val ctx: Context, val store: Store) {
             j.optString("plot"), j.optString("cast"), j.optString("director"), j.optString("genre"), j.optString("rating"),
             j.optString("year"), j.optString("backdrop").ifBlank { null }, j.optString("duration"), j.optString("trailer"),
             j.optString("poster").ifBlank { null }, people
-        )
+        ).copy(language = j.optString("lang"), country = j.optString("country"))
     }.getOrNull()
 
     private fun writeInfo(k: String, t: Long, v: VodInfo) = runCatching {
@@ -435,6 +436,7 @@ class Repo(private val ctx: Context, val store: Store) {
         val j = JSONObject().put("t", t).put("plot", v.plot).put("cast", v.cast).put("director", v.director).put("genre", v.genre)
             .put("rating", v.rating).put("year", v.year).put("backdrop", v.backdrop ?: "").put("duration", v.duration)
             .put("trailer", v.trailer).put("poster", v.poster ?: "").put("people", ps)
+            .put("lang", v.language).put("country", v.country)
         infoFile(k).writeText(j.toString())
     }
 
@@ -472,10 +474,13 @@ class Repo(private val ctx: Context, val store: Store) {
             val va = h?.optDouble("vote_average", 0.0) ?: 0.0
             val date = h?.optString("release_date").orEmpty().ifBlank { h?.optString("first_air_date").orEmpty() }
             val base = info ?: VodInfo()
+            val (lang, country) = if (h != null) Artwork.origin(h, kind) else ("" to "")
             info = base.copy(
                 plot = base.plot.ifBlank { h?.optString("overview").orEmpty() },
                 year = base.year.ifBlank { date.take(4) },
-                rating = if (va > 0) String.format(java.util.Locale.US, "%.1f", va) else ""
+                rating = if (va > 0) String.format(java.util.Locale.US, "%.1f", va) else "",
+                language = lang,
+                country = country.ifBlank { base.country }   // TMDB's verified code first; the provider's own text otherwise
             )
         }
         // Provider gave no backdrop: look for a verified landscape one (never a poster stretched wide).

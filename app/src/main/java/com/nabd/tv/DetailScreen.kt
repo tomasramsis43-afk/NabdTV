@@ -240,6 +240,11 @@ fun DetailScreen(vm: AppViewModel) {
                         info?.duration?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
                         info?.genre?.takeIf { it.isNotBlank() }?.split(',', '،', '/')?.map { it.trim() }
                             ?.filter { it.isNotEmpty() }?.take(if (narrow) 1 else 2)?.forEach { MetaChip(it) }
+                        // Country of origin and original language (phones: just one chip so the row still fits).
+                        val country = info?.country?.takeIf { it.isNotBlank() }?.let { Origin.countryName(it, Lang.code) }
+                        val language = info?.language?.takeIf { it.isNotBlank() }?.let { Origin.languageName(it, Lang.code) }
+                        if (narrow) (country ?: language)?.let { MetaChip(it) }
+                        else { country?.let { MetaChip(it) }; language?.let { MetaChip(it) } }
                     }
                     if (isSeries) vm.nextAir?.let { n -> Spacer(Modifier.height(8.dp)); NextAirChips(n) }
                     if (info != null && info.plot.isNotBlank() && !(isSeries && shortScreen)) {
@@ -343,6 +348,8 @@ private fun FullDetails(name: String, typeLabel: String, info: VodInfo, focus: F
                 info.year.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
                 info.duration.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
                 info.genre.split(',', '،', '/').map { it.trim() }.filter { it.isNotEmpty() }.forEach { MetaChip(it) }
+                info.country.takeIf { it.isNotBlank() }?.let { MetaChip(Origin.countryName(it, Lang.code)) }
+                info.language.takeIf { it.isNotBlank() }?.let { MetaChip(Origin.languageName(it, Lang.code)) }
             }
             Spacer(Modifier.height(16.dp))
             Text(info.plot, fontSize = if (narrow) 14.sp else 16.sp, lineHeight = if (narrow) 23.sp else 27.sp, color = Color(0xFFE9ECF5))
