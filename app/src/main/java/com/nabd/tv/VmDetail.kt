@@ -47,7 +47,7 @@ internal fun AppViewModel.showDetail(c: Channel, push: Boolean) {
         }
     } else { detailStack.clear(); neighborList = contextFor(c) }   // opened from Home / search / a list: a fresh trail
     val k = kindOf(c)
-    detail = c; info = repo.cachedInfo(c, k); episodes = emptyList(); season = 1; error = null; epFocusUrl = null; castWorks = emptyList(); similarWorks = emptyList(); nextAir = null
+    detail = c; info = repo.cachedInfo(c, k); episodes = emptyList(); season = 1; error = null; epFocusUrl = null; castWorks = emptyList(); similarWorks = emptyList(); franchiseWorks = emptyList(); franchiseName = ""; franchiseTotal = 0; nextAir = null
     back = Screen.Main; screen = Screen.Detail
     viewModelScope.launch {
         val i = repo.vodInfo(c, k)
@@ -56,6 +56,7 @@ internal fun AppViewModel.showDetail(c: Channel, push: Boolean) {
         if (i != null) loadCastWorks(c, i)
     }
     if (k != Kind.Live) viewModelScope.launch { loadSimilar(c, k) }
+    if (k == Kind.Movie) viewModelScope.launch { loadFranchise(c) }
     if (k == Kind.Series) {
         viewModelScope.launch {
             val n = NextAiring.find(repo.http, store.tmdbKey, c.name)
@@ -101,6 +102,28 @@ internal suspend fun AppViewModel.loadSimilar(c: Channel, k: Kind) {
         }.distinctBy { LogoMatch.norm(LogoMatch.clean(it.name).first) }.take(20)
     }
     if (detail?.url == c.url) similarWorks = found
+}
+
+/** Every film of the same franchise (TMDB collection, e.g. Fast & Furious) that is in the library, in release order. Nothing without a TMDB key. */
+internal suspend fun AppViewModel.loadFranchise(c: Channel) {
+    if (store.tmdbKey.isBlank()) return
+    val f = Artwork.franchise(c.name, Kind.Movie, null)
+    if (f.parts.isEmpty()) return
+    val found = withContext(Dispatchers.Default) {
+        val idx = TmdbCharts.indexOf(movieList)
+        val used = HashSet<String>()
+        val out = ArrayList<Channel>()
+        for (p in f.parts) {
+            val hit = p.names.firstNotNullOfOrNull { n ->
+                idx[n]?.firstOrNull { (x, y) -> x.url !in used && (p.year == null || y == null || kotlin.math.abs(p.year - y) <= 1) }?.first
+            } ?: continue
+            used += hit.url; out += hit
+        }
+        out
+    }
+    if (detail?.url == c.url && found.size >= 2) {
+        franchiseWorks = found; franchiseName = f.name.removeSuffix(" Collection").trim(); franchiseTotal = f.parts.size
+    }
 }
 
 /** Shows which artwork/metadata fields the provider really sends for one movie and one series (no credentials are shown). */

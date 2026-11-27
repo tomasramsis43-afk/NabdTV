@@ -224,6 +224,79 @@ object Artwork {
             }
         }
     }
+    /** One film of a franchise: every spelling TMDB knows for it (normalised) and its release year. */
+    class FranchisePart(val names: Set<String>, val year: Int?)
+    /** A TMDB collection (e.g. Fast & Furious): its name and all its films in release order. */
+    class Franchise(val name: String, val parts: List<FranchisePart>)
+    private class FranchiseAcc(val date: String) { val names = LinkedHashSet<String>() }
+    private val cmem = ConcurrentHashMap<String, Franchise>()
+    private val NO_FRANCHISE = Franchise("", emptyList())
+
+    /** The TMDB collection a movie belongs to, with all its films in release order. Empty without a key, a verified match or a collection (series have none). */
+    suspend fun franchise(rawTitle: String, kind: Kind, yearHint: Int?): Franchise {
+        val d = dir ?: return NO_FRANCHISE
+        if (kind != Kind.Movie || tmdbKey().isBlank()) return NO_FRANCHISE
+        val (title, y) = LogoMatch.clean(rawTitle)
+        if (title.isBlank()) return NO_FRANCHISE
+        val year = yearHint ?: y
+        val k = "coll:${LogoMatch.norm(title)}:${year ?: 0}"
+        cmem[k]?.let { return it }
+        return kotlinx.coroutines.withContext(Dispatchers.IO) {
+            gate.withPermit {
+                ensureLoaded(d)
+                synchronized(index) { index.optJSONObject(k) }?.let { e ->
+                    if (System.currentTimeMillis() - e.optLong("time") < RECS_TTL) {
+                        val arr = e.optJSONArray("p") ?: JSONArray()
+                        val parts = (0 until arr.length()).map { i ->
+                            val o = arr.getJSONObject(i)
+                            val t = o.optJSONArray("t") ?: JSONArray()
+                            FranchisePart((0 until t.length()).map { t.getString(it) }.toSet(), o.optInt("y", 0).takeIf { it > 0 })
+                        }
+                        return@withPermit Franchise(e.optString("n"), parts).also { cmem[k] = it }
+                    }
+                }
+                try {
+                    val key = tmdbKey()
+                    var result = NO_FRANCHISE
+                    val hit = tmdbMatch(key, title, kind, year)
+                    if (hit != null) {
+                        val cid = getObj("https://api.themoviedb.org/3/movie/${hit.optInt("id")}?api_key=${Uri.encode(key)}")
+                            .optJSONObject("belongs_to_collection")?.optInt("id", 0) ?: 0
+                        if (cid > 0) {
+                            val byId = LinkedHashMap<Int, FranchiseAcc>()
+                            var name = ""
+                            var answered = false
+                            // English and Arabic, so provider titles in either language match.
+                            for (lang in listOf("en-US", "ar")) {
+                                val col = runCatching { getObj("https://api.themoviedb.org/3/collection/$cid?api_key=${Uri.encode(key)}&language=$lang") }.getOrNull() ?: continue
+                                answered = true
+                                if (name.isBlank()) name = col.optString("name")
+                                val arr = col.optJSONArray("parts") ?: continue
+                                for (i in 0 until arr.length()) {
+                                    val r = arr.getJSONObject(i)
+                                    val id = r.optInt("id", -1).takeIf { it > 0 } ?: continue
+                                    val acc = byId.getOrPut(id) { FranchiseAcc(r.optString("release_date")) }
+                                    for (n in listOf("title", "original_title")) {
+                                        val s = LogoMatch.norm(r.optString(n))
+                                        if (s.isNotEmpty()) acc.names += s
+                                    }
+                                }
+                            }
+                            if (!answered) throw IOException("collection unavailable")   // offline: do not remember "no collection"
+                            val parts = byId.values.sortedWith(compareBy({ it.date.isBlank() }, { it.date }))
+                                .map { FranchisePart(it.names, it.date.take(4).toIntOrNull()) }
+                            result = Franchise(name, parts)
+                        }
+                    }
+                    val json = JSONArray()
+                    for (p in result.parts) json.put(JSONObject().put("y", p.year ?: 0).put("t", JSONArray(p.names.toList())))
+                    synchronized(index) { index.put(k, JSONObject().put("n", result.name).put("p", json).put("time", System.currentTimeMillis())) }
+                    save(d); cmem[k] = result; result
+                } catch (_: Exception) { NO_FRANCHISE }
+            }
+        }
+    }
+
     private val NO_EXTRAS = Extras(emptyList(), "")
     private val xmem = ConcurrentHashMap<String, Extras>()
 
