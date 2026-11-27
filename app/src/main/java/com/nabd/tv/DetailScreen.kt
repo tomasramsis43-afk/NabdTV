@@ -409,7 +409,7 @@ private fun EpisodeCard(
             .scale(sc)
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocused() }
-            .clickable(onClick = onClick)
+            .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = onClick)   // no default focus overlay: the white ring on the picture is the only focus mark
     ) {
         // Clean 16:9 still: no number, no icon, no overlay — only a focus ring + glow when selected.
         Box(
