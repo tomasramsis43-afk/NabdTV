@@ -266,7 +266,8 @@ fun PosterCard(
     onFocusExtra: (() -> Unit)? = null,
     tmdbArt: TmdbArt? = null,   // clean TMDB backdrop + TMDB rating (used for the wide card)
     adaptive: Boolean = false,  // true = card follows the screen orientation: portrait poster (2:3) / landscape backdrop (16:9)
-    rank: Int? = null           // trending position: drawn inside the card, bottom-left
+    rank: Int? = null,          // trending position: drawn inside the card, bottom-left
+    badge: String? = null       // small text chip, bottom-left (e.g. "Season 1, 2" on a finished series)
 ) {
     val progress = vm.historyByUrl[ch.url]?.progress ?: 0f
     val locked = vm.parental.needsPin(ch)
@@ -324,6 +325,7 @@ fun PosterCard(
             vm.versionCounts[ch.url]?.takeIf { it > 1 && kindOf(ch) != Kind.Live }?.let { n ->
                 MetaChip("×$n", modifier = Modifier.align(Alignment.BottomEnd).padding(start = 6.dp, end = 6.dp, bottom = if (progress > 0.02f) 9.dp else 6.dp))
             }
+            badge?.let { MetaChip(it, modifier = Modifier.align(Alignment.BottomStart).padding(start = 6.dp, end = 6.dp, bottom = if (progress > 0.02f) 9.dp else 6.dp)) }
             if (progress > 0.02f) {
                 Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color(0x66000000))) {
                     Box(Modifier.fillMaxHeight().fillMaxWidth(progress).background(Accent))

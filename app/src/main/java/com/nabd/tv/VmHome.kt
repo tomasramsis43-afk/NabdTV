@@ -17,6 +17,54 @@ import kotlinx.coroutines.withContext
 /* ───────── home shelves ───────── */
 internal fun AppViewModel.histChannel(h: HistoryEntry) = Channel(-1, h.name, h.url, h.logo, h.group)
 
+/**
+ * "Recently watched" shelf, newest first: finished movies, and ONE card per series - only when at least one whole season is finished.
+ * A series with every season finished has no badge; otherwise the badge lists the finished seasons. Single finished episodes never get a card.
+ * A series whose episode list is not loaded yet waits (see [loadFinishedSeriesLists]).
+ */
+internal fun AppViewModel.recentlyWatched(limit: Int = 20): Pair<List<Channel>, Map<String, String>> {
+    val items = ArrayList<Channel>()
+    val badges = HashMap<String, String>()
+    val seen = HashSet<String>()
+    for (h in history.filter { it.kind != Kind.Live && it.finished }.sortedByDescending { it.last }) {
+        val meta = store.epMeta(h.url) ?: legacyMeta(h)
+        if (meta == null) {
+            if (h.kind == Kind.Movie && parental.visible(histChannel(h))) items += histChannel(h)
+            continue   // an episode that cannot be placed in a series: no card of its own
+        }
+        if (!seen.add(meta.seriesUrl)) continue
+        val eps = epListCache[meta.seriesUrl] ?: continue
+        val (done, total) = VmLogic.finishedSeasons(eps) { historyByUrl[it]?.finished == true }
+        if (done.isEmpty()) continue
+        val s = series.firstOrNull { it.url == meta.seriesUrl } ?: Channel(-1, meta.seriesName, meta.seriesUrl, h.logo, h.group)
+        if (!parental.visible(s)) continue
+        items += s
+        if (done.size < total) badges[s.url] = tx(R.string.done_seasons, done.joinToString(", "))
+        if (items.size >= limit) break
+    }
+    return items to badges
+}
+
+/** Loads (once per series, in the background) the episode lists of series with finished episodes, then refreshes the shelves. */
+internal fun AppViewModel.loadFinishedSeriesLists() {
+    if (!hasXtream) return
+    val urls = history.filter { it.kind == Kind.Series && it.finished }
+        .mapNotNull { (store.epMeta(it.url) ?: legacyMeta(it))?.seriesUrl }.distinct()
+        .filter { it !in epListCache && doneListsTried.add(it) }.take(30)
+    if (urls.isEmpty()) return
+    viewModelScope.launch {
+        var changed = false
+        for (u in urls) {
+            val sid = u.removePrefix("series:").toIntOrNull() ?: continue
+            try {
+                val l = repo.loadEpisodes(sid)
+                if (l.isNotEmpty()) { epListCache[u] = l; changed = true }
+            } catch (e: Exception) { doneListsTried.remove(u); Diag.note("VmHome#done", e) }
+        }
+        if (changed) bump()
+    }
+}
+
 /** Loads the TMDB charts (cached 6 h). Call again with [force] after the key changes. */
 fun AppViewModel.refreshTmdbCharts(force: Boolean = false) {
     val key = store.tmdbKey
