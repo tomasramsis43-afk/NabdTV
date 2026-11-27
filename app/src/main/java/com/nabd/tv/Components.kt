@@ -300,11 +300,16 @@ fun PosterCard(
         ) {
             if (adaptive && kindOf(ch) != Kind.Live) {
                 AdaptiveArtImage(vm, ch, landscape = wide, modifier = Modifier.fillMaxSize(), cropFallback = true, thumb = !d.tv)
-            } else AsyncImage(
-                model = tmdbArt?.image ?: ch.logo, contentDescription = null,
-                contentScale = if (kindOf(ch) == Kind.Live) ContentScale.Fit else ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().then(if (kindOf(ch) == Kind.Live) Modifier.padding(6.dp) else Modifier)
-            )
+            } else {
+                val chain = rememberImageChain(remember(tmdbArt?.image, ch.logo) { listOfNotNull(tmdbArt?.image, ch.logo).filter { it.isNotBlank() }.distinct() })
+                val req = chain.request()
+                if (chain.exhausted || req == null) ArtPlaceholder(ch.name) else AsyncImage(
+                    model = req, contentDescription = null,
+                    onError = { chain.fail() },
+                    contentScale = if (kindOf(ch) == Kind.Live) ContentScale.Fit else ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().then(if (kindOf(ch) == Kind.Live) Modifier.padding(6.dp) else Modifier)
+                )
+            }
             // Clean artwork: no title wordmark and no dark wash anywhere over the picture.
             val tmdbOn = vm.store.tmdbKey.isNotBlank()
             // TMDB is the only source of the number when a key is set; the provider's own value is used only when there is no key at all.

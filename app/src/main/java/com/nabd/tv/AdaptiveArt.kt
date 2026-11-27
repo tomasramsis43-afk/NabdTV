@@ -161,11 +161,21 @@ fun AdaptiveArtImage(
     val natural = if (waiting) false else art.natural(landscape)
     // A poster used as the fallback inside a wide frame keeps its full size (it is cropped and enlarged there).
     val url = if (thumb && (!landscape || natural)) cardSized(picked) else picked
+    // If the chosen picture fails to load (dead link, timeout, 404) it is retried once, then the other-orientation picture and
+    // the provider's own image are tried; if everything fails the card shows its title instead of an empty frame.
+    val others = listOfNotNull(art.poster, art.backdrop, ch.logo)
     Crossfade(targetState = url to natural, modifier = modifier, animationSpec = tween(350), label = "adaptiveArt") { (u, nat) ->
+        if (u == null) {
+            if (waiting) Box(Modifier.fillMaxSize().background(SurfHigh)) else ArtPlaceholder(ch.name)
+            return@Crossfade
+        }
+        val chain = rememberImageChain(remember(u, others) { (listOf(u) + others.filter { it.isNotBlank() }).distinct() })
+        val req = chain.request()
         when {
-            u == null -> Box(Modifier.fillMaxSize().background(SurfHigh))
+            chain.exhausted || req == null -> ArtPlaceholder(ch.name)
             nat || !landscape || cropFallback -> AsyncImage(
-                model = u, contentDescription = null, contentScale = ContentScale.Crop,
+                model = req, contentDescription = null, contentScale = ContentScale.Crop,
+                onError = { chain.fail() },
                 // Vertical bias: -1 = top of the picture, 0 = centre. Biased towards the top so faces / heads are not cut off
                 // (the picture sits lower in its frame); wide pictures need it most, portrait posters a little.
                 alignment = BiasAlignment(0f, if (landscape) (if (nat) -0.8f else -1f) else -0.5f),
@@ -173,11 +183,12 @@ fun AdaptiveArtImage(
             )
             else -> Box(Modifier.fillMaxSize().background(SurfHigh)) {
                 AsyncImage(
-                    model = u, contentDescription = null, contentScale = ContentScale.Crop,
+                    model = req, contentDescription = null, contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize().blur(28.dp).alpha(0.45f * alpha)
                 )
                 AsyncImage(
-                    model = u, contentDescription = null, contentScale = ContentScale.Fit,
+                    model = req, contentDescription = null, contentScale = ContentScale.Fit,
+                    onError = { chain.fail() },
                     alignment = Alignment.Center, alpha = alpha, modifier = Modifier.fillMaxSize()
                 )
             }
