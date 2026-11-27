@@ -60,6 +60,7 @@ fun DetailScreen(vm: AppViewModel) {
     val info = vm.info
     BackHandler { vm.closeDetail() }
     val playFocus = remember { FocusRequester() }
+    val favFocus = remember { FocusRequester() }   // first button of a series page (no Play button there)
     val d = LocalDevice.current
     val edge = edgePad(d)
     val narrow = d.widthDp < 600
@@ -154,6 +155,9 @@ fun DetailScreen(vm: AppViewModel) {
                     .onPreviewKeyEvent { e ->
                         if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && (e.key == androidx.compose.ui.input.key.Key.DirectionLeft || e.key == androidx.compose.ui.input.key.Key.DirectionRight)) {
                             vm.stepDetail(if (e.key == androidx.compose.ui.input.key.Key.DirectionRight) 1 else -1); true
+                        } else if (d.tv && e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && e.key == androidx.compose.ui.input.key.Key.DirectionDown) {
+                            // Down from the artwork always lands on the first (leftmost) button: Play, or Favourite on a series page.
+                            runCatching { (if (isSeries) favFocus else playFocus).requestFocus() }.isSuccess
                         } else false
                     }
                     .padding(horizontal = maxOf(edge.start, edge.end)),
@@ -198,7 +202,7 @@ fun DetailScreen(vm: AppViewModel) {
                             MBtn(label, tint = buttonTone(btnPal.primary), modifier = Modifier.focusRequester(playFocus)) { vm.play(c) }
                             if (DownloadRules.isDownloadable(c.url)) DownloadButton(vm, c.name, c.url, info?.poster ?: c.logo, btnPal.accent)
                         }
-                        MBtn(if (c.url in vm.favs) tr(R.string.detail_fav_on) else tr(R.string.detail_fav_off), filled = false, tint = btnPal.accent) { vm.toggleFav(c) }
+                        MBtn(if (c.url in vm.favs) tr(R.string.detail_fav_on) else tr(R.string.detail_fav_off), filled = false, tint = btnPal.accent, modifier = if (isSeries) Modifier.focusRequester(favFocus) else Modifier) { vm.toggleFav(c) }
                         MBtn((if (c.url in vm.liked) "✓ " else "") + "👍", filled = false, tint = btnPal.accent) { vm.rate(c, true) }
                         MBtn((if (c.url in vm.disliked) "✓ " else "") + "👎", filled = false, tint = btnPal.accent) { vm.rate(c, false) }
                         val trailerId = info?.trailer.orEmpty()
