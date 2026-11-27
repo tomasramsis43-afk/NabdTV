@@ -164,7 +164,7 @@ fun AdaptiveArtImage(
     // If the chosen picture fails to load (dead link, timeout, 404) it is retried once, then the other-orientation picture and
     // the provider's own image are tried; if everything fails the card shows its title instead of an empty frame.
     val others = listOfNotNull(art.poster, art.backdrop, ch.logo)
-    Crossfade(targetState = url to natural, modifier = modifier, animationSpec = tween(350), label = "adaptiveArt") { (u, nat) ->
+    Crossfade(targetState = url to natural, modifier = modifier, animationSpec = if (LocalDevice.current.tv && cropFallback) androidx.compose.animation.core.snap() else tween(350), label = "adaptiveArt") { (u, nat) ->
         if (u == null) {
             if (waiting) Box(Modifier.fillMaxSize().background(SurfHigh)) else ArtPlaceholder(ch.name)
             return@Crossfade

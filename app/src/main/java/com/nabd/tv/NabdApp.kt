@@ -33,7 +33,8 @@ class NabdApp : Application(), ImageLoaderFactory {
     }
 
     private fun buildLoader(low: Boolean): ImageLoader = ImageLoader.Builder(this)
-        .crossfade(180)
+        // No per-image fade on TV: every poster that loads would otherwise run its own animation while the grid is still being built.
+        .crossfade(if (isTelevision(this)) 0 else 180)
         .allowRgb565(low)
         .memoryCache { MemoryCache.Builder(this).maxSizePercent(if (low) 0.1 else 0.2).build() }
         .diskCache { DiskCache.Builder().directory(File(cacheDir, "img")).maxSizeBytes(250L * 1024 * 1024).build() }

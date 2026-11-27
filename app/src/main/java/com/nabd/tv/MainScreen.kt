@@ -163,7 +163,10 @@ private fun Content(vm: AppViewModel, d: Device, barH: androidx.compose.ui.unit.
         targetState = key,
         modifier = modifier,
         transitionSpec = {
-            (fadeIn(tween(220)) + scaleIn(initialScale = 0.99f, animationSpec = tween(220))) togetherWith fadeOut(tween(110))
+            // TV boxes: an instant swap. The cross-fade keeps the old AND the new page composed for ~220 ms
+            // (two full pages + scale layers), which is what made tab switching crawl on weak TV GPUs/CPUs.
+            if (d.tv) androidx.compose.animation.EnterTransition.None togetherWith androidx.compose.animation.ExitTransition.None
+            else (fadeIn(tween(220)) + scaleIn(initialScale = 0.99f, animationSpec = tween(220))) togetherWith fadeOut(tween(110))
         },
         label = "page"
     ) { k ->
