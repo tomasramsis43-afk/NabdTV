@@ -309,6 +309,24 @@ object Artwork {
         return runCatching { tmdbMatch(key, title, kind, yearHint ?: y) }.getOrNull()
     }
 
+    /**
+     * Original language (ISO 639-1) and first country (ISO 3166) of a verified TMDB match [hit]; blank when unknown.
+     * Series carry their country in the search hit; for movies one details call is made. Blocking: call off the main thread.
+     */
+    fun origin(hit: JSONObject, kind: Kind): Pair<String, String> {
+        val lang = hit.optString("original_language").takeIf { it.isNotBlank() && it != "xx" && it != "null" }.orEmpty()
+        var country = hit.optJSONArray("origin_country")?.optString(0).orEmpty()
+        val key = tmdbKey()
+        val id = hit.optInt("id")
+        if (country.isBlank() && kind == Kind.Movie && key.isNotBlank() && id > 0) {
+            country = runCatching {
+                getObj("https://api.themoviedb.org/3/movie/$id?api_key=${Uri.encode(key)}")
+                    .optJSONArray("production_countries")?.optJSONObject(0)?.optString("iso_3166_1").orEmpty()
+            }.getOrDefault("")
+        }
+        return lang to country
+    }
+
     /** First TMDB search result whose title equals [title] exactly (after normalising) and whose year agrees. */
     private fun tmdbMatch(key: String, title: String, kind: Kind, year: Int?): JSONObject? {
         val t = if (kind == Kind.Series) "tv" else "movie"
