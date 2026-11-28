@@ -239,12 +239,23 @@ fun DetailScreen(vm: AppViewModel) {
                         info?.year?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
                         info?.duration?.takeIf { it.isNotBlank() }?.let { MetaChip(it) }
                         info?.genre?.takeIf { it.isNotBlank() }?.split(',', '،', '/')?.map { it.trim() }
-                            ?.filter { it.isNotEmpty() }?.take(if (narrow) 1 else 2)?.forEach { MetaChip(it) }
+                            ?.filter { it.isNotEmpty() }?.take(if (narrow) 0 else 2)?.forEach { MetaChip(it) }
                         // Country of origin and original language (phones: just one chip so the row still fits).
                         val country = info?.country?.takeIf { it.isNotBlank() }?.let { Origin.countryName(it, Lang.code) }
                         val language = info?.language?.takeIf { it.isNotBlank() }?.let { Origin.languageName(it, Lang.code) }
                         if (narrow) (country ?: language)?.let { MetaChip(it) }
                         else { country?.let { MetaChip(it) }; language?.let { MetaChip(it) } }
+                    }
+                    // Phones: all genres (up to 4) on their own wrapping row so none are cut off.
+                    if (narrow) {
+                        val genreList = info?.genre?.takeIf { it.isNotBlank() }?.split(',', '،', '/')
+                            ?.map { it.trim() }?.filter { it.isNotEmpty() }?.distinct()?.take(4).orEmpty()
+                        if (genreList.isNotEmpty()) {
+                            Spacer(Modifier.height(8.dp))
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                genreList.forEach { MetaChip(it) }
+                            }
+                        }
                     }
                     if (isSeries) vm.nextAir?.let { n -> Spacer(Modifier.height(8.dp)); NextAirChips(n) }
                     if (info != null && info.plot.isNotBlank() && !(isSeries && shortScreen)) {
